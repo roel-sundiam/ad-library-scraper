@@ -532,17 +532,20 @@ async function processScrapeJob(jobId) {
     });
     
     // Temporarily use mock data until Puppeteer deployment is fixed
+    logger.info('Generating mock results for job:', jobId);
     const results = generateMockResults(job);
+    logger.info('Mock results generated:', { count: results.length, jobId });
+    
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Process video transcriptions if videos are found
-    if (results.some(ad => ad.creative?.has_video)) {
-      job.status = 'processing_videos';
-      jobs.set(jobId, job);
-      
-      logger.info(`Processing video transcriptions for job ${jobId}`);
-      await processVideoTranscriptions(jobId, results);
-    }
+    // Temporarily skip video processing to debug
+    // if (results.some(ad => ad.creative?.has_video)) {
+    //   job.status = 'processing_videos';
+    //   jobs.set(jobId, job);
+    //   
+    //   logger.info(`Processing video transcriptions for job ${jobId}`);
+    //   await processVideoTranscriptions(jobId, results);
+    // }
 
     // Update job with results
     job.status = 'completed';
