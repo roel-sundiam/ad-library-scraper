@@ -23,18 +23,18 @@ class FacebookAdLibraryScraper {
     const token = process.env.BROWSERLESS_TOKEN;
     if (!token) throw new Error('BROWSERLESS_TOKEN missing');
     const endpoints = [
-      `wss://production-sfo.browserless.io?token=${token}`,
-      `wss://production-lon.browserless.io?token=${token}`
+      `wss://production-sfo.browserless.io?token=${token}&timeout=300000&blockAds=true`,
+      `wss://production-lon.browserless.io?token=${token}&timeout=300000&blockAds=true`
     ];
     for (const ep of endpoints) {
       try {
         this.browser = await puppeteer.connect({
           browserWSEndpoint: ep,
-          timeout: 30000,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
+          timeout: 60000,
+          defaultViewport: null
         });
         this.browserType = 'browserless';
-        logger.info('Browserless connected');
+        logger.info('Browserless connected with extended timeout');
         return;
       } catch (e) {
         logger.warn(`Endpoint failed: ${ep.substring(0, 50)}... ${e.message}`);
@@ -117,17 +117,20 @@ class FacebookAdLibraryScraper {
   
   async closeBrowser() {
     try {
-      if (this.page) {
+      if (this.page && !this.page.isClosed()) {
         await this.page.close();
         this.page = null;
       }
-      if (this.browser) {
+      if (this.browser && this.browser.isConnected()) {
         await this.browser.disconnect();
         this.browser = null;
       }
       logger.info('Browser closed successfully');
     } catch (error) {
       logger.warn('Error closing browser:', error.message);
+      // Force cleanup
+      this.page = null;
+      this.browser = null;
     }
   }
 
@@ -186,6 +189,12 @@ class FacebookAdLibraryScraper {
     const keyword = this.query || 'nike';
   
     try {
+      // Check if page is still connected
+      if (!this.page || this.page.isClosed()) {
+        logger.error('Page is closed or unavailable');
+        return [];
+      }
+      
       // 1. Wait for page to load and try multiple search selector patterns
       const searchSelectors = [
         'input[aria-label*="Search"]',
@@ -208,10 +217,7 @@ class FacebookAdLibraryScraper {
       }
       
       if (!searchInput) {
-        // Take screenshot for debugging
-        const path = `/tmp/fb_no_search_${Date.now()}.png`;
-        await this.page.screenshot({ path, fullPage: true });
-        logger.error(`No search input found - saved screenshot: ${path}`);
+        logger.error(`No search input found after trying all selectors`);
         return [];
       }
   
@@ -248,15 +254,11 @@ class FacebookAdLibraryScraper {
       }
       
       if (!cardSel) {
-        const path = `/tmp/fb_no_cards_${Date.now()}.png`;
-        await this.page.screenshot({ path, fullPage: true });
-        logger.warn(`No ad cards found - saved screenshot: ${path}`);
+        logger.warn(`No ad cards found after trying all selectors`);
         return [];
       }
     } catch (error) {
-      const path = `/tmp/fb_error_${Date.now()}.png`;
-      await this.page.screenshot({ path, fullPage: true });
-      logger.error(`Error in extractAdsFromPage: ${error.message} - saved screenshot: ${path}`);
+      logger.error(`Error in extractAdsFromPage: ${error.message}`);
       return [];
     }
   
