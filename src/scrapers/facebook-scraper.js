@@ -86,13 +86,12 @@ class FacebookAdLibraryScraper {
     } finally { await this.closeBrowser(); }
   }
 
-buildSearchUrl(p) {
-  // Facebook now uses this pattern
-  const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all';
-  const country = this.mapRegionToCountry(p.region);
-  const query = p.query?.trim() || '';
-  return `${base}&country=${country}&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
-}
+  buildSearchUrl(p) {
+    const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all';
+    const country = this.mapRegionToCountry(p.region);
+    const query = p.query?.trim() || '';
+    return `${base}&country=${country}&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
+  }
 
   async performSearchOnPage(keyword) {
     // 1️⃣ wait for the initial page
@@ -113,16 +112,11 @@ buildSearchUrl(p) {
     await this.page.waitForTimeout(3000 + Math.random() * 2000);
   }
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
-   async extractAdsFromPage(limit = 50) {
-    // 1. actually trigger the search
-    await this.performSearchOnPage(this.query);
-
-    // 2. selectors after the search
+  async extractAdsFromPage(limit = 50) {
     const selectors = [
       '[data-testid="ad-library-card"]',
       '[data-testid="ad_library_result"]',
-      '[role="article"]',
-      '[data-testid="search-results"] [data-visualcompletion="ignore-dynamic"]'
+      '[role="article"]'
     ];
     let selector = null;
     for (const sel of selectors) {
@@ -139,33 +133,32 @@ buildSearchUrl(p) {
       logger.warn(`Zero ads → saved ${path}`);
       return [];
     }
-
+  
     await this.scrollToLoadMore(limit, selector);
-
-    /* ---- 4a.  lightweight browser-side extraction ---- */
+  
     const rawAds = await this.page.evaluate((sel, max) => {
-      const cards = Array.from(document.querySelectorAll(sel));
-      return cards.slice(0, max).map(card => {
-        const text = (q) => card.querySelector(q)?.textContent?.trim() || '';
-        const attr = (q, a) => card.querySelector(q)?.getAttribute(a) || '';
-
-        const advertiser =
-          text('a[role="link"] span') ||
-          text('a[role="link"]') ||
-          text('h3 a') ||
-          'Unknown';
-
-        const adText = Array.from(card.querySelectorAll('div[dir="auto"], span[dir="auto"]'))
-          .map(el => el.textContent?.trim()).filter(Boolean).join(' ');
-
-        const images = Array.from(card.querySelectorAll('img'))
-          .map(img => img.src).filter(Boolean).filter(s => !s.startsWith('data:'));
-
-        return { advertiser, ad_text: adText, image_urls: images };
-      });
+      return Array.from(document.querySelectorAll(sel))
+        .slice(0, max)
+        .map(card => {
+          const text = q => card.querySelector(q)?.textContent?.trim() || '';
+          const advertiser =
+            text('a[role="link"] span') ||
+            text('a[role="link"]') ||
+            text('h3 a') ||
+            'Unknown';
+          const adText = Array.from(
+            card.querySelectorAll('div[dir="auto"], span[dir="auto"]')
+          )
+            .map(el => el.textContent?.trim())
+            .filter(Boolean)
+            .join(' ');
+          const images = Array.from(card.querySelectorAll('img'))
+            .map(img => img.src)
+            .filter(src => src && !src.startsWith('data:'));
+          return { advertiser, ad_text: adText, image_urls: images };
+        });
     }, selector, limit);
-
-    /* ---- 4b.  normalize (server-side) ---- */
+  
     return rawAds
       .filter(a => a.advertiser !== 'Unknown' || a.ad_text.length > 0)
       .map(a => this.normalizeAdData(a));
