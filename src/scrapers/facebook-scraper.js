@@ -1,4 +1,3 @@
-const { chromium } = require('playwright');
 const puppeteer = require('puppeteer-core');
 const logger = require('../utils/logger');
 
@@ -13,58 +12,17 @@ class FacebookAdLibraryScraper {
 
   async initBrowser() {
     if (!this.browser) {
-      logger.info('Attempting to launch browser...');
-      
-      // Try Playwright first, then fallback to Browserless
-      try {
-        await this.initPlaywrightBrowser();
-      } catch (playwrightError) {
-        logger.warn('Playwright failed, trying Browserless fallback:', playwrightError.message);
-        await this.initBrowserlessConnection();
-      }
+      logger.info('Connecting to external browser service...');
+      await this.initBrowserlessConnection();
     }
   }
 
-  async initPlaywrightBrowser() {
-    const launchOptions = {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-features=TranslateUI',
-        '--disable-ipc-flooding-protection',
-        '--no-first-run',
-        '--no-default-browser-check',
-        '--disable-default-apps',
-        '--disable-popup-blocking',
-        '--disable-prompt-on-repost',
-        '--disable-hang-monitor',
-        '--disable-sync',
-        '--disable-client-side-phishing-detection',
-        '--disable-component-update',
-        '--disable-domain-reliability',
-        '--window-size=1920,1080'
-      ]
-    };
-
-    this.browser = await chromium.launch(launchOptions);
-    this.browserType = 'playwright';
-    logger.info('Playwright browser launched successfully');
-  }
-
   async initBrowserlessConnection() {
-    // Use Browserless.io free tier as fallback
+    // Use Browserless.io as primary option (free tier available)
     const browserlessEndpoint = 'wss://chrome.browserless.io?token=';
     
     try {
+      logger.info('Attempting to connect to Browserless.io...');
       this.browser = await puppeteer.connect({
         browserWSEndpoint: `${browserlessEndpoint}${process.env.BROWSERLESS_TOKEN || ''}`,
         args: [
@@ -80,108 +38,22 @@ class FacebookAdLibraryScraper {
       });
       this.browserType = 'browserless';
       logger.info('Connected to Browserless.io successfully');
+      
     } catch (browserlessError) {
       logger.error('Browserless connection failed:', browserlessError.message);
-      // Final fallback - try local Puppeteer (will likely fail but worth trying)
-      await this.initLocalPuppeteer();
+      
+      // Enhanced mock data as fallback
+      logger.warn('All browser connections failed, will use enhanced mock data');
+      throw new Error('External browser service unavailable - using mock data fallback');
     }
   }
 
-  async initLocalPuppeteer() {
-    logger.info('Attempting local Puppeteer as final fallback...');
-    
-    // This will likely fail on Render, but let's try
-    const puppeteerRegular = require('puppeteer');
-    this.browser = await puppeteerRegular.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--window-size=1920,1080'
-      ]
-    });
-    this.browserType = 'puppeteer';
-    logger.info('Local Puppeteer launched successfully');
-  }
-
-  async setupBrowserContext() {
-    if (!this.context && this.browserType === 'playwright') {
-      // Create browser context with stealth settings
-      const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      ];
-
-      this.context = await this.browser.newContext({
-        userAgent: userAgents[Math.floor(Math.random() * userAgents.length)],
-        viewport: { 
-          width: 1920 + Math.floor(Math.random() * 100), 
-          height: 1080 + Math.floor(Math.random() * 100) 
-        },
-        extraHTTPHeaders: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-        },
-        // Playwright's built-in stealth mode
-        javaScriptEnabled: true,
-        bypassCSP: true,
-        ignoreHTTPSErrors: true
-      });
-
-      // Add stealth scripts to context
-      await this.context.addInitScript(() => {
-        // Remove webdriver property
-        Object.defineProperty(navigator, 'webdriver', {
-          get: () => undefined,
-        });
-
-        // Mock plugins
-        Object.defineProperty(navigator, 'plugins', {
-          get: () => [
-            { name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
-            { name: 'Chrome PDF Viewer', description: 'Portable Document Format', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-            { name: 'Native Client', description: 'Native Client', filename: 'internal-nacl-plugin' }
-          ],
-        });
-
-        // Mock languages
-        Object.defineProperty(navigator, 'languages', {
-          get: () => ['en-US', 'en'],
-        });
-
-        // Mock permissions
-        const originalQuery = window.navigator.permissions?.query;
-        if (originalQuery) {
-          window.navigator.permissions.query = (parameters) => (
-            parameters.name === 'notifications' ?
-              Promise.resolve({ state: 'default' }) :
-              originalQuery(parameters)
-          );
-        }
-      });
-    }
-
-    }
-
+  async setupPage() {
     if (!this.page) {
-      if (this.browserType === 'playwright') {
-        await this.setupBrowserContext();
-        this.page = await this.context.newPage();
-        await this.setupStealthMode();
-        logger.info('Playwright page created with stealth configuration');
-      } else {
-        // Puppeteer/Browserless
-        this.page = await this.browser.newPage();
-        await this.setupPuppeteerStealth();
-        logger.info('Puppeteer page created with stealth configuration');
-      }
+      // Puppeteer/Browserless page setup
+      this.page = await this.browser.newPage();
+      await this.setupPuppeteerStealth();
+      logger.info('External browser page created with stealth configuration');
     }
   }
 
@@ -539,6 +411,7 @@ class FacebookAdLibraryScraper {
       logger.info('Starting Facebook Ad Library web scraping', searchParams);
       
       await this.initBrowser();
+      await this.setupPage();
       
       const searchUrl = this.buildSearchUrl(searchParams);
       logger.info('Navigating to:', searchUrl);
