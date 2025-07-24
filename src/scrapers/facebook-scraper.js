@@ -296,8 +296,6 @@ class FacebookAdLibraryScraper {
       setInterval(simulateMouseMovement, Math.random() * 5000 + 2000);
     });
     
-    });
-    
     // Set timeouts for Playwright
     this.page.setDefaultTimeout(60000);
     this.page.setDefaultNavigationTimeout(60000);
