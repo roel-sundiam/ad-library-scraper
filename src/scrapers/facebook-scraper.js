@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const logger = require('../utils/logger');
 
 class FacebookAdLibraryScraper {
@@ -13,7 +13,6 @@ class FacebookAdLibraryScraper {
     if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: 'new',
-        executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
