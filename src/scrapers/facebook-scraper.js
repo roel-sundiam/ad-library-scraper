@@ -268,6 +268,10 @@ class FacebookAdLibraryScraper {
       // We need to click on the category dropdown and select a category
       // or look for ads without specific category filtering
       
+      // Wait for the current page to be fully loaded before navigating
+      logger.info('Ensuring page is ready before navigation...');
+      await this.page.waitForTimeout(3000);
+      
       // Skip dropdown interaction entirely - go straight to search results URL
       logger.info('Using direct URL navigation to bypass dropdown interaction');
       
@@ -275,8 +279,14 @@ class FacebookAdLibraryScraper {
       logger.info(`Navigating directly to search results: ${searchUrl}`);
       
       try {
-        await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-        await this.page.waitForTimeout(5000);
+        // Use a more conservative navigation approach
+        await this.page.goto(searchUrl, { 
+          waitUntil: 'domcontentloaded', 
+          timeout: 60000 
+        });
+        
+        // Wait for page to settle
+        await this.page.waitForTimeout(8000);
         
         const finalUrl = this.page.url();
         logger.info(`Successfully navigated to: ${finalUrl}`);
