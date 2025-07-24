@@ -461,7 +461,7 @@ class FacebookAdLibraryScraper {
       
       // Simulate human-like navigation with random delays
       await this.page.goto(searchUrl, { 
-        waitUntil: 'networkidle',
+        waitUntil: 'networkidle2',
         timeout: 60000 
       });
 
