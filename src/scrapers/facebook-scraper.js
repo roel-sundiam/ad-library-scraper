@@ -458,6 +458,7 @@ class FacebookAdLibraryScraper {
       
       const searchUrl = this.buildSearchUrl(searchParams);
       logger.info('Navigating to:', searchUrl);
+      logger.info('Search parameters:', searchParams);
       
       // Simulate human-like navigation with random delays
       await this.page.goto(searchUrl, { 
@@ -521,7 +522,7 @@ class FacebookAdLibraryScraper {
       let selectedSelector = null;
       for (const selector of possibleSelectors) {
         try {
-          await this.page.locator(selector).first().waitFor({ timeout: 5000 });
+          await this.page.waitForSelector(selector, { timeout: 5000 });
           selectedSelector = selector;
           logger.info('Found ads using selector:', selector);
           break;
@@ -702,7 +703,8 @@ class FacebookAdLibraryScraper {
       await this.page.waitForTimeout(this.requestDelay + Math.random() * 1000);
       
       try {
-        const newCount = await this.page.locator(selector).count();
+        const elements = await this.page.$$(selector);
+        const newCount = elements.length;
         
         if (newCount === currentCount) {
           attempts++;
