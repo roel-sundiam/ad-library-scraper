@@ -210,7 +210,7 @@
     
     <div class="results-content">
       <div class="results-summary">
-        <p><strong>Total Ads Found:</strong> {{ scrapedAds.length }}</p>
+        <p><strong>Total Ads Found:</strong> {{ scrapedAds?.length || 0 }}</p>
         <p><em>This is what real scraped ad data looks like:</em></p>
       </div>
       

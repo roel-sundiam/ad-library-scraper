@@ -88,8 +88,14 @@ export class ScrapingComponent implements OnInit {
     try {
       const response = await this.apiService.getScrapingResults(jobId).toPromise();
       console.log('Scraped ads data:', response);
-      this.scrapedAds = response.data.ads;
-      this.showResults = true;
+      
+      if (response.success && response.data.ads) {
+        this.scrapedAds = response.data.ads;
+        this.showResults = true;
+      } else {
+        console.error('No ads data in response:', response);
+        this.jobError = response.data?.message || 'No ads data available';
+      }
     } catch (error) {
       console.error('Failed to load results:', error);
       this.jobError = 'Failed to load scraping results';

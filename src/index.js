@@ -573,24 +573,26 @@ async function processScrapeJob(jobId) {
 
 // Generate mock results (will replace with real scraper)
 function generateMockResults(job) {
-  const results = [];
-  const brands = ['Nike', 'Apple', 'Tesla', 'Amazon', 'Google'];
-  
-  for (let i = 0; i < Math.min(job.limit, 10); i++) {
+  try {
+    const results = [];
+    const brands = ['Nike', 'Apple', 'Tesla', 'Amazon', 'Google'];
+    const query = job.query || 'product';
+    
+    for (let i = 0; i < Math.min(job.limit, 10); i++) {
     results.push({
       ad_id: `mock_${Date.now()}_${i}`,
       platform: job.platform,
       advertiser: {
-        page_name: `${brands[i % brands.length]} ${job.query}`,
+        page_name: `${brands[i % brands.length]} ${query}`,
         verified: Math.random() > 0.5,
         category: ['Retail', 'Technology', 'Sports & Recreation', 'Fashion', 'Electronics'][Math.floor(Math.random() * 5)]
       },
       creative: {
-        body: `Sample ad for ${job.query}. This is mock data until real scraper is added.`,
-        title: `Amazing ${job.query} Product`,
-        description: `High quality ${job.query} at competitive prices`,
+        body: `Sample ad for ${query}. This is mock data until real scraper is added.`,
+        title: `Amazing ${query} Product`,
+        description: `High quality ${query} at competitive prices`,
         call_to_action: 'Learn More',
-        landing_url: `https://example.com/${job.query.replace(/ /g, '-')}`,
+        landing_url: `https://example.com/${query.replace(/ /g, '-')}`,
         has_video: Math.random() > 0.7
       },
       targeting: {
@@ -622,6 +624,10 @@ function generateMockResults(job) {
   }
   
   return results;
+  } catch (error) {
+    logger.error('Error generating mock results:', error);
+    return [];
+  }
 }
 
 // Process video transcriptions for ads with videos
