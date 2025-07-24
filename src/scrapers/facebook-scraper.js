@@ -10,7 +10,7 @@ class FacebookAdLibraryScraper {
   }
 
   async initBrowser() {
-    if (\!this.browser) {
+    if (!this.browser) {
       this.browser = await puppeteer.launch({
         headless: 'new',
         executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome',
@@ -26,7 +26,7 @@ class FacebookAdLibraryScraper {
       });
     }
 
-    if (\!this.page) {
+    if (!this.page) {
       this.page = await this.browser.newPage();
       await this.page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -117,7 +117,7 @@ class FacebookAdLibraryScraper {
             const imgElements = card.querySelectorAll('img');
             const imageUrls = Array.from(imgElements)
               .map(img => img.src)
-              .filter(src => src && \!src.includes('data:image'));
+              .filter(src => src && !src.includes('data:image'));
             
             const startDateElement = card.querySelector('[title*="Started running"]');
             const startDate = startDateElement?.getAttribute('title')?.replace('Started running on ', '') || null;
@@ -207,7 +207,7 @@ class FacebookAdLibraryScraper {
   }
 
   extractTitle(adText) {
-    if (\!adText) return '';
+    if (!adText) return '';
     const firstSentence = adText.split('.')[0];
     return firstSentence.length <= 60 ? firstSentence + '.' : adText.substring(0, 60) + '...';
   }
