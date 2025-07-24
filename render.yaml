@@ -4,7 +4,7 @@ services:
     env: node
     plan: starter
     buildCommand: |
-      # Install Puppeteer dependencies for bundled Chromium
+      # Install Playwright dependencies
       apt-get update
       apt-get install -y \
         libnss3 \
@@ -18,13 +18,19 @@ services:
         libxi6 \
         libgdk-pixbuf2.0-0 \
         libgtk-3-0 \
-        libasound2
+        libasound2 \
+        libdrm2 \
+        libxkbcommon0 \
+        libatspi2.0-0
       
-      echo "=== Installing Node dependencies (including Puppeteer with bundled Chromium) ==="
+      echo "=== Installing Node dependencies with Playwright ==="
       npm install
       
-      echo "=== Verifying Puppeteer installation ==="
-      node -e "console.log('Puppeteer version:', require('puppeteer/package.json').version)"
+      echo "=== Installing Playwright browsers ==="
+      npx playwright install --with-deps chromium
+      
+      echo "=== Verifying Playwright installation ==="
+      node -e "console.log('Playwright version:', require('playwright/package.json').version)"
     startCommand: npm start
     envVars:
       - key: NODE_ENV

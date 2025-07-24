@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const { chromium } = require('playwright');
 const logger = require('../utils/logger');
 
 class FacebookAdLibraryScraper {
@@ -6,16 +6,18 @@ class FacebookAdLibraryScraper {
     this.baseUrl = 'https://www.facebook.com/ads/library';
     this.browser = null;
     this.page = null;
+    this.context = null;
     this.requestDelay = 2000;
   }
 
   async initBrowser() {
     if (!this.browser) {
-      logger.info('Launching Puppeteer with bundled Chromium...');
+      logger.info('Launching Playwright Chromium browser...');
       
       try {
-        this.browser = await puppeteer.launch({
-          headless: 'new',
+        // Launch browser with enhanced stealth options
+        this.browser = await chromium.launch({
+          headless: true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -43,55 +45,88 @@ class FacebookAdLibraryScraper {
           ]
         });
         
-        logger.info('Puppeteer browser launched successfully with bundled Chromium');
+        logger.info('Playwright browser launched successfully');
       } catch (error) {
-        logger.error('Failed to launch Puppeteer browser:', error);
+        logger.error('Failed to launch Playwright browser:', error);
         throw new Error('Failed to launch browser: ' + error.message);
       }
     }
 
-    if (!this.page) {
-      this.page = await this.browser.newPage();
-      
-      // Advanced stealth techniques
-      await this.setupStealthMode(this.page);
-      
-      // Randomized realistic user agent
+    if (!this.context) {
+      // Create browser context with stealth settings
       const userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       ];
-      
-      await this.page.setUserAgent(userAgents[Math.floor(Math.random() * userAgents.length)]);
-      await this.page.setViewport({ 
-        width: 1920 + Math.floor(Math.random() * 100), 
-        height: 1080 + Math.floor(Math.random() * 100) 
+
+      this.context = await this.browser.newContext({
+        userAgent: userAgents[Math.floor(Math.random() * userAgents.length)],
+        viewport: { 
+          width: 1920 + Math.floor(Math.random() * 100), 
+          height: 1080 + Math.floor(Math.random() * 100) 
+        },
+        extraHTTPHeaders: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        // Playwright's built-in stealth mode
+        javaScriptEnabled: true,
+        bypassCSP: true,
+        ignoreHTTPSErrors: true
       });
-      
-      // Set additional headers to appear more human
-      await this.page.setExtraHTTPHeaders({
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
+
+      // Add stealth scripts to context
+      await this.context.addInitScript(() => {
+        // Remove webdriver property
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+
+        // Mock plugins
+        Object.defineProperty(navigator, 'plugins', {
+          get: () => [
+            { name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+            { name: 'Chrome PDF Viewer', description: 'Portable Document Format', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+            { name: 'Native Client', description: 'Native Client', filename: 'internal-nacl-plugin' }
+          ],
+        });
+
+        // Mock languages
+        Object.defineProperty(navigator, 'languages', {
+          get: () => ['en-US', 'en'],
+        });
+
+        // Mock permissions
+        const originalQuery = window.navigator.permissions?.query;
+        if (originalQuery) {
+          window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+              Promise.resolve({ state: 'default' }) :
+              originalQuery(parameters)
+          );
+        }
       });
+    }
+
+    if (!this.page) {
+      this.page = await this.context.newPage();
+      
+      // Set up advanced stealth mode
+      await this.setupStealthMode();
+      
+      logger.info('Playwright page created with stealth configuration');
     }
   }
 
-  async setupStealthMode(page) {
-    // Remove webdriver property
-    await page.evaluateOnNewDocument(() => {
-      Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined,
-      });
-    });
-    
-    // Comprehensive stealth injections
-    await page.evaluateOnNewDocument(() => {
+  async setupStealthMode() {
+    // Playwright stealth mode setup - additional advanced techniques
+    await this.page.addInitScript(() => {
       // Override the plugins property with realistic plugin list
       Object.defineProperty(navigator, 'plugins', {
         get: () => {
@@ -261,16 +296,16 @@ class FacebookAdLibraryScraper {
       setInterval(simulateMouseMovement, Math.random() * 5000 + 2000);
     });
     
-    // Additional stealth measures
-    await page.setJavaScriptEnabled(true);
-    await page.setDefaultNavigationTimeout(60000);
-    await page.setDefaultTimeout(30000);
+    });
+    
+    // Set timeouts for Playwright
+    this.page.setDefaultTimeout(60000);
+    this.page.setDefaultNavigationTimeout(60000);
     
     // Block unnecessary resources to speed up loading and reduce detection
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const resourceType = req.resourceType();
-      const url = req.url();
+    await this.page.route('**/*', (route) => {
+      const resourceType = route.request().resourceType();
+      const url = route.request().url();
       
       // Block ads, trackers, and unnecessary resources
       if (resourceType === 'stylesheet' || 
@@ -280,9 +315,9 @@ class FacebookAdLibraryScraper {
           url.includes('google-analytics') ||
           url.includes('googletagmanager') ||
           url.includes('facebook.com/tr/')) {
-        req.abort();
+        route.abort();
       } else {
-        req.continue();
+        route.continue();
       }
     });
   }
@@ -310,8 +345,8 @@ class FacebookAdLibraryScraper {
         await this.page.waitForTimeout(Math.random() * 300 + 100);
       }
       
-      // Simulate mouse movement over page
-      const viewport = await this.page.viewport();
+      // Simulate mouse movement over page with Playwright
+      const viewport = this.page.viewportSize();
       await this.page.mouse.move(
         Math.random() * viewport.width, 
         Math.random() * viewport.height
@@ -331,15 +366,15 @@ class FacebookAdLibraryScraper {
         'button[title="Accept all"]',
         'button[data-cookiebanner="accept_button"]',
         '[aria-label="Accept all cookies"]',
-        'button:contains("Accept")',
-        'button:contains("Allow")',
+        'button:has-text("Accept")',
+        'button:has-text("Allow")',
         '[data-testid="non-users-cookie-consent-accept-button"]'
       ];
       
       for (const selector of cookieSelectors) {
         try {
-          const element = await this.page.$(selector);
-          if (element) {
+          const element = await this.page.locator(selector).first();
+          if (await element.isVisible({ timeout: 1000 })) {
             logger.info('Found privacy notice, accepting...');
             
             // Human-like delay before clicking
@@ -367,6 +402,10 @@ class FacebookAdLibraryScraper {
       await this.page.close();
       this.page = null;
     }
+    if (this.context) {
+      await this.context.close();
+      this.context = null;
+    }
     if (this.browser) {
       await this.browser.close();
       this.browser = null;
@@ -384,7 +423,7 @@ class FacebookAdLibraryScraper {
       
       // Simulate human-like navigation with random delays
       await this.page.goto(searchUrl, { 
-        waitUntil: 'networkidle2',
+        waitUntil: 'networkidle',
         timeout: 60000 
       });
 
@@ -444,7 +483,7 @@ class FacebookAdLibraryScraper {
       let selectedSelector = null;
       for (const selector of possibleSelectors) {
         try {
-          await this.page.waitForSelector(selector, { timeout: 5000 });
+          await this.page.locator(selector).first().waitFor({ timeout: 5000 });
           selectedSelector = selector;
           logger.info('Found ads using selector:', selector);
           break;
@@ -625,7 +664,7 @@ class FacebookAdLibraryScraper {
       await this.page.waitForTimeout(this.requestDelay + Math.random() * 1000);
       
       try {
-        const newCount = await this.page.$$eval(selector, cards => cards.length);
+        const newCount = await this.page.locator(selector).count();
         
         if (newCount === currentCount) {
           attempts++;
