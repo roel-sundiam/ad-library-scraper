@@ -54,6 +54,17 @@ class FacebookAdLibraryScraper {
   async setupPage() {
     if (this.page) return;
     this.page = await this.browser.newPage();
+  
+    // Realistic desktop headers
+    await this.page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+    );
+    await this.page.setViewport({ width: 1920, height: 1080 });
+    await this.page.setExtraHTTPHeaders({
+      'accept-language': 'en-US,en;q=0.9',
+      'sec-ch-ua-platform': '"Windows"',
+    });
+  
     await this.setupPuppeteerStealth();
   }
 
@@ -87,16 +98,7 @@ class FacebookAdLibraryScraper {
   }
 
   buildSearchUrl(p) {
-    const base = 'https://www.facebook.com/ads/library/search/';
-    const params = new URLSearchParams({
-      active_status: 'all',
-      ad_type: 'all',
-      country: this.mapRegionToCountry(p.region),
-      q: p.query?.trim() || '*',
-      search_type: 'keyword_unordered',
-      media_type: 'all'
-    });
-    return `${base}?${params.toString()}`;
+    return `https://www.facebook.com/ads/library/search/?active_status=all&ad_type=all&country=${this.mapRegionToCountry(p.region)}&q=${encodeURIComponent(p.query || '*')}&search_type=keyword_unordered&media_type=all`;
   }
 
   async performSearchOnPage(keyword) {
@@ -119,20 +121,12 @@ class FacebookAdLibraryScraper {
   }
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
   async extractAdsFromPage(limit = 50) {
-    const selectors = [
-      '[data-testid="ad-library-card"]',
-      '[data-testid="ad_library_result"]',
-      '[role="article"]'
-    ];
-    let selector = null;
-    for (const sel of selectors) {
-      try {
-        await this.page.waitForSelector(sel, { timeout: 10000 });
-        selector = sel;
-        logger.debug(`Using selector → ${sel}`);
-        break;
-      } catch { /* next */ }
-    }
+    // Wait up to 15 s for the first ad card to appear
+    const selector = await this.page.waitForSelector(
+      '[data-testid="ad-library-card"], [role="article"]',
+      { visible: true, timeout: 15000 }
+    ).catch(() => null);
+  
     if (!selector) {
       const path = `/tmp/fb_zero_${Date.now()}.png`;
       await this.page.screenshot({ path, fullPage: true });
@@ -140,10 +134,13 @@ class FacebookAdLibraryScraper {
       return [];
     }
   
-    await this.scrollToLoadMore(limit, selector);
+    // selector is now the ElementHandle; use its selector string
+    const selStr = selector._remoteObject?.description || '[data-testid="ad-library-card"]';
   
-    const rawAds = await this.page.evaluate((sel, max) => {
-      return Array.from(document.querySelectorAll(sel))
+    await this.scrollToLoadMore(limit, selStr);
+  
+    const rawAds = await this.page.evaluate((sel, max) =>
+      Array.from(document.querySelectorAll(sel))
         .slice(0, max)
         .map(card => {
           const text = q => card.querySelector(q)?.textContent?.trim() || '';
@@ -152,9 +149,7 @@ class FacebookAdLibraryScraper {
             text('a[role="link"]') ||
             text('h3 a') ||
             'Unknown';
-          const adText = Array.from(
-            card.querySelectorAll('div[dir="auto"], span[dir="auto"]')
-          )
+          const adText = Array.from(card.querySelectorAll('div[dir="auto"], span[dir="auto"]'))
             .map(el => el.textContent?.trim())
             .filter(Boolean)
             .join(' ');
@@ -162,14 +157,12 @@ class FacebookAdLibraryScraper {
             .map(img => img.src)
             .filter(src => src && !src.startsWith('data:'));
           return { advertiser, ad_text: adText, image_urls: images };
-        });
-    }, selector, limit);
+        }), selStr, limit);
   
     return rawAds
       .filter(a => a.advertiser !== 'Unknown' || a.ad_text.length > 0)
       .map(a => this.normalizeAdData(a));
   }
-
   /* ---------- 5.  scrolling (unchanged logic, safer) ---------- */
   async scrollToLoadMore(target, selector) {
     let current = 0, attempts = 0, maxAttempts = 10;
