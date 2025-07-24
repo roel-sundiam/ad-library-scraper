@@ -3,13 +3,11 @@ services:
     name: ad-library-scraper
     env: node
     plan: starter
-    buildCommand: rm -rf node_modules package-lock.json && npm install --production
-    startCommand: npm start
+    buildCommand: npm install --production
+    startCommand: node src/index-simple.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
-      - key: DB_PATH
-        value: ./data/ads.db
     healthCheckPath: /api/health
