@@ -98,23 +98,21 @@ class FacebookAdLibraryScraper {
   }
 
   async performSearchOnPage(keyword) {
-    // 1️⃣ wait for the iframe that contains the ad-library
-    const iframeSelector = 'iframe[src*="ads/library/search"]';
-    await this.page.waitForSelector(iframeSelector, { timeout: 15000 });
+    // 1️⃣ wait for the initial page
+    await this.page.waitForSelector('button[aria-label*="Search"], [data-testid="search-button"]', { visible: true, timeout: 15000 });
   
-    // 2️⃣ grab its frame
-    const frameHandle = await this.page.$(iframeSelector);
-    const frame       = await frameHandle.contentFrame();
+    // 2️⃣ click the search button / icon to open the search input
+    await this.page.click('button[aria-label*="Search"], [data-testid="search-button"]');
   
-    // 3️⃣ inside the iframe: wait for the search box
-    await frame.waitForSelector('input[name="q"]', { visible: true, timeout: 15000 });
+    // 3️⃣ now the real input shows up
+    await this.page.waitForSelector('input[name="q"]', { visible: true, timeout: 10000 });
   
-    // 4️⃣ clear, type keyword, press Enter
-    await frame.evaluate(() => (document.querySelector('input[name="q"]').value = ''));
-    await frame.type('input[name="q"]', keyword, { delay: 60 });
-    await frame.keyboard.press('Enter');
+    // 4️⃣ type keyword + Enter
+    await this.page.evaluate(() => (document.querySelector('input[name="q"]').value = ''));
+    await this.page.type('input[name="q"]', keyword, { delay: 60 });
+    await this.page.keyboard.press('Enter');
   
-    // 5️⃣ give results time to load
+    // 5️⃣ let results load
     await this.page.waitForTimeout(3000 + Math.random() * 2000);
   }
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
