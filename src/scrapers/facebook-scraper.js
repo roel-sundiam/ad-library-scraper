@@ -271,69 +271,66 @@ class FacebookAdLibraryScraper {
       logger.info(`Found search element: ${searchInput}, trying to interact...`);
       
       try {
-        // First, try to find any ads that might be visible by default
-        logger.info('Checking for ads visible by default before search...');
-        
-        // Click the category dropdown to open it
-        await this.page.click(searchInput);
-        await this.page.waitForTimeout(2000);
-        
-        // Type the search keyword to filter categories
-        await this.page.type(searchInput, keyword, { delay: 100 });
-        await this.page.waitForTimeout(2000);
-        
-        // Try to select the first available option
-        try {
-          // Look for dropdown options
-          const optionSelectors = [
-            'div[role="option"]',
-            'li[role="option"]', 
-            '[data-testid="option"]',
-            'div[tabindex="0"]'
-          ];
-          
-          for (const optSel of optionSelectors) {
-            const options = await this.page.$$(optSel);
-            if (options.length > 0) {
-              logger.info(`Found ${options.length} dropdown options, clicking first one`);
-              await options[0].click();
-              await this.page.waitForTimeout(2000);
-              break;
-            }
-          }
-        } catch (e) {
-          logger.warn('Could not select dropdown option, trying Enter');
-          await this.page.keyboard.press('Enter');
+        // Check if page is still alive before interaction
+        if (!this.page || this.page.isClosed()) {
+          logger.error('Page closed before search interaction');
+          return [];
         }
         
-        await this.page.waitForTimeout(5000); // Wait longer for results to load
+        logger.info('Attempting simple search interaction...');
+        
+        // Simple approach: just click and type
+        await this.page.focus(searchInput);
+        await this.page.waitForTimeout(1000);
+        
+        await this.page.type(searchInput, keyword, { delay: 80 });
+        await this.page.waitForTimeout(2000);
+        
+        // Try Enter key
+        await this.page.keyboard.press('Enter');
+        await this.page.waitForTimeout(3000);
+        
+        logger.info('Search interaction completed');
         
       } catch (e) {
-        logger.warn(`Could not perform search interaction: ${e.message}`);
-        // Continue anyway to see if there are default ads shown
+        logger.warn(`Search interaction failed: ${e.message}`);
+        // Continue to look for any existing content
       }
   
+      // Check if page is still alive
+      if (!this.page || this.page.isClosed()) {
+        logger.error('Page closed after search interaction');
+        return [];
+      }
+      
       // 3. wait for the first ad card with multiple selector patterns
       // Look for ad results or any content that appears after search
       const cardSelectors = [
         '[data-testid="ad-library-card"]',
         '[role="article"]',
         '[data-testid="search-result-container"]',
-        '.x1i10hfl',  // Common FB class
-        'div[role="main"] > div > div',
         'div[data-testid*="ad"]',
         'div[aria-label*="ad"]',
         '.ads-library-results div',
-        '[data-testid="ads-library-result"]'
+        '[data-testid="ads-library-result"]',
+        // More generic selectors as fallback
+        'div[role="main"] div[role="button"]',
+        'div[role="main"] > div > div > div',
+        'article'
       ];
       
       let cardSel = null;
       for (const selector of cardSelectors) {
         try {
-          await this.page.waitForSelector(selector, { visible: true, timeout: 8000 });
-          cardSel = selector;
-          logger.info(`Found ad cards with selector: ${selector}`);
-          break;
+          if (!this.page || this.page.isClosed()) break;
+          
+          await this.page.waitForSelector(selector, { visible: true, timeout: 5000 });
+          const elements = await this.page.$$(selector);
+          if (elements.length > 0) {
+            cardSel = selector;
+            logger.info(`Found ${elements.length} elements with selector: ${selector}`);
+            break;
+          }
         } catch (e) {
           logger.debug(`Card selector ${selector} not found, trying next...`);
         }
