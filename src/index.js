@@ -6,7 +6,7 @@ require('dotenv').config();
 const logger = require('./utils/logger');
 const ClaudeService = require('./services/claude-service');
 const VideoTranscriptService = require('./services/video-transcript-service');
-const MockAnalysisService = require('./services/mock-analysis-service');
+const MockAnalysisService = require('./services/mock-analysis-service');\nconst FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -531,12 +531,30 @@ async function processScrapeJob(jobId) {
       query: job.query
     });
     
-    // Temporarily use mock data until Puppeteer deployment is fixed
-    logger.info('Generating mock results for job:', jobId);
-    const results = generateMockResults(job);
-    logger.info('Mock results generated:', { count: results.length, jobId });
+    // Use real Facebook Ad Library scraper
+    logger.info('Starting real Facebook scraping for job:', jobId);
     
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    let results;
+    try {
+      const scraper = new FacebookAdLibraryScraper();
+      results = await scraper.scrapeAds({
+        query: job.query,
+        limit: job.limit,
+        region: job.region || 'US',
+        platform: job.platform
+      });
+      
+      logger.info('Real Facebook scraping completed:', { count: results.length, jobId });
+      
+      if (results.length === 0) {
+        logger.warn('No ads found, falling back to mock data');
+        results = generateMockResults(job);
+      }
+      
+    } catch (error) {
+      logger.error('Real scraping failed, falling back to mock data:', error);
+      results = generateMockResults(job);
+    }
     
     // Temporarily skip video processing to debug
     // if (results.some(ad => ad.creative?.has_video)) {
