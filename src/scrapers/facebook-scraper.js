@@ -23,8 +23,8 @@ class FacebookAdLibraryScraper {
     const token = process.env.BROWSERLESS_TOKEN;
     if (!token) throw new Error('BROWSERLESS_TOKEN missing');
     const endpoints = [
-      `wss://production-sfo.browserless.io?token=${token}&timeout=300000&blockAds=true`,
-      `wss://production-lon.browserless.io?token=${token}&timeout=300000&blockAds=true`
+      `wss://production-sfo.browserless.io?token=${token}`,
+      `wss://production-lon.browserless.io?token=${token}`
     ];
     for (const ep of endpoints) {
       try {
@@ -34,7 +34,7 @@ class FacebookAdLibraryScraper {
           defaultViewport: null
         });
         this.browserType = 'browserless';
-        logger.info('Browserless connected with extended timeout');
+        logger.info('Browserless connected successfully');
         return;
       } catch (e) {
         logger.warn(`Endpoint failed: ${ep.substring(0, 50)}... ${e.message}`);
