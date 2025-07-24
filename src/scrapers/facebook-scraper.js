@@ -271,6 +271,9 @@ class FacebookAdLibraryScraper {
       logger.info(`Found search element: ${searchInput}, trying to interact...`);
       
       try {
+        // First, try to find any ads that might be visible by default
+        logger.info('Checking for ads visible by default before search...');
+        
         // Click the category dropdown to open it
         await this.page.click(searchInput);
         await this.page.waitForTimeout(2000);
@@ -279,9 +282,31 @@ class FacebookAdLibraryScraper {
         await this.page.type(searchInput, keyword, { delay: 100 });
         await this.page.waitForTimeout(2000);
         
-        // Press Enter or click search
-        await this.page.keyboard.press('Enter');
-        await this.page.waitForTimeout(3000);
+        // Try to select the first available option
+        try {
+          // Look for dropdown options
+          const optionSelectors = [
+            'div[role="option"]',
+            'li[role="option"]', 
+            '[data-testid="option"]',
+            'div[tabindex="0"]'
+          ];
+          
+          for (const optSel of optionSelectors) {
+            const options = await this.page.$$(optSel);
+            if (options.length > 0) {
+              logger.info(`Found ${options.length} dropdown options, clicking first one`);
+              await options[0].click();
+              await this.page.waitForTimeout(2000);
+              break;
+            }
+          }
+        } catch (e) {
+          logger.warn('Could not select dropdown option, trying Enter');
+          await this.page.keyboard.press('Enter');
+        }
+        
+        await this.page.waitForTimeout(5000); // Wait longer for results to load
         
       } catch (e) {
         logger.warn(`Could not perform search interaction: ${e.message}`);
@@ -315,6 +340,27 @@ class FacebookAdLibraryScraper {
       }
       
       if (!cardSel) {
+        // Debug: Check what content is actually on the page after search
+        try {
+          const pageContent = await this.page.evaluate(() => {
+            const mainContent = document.querySelector('div[role="main"]') || document.body;
+            return {
+              textContent: mainContent.innerText.substring(0, 1000),
+              divCount: document.querySelectorAll('div').length,
+              hasResultsText: mainContent.innerText.toLowerCase().includes('results') || 
+                             mainContent.innerText.toLowerCase().includes('ads') ||
+                             mainContent.innerText.toLowerCase().includes('no ads'),
+              allDivWithText: Array.from(document.querySelectorAll('div'))
+                .filter(div => div.innerText && div.innerText.trim().length > 20)
+                .slice(0, 5)
+                .map(div => div.innerText.substring(0, 200))
+            };
+          });
+          logger.info('Post-search page content:', JSON.stringify(pageContent, null, 2));
+        } catch (e) {
+          logger.warn('Could not debug page content:', e.message);
+        }
+        
         logger.warn(`No ad cards found after trying all selectors`);
         return [];
       }
