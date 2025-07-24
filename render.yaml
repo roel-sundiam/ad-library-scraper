@@ -4,63 +4,31 @@ services:
     env: node
     plan: starter
     buildCommand: |
-      # Simple Chrome installation for Render
+      # Install Puppeteer dependencies for bundled Chromium
       apt-get update
+      apt-get install -y \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxrandr2 \
+        libxss1 \
+        libxtst6 \
+        libxdamage1 \
+        libxi6 \
+        libgdk-pixbuf2.0-0 \
+        libgtk-3-0 \
+        libasound2
       
-      # Try multiple Chrome installation methods
-      echo "=== Attempting Chrome Installation ==="
-      
-      # Method 1: Direct .deb download (more reliable)
-      wget -q -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-      apt-get install -y ./chrome.deb || echo "Method 1 failed"
-      rm -f chrome.deb
-      
-      # Method 2: Repository method (fallback)
-      if ! which google-chrome-stable > /dev/null 2>&1; then
-        echo "Trying repository method..."
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
-        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
-        apt-get update
-        apt-get install -y google-chrome-stable || echo "Method 2 failed"
-      fi
-      
-      # Method 3: Install Chromium as fallback
-      if ! which google-chrome-stable > /dev/null 2>&1; then
-        echo "Trying Chromium fallback..."
-        apt-get install -y chromium-browser || echo "Chromium installation failed"
-      fi
-      
-      # Install essential dependencies only
-      apt-get install -y libnss3 libatk-bridge2.0-0 libx11-xcb1 libxcomposite1 libxrandr2 libxss1 libxtst6
-      
-      # Final verification
-      echo "=== Final Chrome Verification ==="
-      if which google-chrome-stable > /dev/null 2>&1; then
-        echo "SUCCESS: google-chrome-stable found"
-        google-chrome-stable --version
-        ls -la $(which google-chrome-stable)
-      elif which google-chrome > /dev/null 2>&1; then
-        echo "SUCCESS: google-chrome found"
-        google-chrome --version
-        ls -la $(which google-chrome)
-      elif which chromium-browser > /dev/null 2>&1; then
-        echo "SUCCESS: chromium-browser found"
-        chromium-browser --version
-        ls -la $(which chromium-browser)
-      else
-        echo "ERROR: No Chrome/Chromium found"
-        echo "Available browsers:"
-        ls -la /usr/bin/*chrome* /usr/bin/*chromium* 2>/dev/null || echo "None found"
-      fi
-      
-      # Install Node dependencies
+      echo "=== Installing Node dependencies (including Puppeteer with bundled Chromium) ==="
       npm install
+      
+      echo "=== Verifying Puppeteer installation ==="
+      node -e "console.log('Puppeteer version:', require('puppeteer/package.json').version)"
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
-      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: "true"
     healthCheckPath: /api/health

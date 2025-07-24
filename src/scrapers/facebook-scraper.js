@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const logger = require('../utils/logger');
 
 class FacebookAdLibraryScraper {
@@ -11,147 +11,43 @@ class FacebookAdLibraryScraper {
 
   async initBrowser() {
     if (!this.browser) {
-      // Enhanced Chrome detection for Render deployment
-      const findChrome = () => {
-        const fs = require('fs');
-        const { execSync } = require('child_process');
-        
-        // Expanded list of possible Chrome locations (prioritized)
-        const possiblePaths = [
-          '/usr/bin/google-chrome-stable',   // Primary target
-          '/usr/bin/google-chrome',          // Alternative
-          '/usr/bin/chromium-browser',       // Chromium fallback (common on Ubuntu)
-          '/usr/bin/chromium',               // Alternative chromium
-          '/opt/google/chrome/google-chrome', // Google's installation
-          '/opt/google/chrome/chrome',       // Alternative in opt
-          '/snap/bin/chromium',              // Snap package
-          '/usr/local/bin/google-chrome',    // Local installation
-          process.env.CHROME_BIN,            // Environment variable
-          process.env.CHROMIUM_BIN,          // Chromium environment variable
-        ].filter(Boolean); // Remove undefined values
-        
-        logger.info('Searching for Chrome executable in paths:', possiblePaths);
-        
-        // First try direct paths with detailed logging
-        for (const path of possiblePaths) {
-          try {
-            fs.accessSync(path, fs.constants.F_OK);
-            // Also check if it's executable
-            fs.accessSync(path, fs.constants.X_OK);
-            logger.info('Found Chrome at:', path);
-            
-            // Test if Chrome can actually run
-            try {
-              execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
-              logger.info('Chrome executable verified and working:', path);
-              return path;
-            } catch (testError) {
-              logger.warn('Chrome found but failed to run:', path, testError.message);
-              // Continue to try other paths
-            }
-          } catch (e) {
-            logger.debug('Chrome not found at:', path, e.message);
-          }
-        }
-        
-        // Try using 'which' command with more options (prioritized order)
-        const commands = [
-          'google-chrome-stable',      // Primary target
-          'google-chrome',            // Alternative Chrome
-          'chromium-browser',         // Ubuntu Chromium
-          'chromium',                 // Alternative Chromium
-          'google-chrome-unstable',   // Dev versions
-          'google-chrome-beta',
-          'chrome',                   // Generic chrome command
-          'chromium-snap'            // Snap chromium
-        ];
-        
-        logger.info('Trying to find Chrome using which command...');
-        for (const cmd of commands) {
-          try {
-            const path = execSync(`which ${cmd}`, { encoding: 'utf8', timeout: 5000 }).trim();
-            if (path && fs.existsSync(path)) {
-              logger.info('Found Chrome via which:', cmd, '→', path);
-              
-              // Test if this Chrome works
-              try {
-                execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
-                logger.info('Chrome from which command verified:', path);
-                return path;
-              } catch (testError) {
-                logger.warn('Chrome from which command failed test:', path, testError.message);
-              }
-            }
-          } catch (e) {
-            logger.debug('Command not found:', cmd);
-          }
-        }
-        
-        // Last resort: try to find any Chrome-like binary
-        logger.warn('Standard Chrome detection failed, searching filesystem...');
-        try {
-          const findResult = execSync('find /usr /opt -name "*chrome*" -type f -executable 2>/dev/null | head -5', 
-            { encoding: 'utf8', timeout: 10000 }).trim();
-          if (findResult) {
-            const foundPaths = findResult.split('\n');
-            logger.info('Found Chrome-like executables:', foundPaths);
-            for (const path of foundPaths) {
-              try {
-                execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
-                logger.info('Found working Chrome executable:', path);
-                return path;
-              } catch (e) {
-                logger.debug('Chrome-like executable failed test:', path);
-              }
-            }
-          }
-        } catch (e) {
-          logger.debug('Filesystem search failed:', e.message);
-        }
-        
-        logger.error('Chrome executable not found in any location');
-        logger.error('Available binaries in /usr/bin:', 
-          fs.readdirSync('/usr/bin').filter(f => f.includes('chrome') || f.includes('chromium')));
-        
-        return null;
-      };
-
-      const executablePath = findChrome();
+      logger.info('Launching Puppeteer with bundled Chromium...');
       
-      if (!executablePath) {
-        throw new Error('Chrome executable not found. Please ensure Chrome is installed on the system.');
+      try {
+        this.browser = await puppeteer.launch({
+          headless: 'new',
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=TranslateUI',
+            '--disable-ipc-flooding-protection',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--disable-default-apps',
+            '--disable-popup-blocking',
+            '--disable-prompt-on-repost',
+            '--disable-hang-monitor',
+            '--disable-sync',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--window-size=1920,1080'
+          ]
+        });
+        
+        logger.info('Puppeteer browser launched successfully with bundled Chromium');
+      } catch (error) {
+        logger.error('Failed to launch Puppeteer browser:', error);
+        throw new Error('Failed to launch browser: ' + error.message);
       }
-      
-      this.browser = await puppeteer.launch({
-        executablePath: executablePath,
-        headless: 'new',
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-features=TranslateUI',
-          '--disable-ipc-flooding-protection',
-          '--no-first-run',
-          '--no-default-browser-check',
-          '--disable-default-apps',
-          '--disable-popup-blocking',
-          '--disable-prompt-on-repost',
-          '--disable-hang-monitor',
-          '--disable-sync',
-          '--disable-client-side-phishing-detection',
-          '--disable-component-update',
-          '--disable-domain-reliability',
-          '--disable-features=VizDisplayCompositor',
-          '--window-size=1920,1080'
-        ]
-      });
     }
 
     if (!this.page) {
