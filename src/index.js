@@ -4,7 +4,6 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
-const FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
 const ClaudeService = require('./services/claude-service');
 const VideoTranscriptService = require('./services/video-transcript-service');
 
@@ -506,20 +505,9 @@ async function processScrapeJob(jobId) {
       query: job.query
     });
     
-    // Use real Facebook scraper for facebook platform
-    let results;
-    if (job.platform.toLowerCase() === 'facebook') {
-      const scraper = new FacebookAdLibraryScraper();
-      results = await scraper.scrapeAds({
-        query: job.query,
-        limit: job.limit,
-        region: job.region
-      });
-    } else {
-      // Use mock data for other platforms
-      results = generateMockResults(job);
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
+    // Temporarily use mock data until Puppeteer deployment is fixed
+    const results = generateMockResults(job);
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Process video transcriptions if videos are found
     if (results.some(ad => ad.creative?.has_video)) {
