@@ -68,20 +68,82 @@ class FacebookAdLibraryScraper {
     await this.setupPuppeteerStealth();
   }
 
-  /* ---------- 2.  stealth & helpers (unchanged) ---------- */
-  async setupPuppeteerStealth() { /* your existing code */ }
-  async simulateHumanBrowsing() { /* your existing code */ }
-  async handlePrivacyNotices() { /* your existing code */ }
-  async closeBrowser() { /* your existing code */ }
+  /* ---------- 2.  stealth & helpers ---------- */
+  async setupPuppeteerStealth() {
+    // Basic stealth measures
+    await this.page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5]
+      });
+    });
+  }
+  
+  async simulateHumanBrowsing() {
+    // Random mouse movements and scrolling
+    await this.page.mouse.move(
+      Math.random() * 1920, 
+      Math.random() * 1080
+    );
+    await this.page.evaluate(() => {
+      window.scrollTo(0, Math.random() * 500);
+    });
+    await this.page.waitForTimeout(1000 + Math.random() * 2000);
+  }
+  
+  async handlePrivacyNotices() {
+    // Try to dismiss common privacy notices
+    const privacySelectors = [
+      '[data-testid="cookie-policy-manage-dialog-accept-button"]',
+      'button[title="Accept All"]',
+      'button[aria-label="Accept"]',
+      '[data-cookiebanner="accept_button"]'
+    ];
+    
+    for (const selector of privacySelectors) {
+      try {
+        const element = await this.page.$(selector);
+        if (element) {
+          await element.click();
+          logger.info(`Dismissed privacy notice with: ${selector}`);
+          await this.page.waitForTimeout(1000);
+          break;
+        }
+      } catch (e) {
+        // Continue to next selector
+      }
+    }
+  }
+  
+  async closeBrowser() {
+    try {
+      if (this.page) {
+        await this.page.close();
+        this.page = null;
+      }
+      if (this.browser) {
+        await this.browser.disconnect();
+        this.browser = null;
+      }
+      logger.info('Browser closed successfully');
+    } catch (error) {
+      logger.warn('Error closing browser:', error.message);
+    }
+  }
 
   /* ---------- 3.  main scrape flow ---------- */
   async scrapeAds(searchParams) {
     try {
       logger.info('Starting FB scrape →', searchParams);
+      
+      // Store query for use in extraction
+      this.query = searchParams.query;
+      
       await this.initBrowser();
       await this.setupPage();
 
       const url = this.buildSearchUrl(searchParams);
+      logger.info(`Navigating to: ${url}`);
       await this.page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
       await this.page.waitForTimeout(2000 + Math.random() * 3000);
 
@@ -123,23 +185,78 @@ class FacebookAdLibraryScraper {
   async extractAdsFromPage(limit = 50) {
     const keyword = this.query || 'nike';
   
-    // 1. wait for the search box
-    const searchSel = 'input[name="q"], input[placeholder*="Search"]';
-    await this.page.waitForSelector(searchSel, { visible: true, timeout: 15000 });
-  
-    // 2. clear, type, Enter
-    await this.page.evaluate(sel => (document.querySelector(sel).value = ''), searchSel);
-    await this.page.type(searchSel, keyword, { delay: 60 });
-    await this.page.keyboard.press('Enter');
-  
-    // 3. wait for the first ad card
-    const cardSel = '[data-testid="ad-library-card"], [role="article"]';
     try {
-      await this.page.waitForSelector(cardSel, { visible: true, timeout: 15000 });
-    } catch {
-      const path = `/tmp/fb_zero_${Date.now()}.png`;
+      // 1. Wait for page to load and try multiple search selector patterns
+      const searchSelectors = [
+        'input[aria-label*="Search"]',
+        'input[placeholder*="Search"]', 
+        'input[name="q"]',
+        '[data-testid="search-input"]',
+        'input[type="text"]'
+      ];
+      
+      let searchInput = null;
+      for (const selector of searchSelectors) {
+        try {
+          await this.page.waitForSelector(selector, { visible: true, timeout: 5000 });
+          searchInput = selector;
+          logger.info(`Found search input with selector: ${selector}`);
+          break;
+        } catch (e) {
+          logger.debug(`Selector ${selector} not found, trying next...`);
+        }
+      }
+      
+      if (!searchInput) {
+        // Take screenshot for debugging
+        const path = `/tmp/fb_no_search_${Date.now()}.png`;
+        await this.page.screenshot({ path, fullPage: true });
+        logger.error(`No search input found - saved screenshot: ${path}`);
+        return [];
+      }
+  
+      // 2. clear, type, Enter
+      await this.page.evaluate(sel => {
+        const input = document.querySelector(sel);
+        if (input) input.value = '';
+      }, searchInput);
+      await this.page.type(searchInput, keyword, { delay: 60 });
+      await this.page.keyboard.press('Enter');
+      
+      // Wait for search results to load
+      await this.page.waitForTimeout(3000);
+  
+      // 3. wait for the first ad card with multiple selector patterns
+      const cardSelectors = [
+        '[data-testid="ad-library-card"]',
+        '[role="article"]',
+        '[data-testid="search-result-container"]',
+        '.x1i10hfl',  // Common FB class
+        'div[role="main"] > div > div'
+      ];
+      
+      let cardSel = null;
+      for (const selector of cardSelectors) {
+        try {
+          await this.page.waitForSelector(selector, { visible: true, timeout: 8000 });
+          cardSel = selector;
+          logger.info(`Found ad cards with selector: ${selector}`);
+          break;
+        } catch (e) {
+          logger.debug(`Card selector ${selector} not found, trying next...`);
+        }
+      }
+      
+      if (!cardSel) {
+        const path = `/tmp/fb_no_cards_${Date.now()}.png`;
+        await this.page.screenshot({ path, fullPage: true });
+        logger.warn(`No ad cards found - saved screenshot: ${path}`);
+        return [];
+      }
+    } catch (error) {
+      const path = `/tmp/fb_error_${Date.now()}.png`;
       await this.page.screenshot({ path, fullPage: true });
-      logger.warn(`Zero ads → saved ${path}`);
+      logger.error(`Error in extractAdsFromPage: ${error.message} - saved screenshot: ${path}`);
       return [];
     }
   
@@ -184,8 +301,21 @@ class FacebookAdLibraryScraper {
 
   /* ---------- 6.  util helpers ---------- */
   mapRegionToCountry(r) { return { US: 'US', GB: 'GB', DE: 'DE', FR: 'FR', ALL: 'ALL' }[r] || 'US'; }
-  normalizeAdData(raw) { /* your existing normalize fn */ return raw; }
-  /* … other helpers … */
+  
+  normalizeAdData(raw) {
+    return {
+      id: `fb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      advertiser: raw.advertiser || 'Unknown',
+      ad_text: raw.ad_text || '',
+      image_urls: raw.image_urls || [],
+      platform: 'facebook',
+      scraped_at: new Date().toISOString(),
+      metadata: {
+        search_query: this.query,
+        region: this.region || 'US'
+      }
+    };
+  }
 }
 
 module.exports = FacebookAdLibraryScraper;
