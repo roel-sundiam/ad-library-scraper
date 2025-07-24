@@ -268,175 +268,31 @@ class FacebookAdLibraryScraper {
       // We need to click on the category dropdown and select a category
       // or look for ads without specific category filtering
       
-      // Facebook Ad Library process: Location -> Category -> Keyword -> Enter
-      logger.info('Following Facebook Ad Library search process...');
+      // Skip dropdown interaction entirely - go straight to search results URL
+      logger.info('Using direct URL navigation to bypass dropdown interaction');
+      
+      const searchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(keyword)}&search_type=keyword_unordered`;
+      logger.info(`Navigating directly to search results: ${searchUrl}`);
       
       try {
-        // Step 1: REQUIRED - Select an ad category first
-        logger.info('Step 1: Selecting ad category (required)');
+        await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        await this.page.waitForTimeout(5000);
         
-        // Click the category dropdown to open it
-        await this.page.click(searchInput);
-        await this.page.waitForTimeout(2000);
+        const finalUrl = this.page.url();
+        logger.info(`Successfully navigated to: ${finalUrl}`);
         
-        // Wait a bit longer for dropdown to fully load
-        await this.page.waitForTimeout(3000);
-        
-        // Debug: Check what elements appear after clicking dropdown
-        try {
-          const dropdownDebug = await this.page.evaluate(() => {
-            const options = document.querySelectorAll('div[role="option"], li[role="option"], [data-testid*="option"], div[tabindex="0"]');
-            return {
-              optionCount: options.length,
-              allOptions: Array.from(options).slice(0, 5).map(opt => ({
-                text: opt.innerText?.substring(0, 100) || 'no text',
-                role: opt.getAttribute('role'),
-                testId: opt.getAttribute('data-testid'),
-                classes: opt.className
-              })),
-              // Also check for any clickable divs that might be options
-              clickableDivs: Array.from(document.querySelectorAll('div')).filter(div => 
-                div.innerText && div.innerText.trim().length > 0 && div.innerText.length < 100
-              ).slice(0, 10).map(div => div.innerText.trim())
-            };
-          });
-          logger.info('Dropdown debug info:', JSON.stringify(dropdownDebug, null, 2));
-        } catch (e) {
-          logger.warn('Could not debug dropdown');
-        }
-        
-        // Look for category options with multiple selector patterns
-        const categorySelectors = [
-          'div[role="option"]',
-          'li[role="option"]',
-          '[data-testid*="option"]',
-          'div[tabindex="0"]',
-          'div[aria-selected]',
-          'ul > li',
-          'div[role="listbox"] > div'
-        ];
-        
-        let categoryOptions = [];
-        for (const selector of categorySelectors) {
-          const options = await this.page.$$(selector);
-          if (options.length > 0) {
-            logger.info(`Found ${options.length} options with selector: ${selector}`);
-            categoryOptions = options;
-            break;
-          }
-        }
-        
-        if (categoryOptions.length > 0) {
-          logger.info(`Found ${categoryOptions.length} category options, trying to select one`);
-          
-          // Try clicking the first few options until one works
-          let clicked = false;
-          for (let i = 0; i < Math.min(5, categoryOptions.length); i++) {
-            try {
-              await categoryOptions[i].click();
-              logger.info(`✅ Successfully clicked category option ${i + 1}`);
-              clicked = true;
-              await this.page.waitForTimeout(3000);
-              break;
-            } catch (e) {
-              logger.debug(`Option ${i + 1} not clickable: ${e.message}`);
-            }
-          }
-          
-          if (!clicked) {
-            logger.warn('❌ No category options were clickable, trying direct URL approach');
-            throw new Error('No clickable category options found');
-          }
-          
-          // Step 2: Now look for the keyword search input that should appear
-          logger.info('Step 2: Looking for keyword search input after category selection');
-          
-          const keywordSearchSelectors = [
-            'input[name="q"]',
-            'input[placeholder*="keyword"]',
-            'input[placeholder*="search"]',
-            'input[type="search"]',
-            'input[aria-label*="search"]',
-            'form input[type="text"]:not([placeholder*="category"])',
-            'input[placeholder*="Search"]'
-          ];
-          
-          let keywordInput = null;
-          for (const selector of keywordSearchSelectors) {
-            try {
-              await this.page.waitForSelector(selector, { visible: true, timeout: 5000 });
-              keywordInput = selector;
-              logger.info(`Found keyword search input: ${selector}`);
-              break;
-            } catch (e) {
-              logger.debug(`Keyword selector ${selector} not found`);
-            }
-          }
-          
-          if (keywordInput) {
-            logger.info(`Step 3: Typing keyword "${keyword}" into search input`);
-            await this.page.focus(keywordInput);
-            await this.page.type(keywordInput, keyword, { delay: 80 });
-            await this.page.keyboard.press('Enter');
-            
-            // Wait for redirect to results page
-            await this.page.waitForTimeout(5000);
-            
-            const newUrl = this.page.url();
-            logger.info(`After search, redirected to: ${newUrl}`);
-            
-            if (newUrl.includes('q=') && newUrl.includes('search_type=')) {
-              logger.info('✅ Successfully reached search results page');
-            } else {
-              logger.warn('❌ URL does not contain expected search parameters');
-            }
-          } else {
-            logger.warn('❌ Keyword search input not found after category selection');
-          }
+        if (finalUrl.includes('q=') && finalUrl.includes('search_type=')) {
+          logger.info('✅ Confirmed we are on search results page');
+        } else if (finalUrl.includes('login') || finalUrl.includes('checkpoint')) {
+          logger.error('❌ Redirected to login page - may be blocked');
+          return [];
         } else {
-          logger.warn('❌ No category options found in dropdown');
-          
-          // Alternative approach: Navigate directly to search results URL
-          logger.info('Trying alternative approach: direct URL navigation');
-          const searchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(keyword)}&search_type=keyword_unordered`;
-          logger.info(`Navigating directly to: ${searchUrl}`);
-          
-          try {
-            await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-            await this.page.waitForTimeout(5000);
-            
-            const finalUrl = this.page.url();
-            logger.info(`Direct navigation result: ${finalUrl}`);
-            
-            if (finalUrl.includes('q=') && finalUrl.includes('search_type=')) {
-              logger.info('✅ Successfully reached search results via direct URL');
-            }
-          } catch (e) {
-            logger.warn(`Direct URL navigation failed: ${e.message}`);
-          }
+          logger.warn('❌ Unexpected URL format after navigation');
         }
         
       } catch (e) {
-        logger.warn(`Search process failed: ${e.message}`);
-        
-        // Fallback: Try direct URL navigation
-        logger.info('🔄 Falling back to direct URL navigation');
-        const searchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(keyword)}&search_type=keyword_unordered`;
-        logger.info(`Navigating directly to: ${searchUrl}`);
-        
-        try {
-          await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-          await this.page.waitForTimeout(5000);
-          
-          const finalUrl = this.page.url();
-          logger.info(`Direct navigation result: ${finalUrl}`);
-          
-          if (finalUrl.includes('q=') && finalUrl.includes('search_type=')) {
-            logger.info('✅ Successfully reached search results via direct URL');
-          }
-        } catch (directNavError) {
-          logger.warn(`Direct URL navigation also failed: ${directNavError.message}`);
-        }
+        logger.error(`Direct URL navigation failed: ${e.message}`);
+        return [];
       }
   
       // Check if page is still alive
