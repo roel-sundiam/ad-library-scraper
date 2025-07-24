@@ -435,18 +435,32 @@ class FacebookAdLibraryScraper {
   }
 
   async closeBrowser() {
-    if (this.page) {
-      await this.page.close();
-      this.page = null;
+    try {
+      if (this.page && !this.page.isClosed()) {
+        await this.page.close();
+      }
+    } catch (error) {
+      logger.debug('Error closing page:', error.message);
     }
-    if (this.context) {
-      await this.context.close();
-      this.context = null;
+    this.page = null;
+    
+    try {
+      if (this.context) {
+        await this.context.close();
+      }
+    } catch (error) {
+      logger.debug('Error closing context:', error.message);
     }
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+    this.context = null;
+    
+    try {
+      if (this.browser && this.browser.isConnected()) {
+        await this.browser.disconnect(); // Use disconnect for external browser service
+      }
+    } catch (error) {
+      logger.debug('Error disconnecting browser:', error.message);
     }
+    this.browser = null;
   }
 
   async scrapeAds(searchParams) {
@@ -688,12 +702,17 @@ class FacebookAdLibraryScraper {
       const scrollSteps = Math.floor(Math.random() * 3) + 2; // 2-4 steps
       
       for (let i = 0; i < scrollSteps; i++) {
-        await this.page.evaluate(() => {
-          const scrollHeight = document.body.scrollHeight;
-          const currentScroll = window.pageYOffset;
-          const step = (scrollHeight - currentScroll) / 3;
-          window.scrollBy(0, step);
-        });
+        try {
+          await this.page.evaluate(() => {
+            const scrollHeight = document.body.scrollHeight;
+            const currentScroll = window.pageYOffset;
+            const step = (scrollHeight - currentScroll) / 3;
+            window.scrollBy(0, step);
+          });
+        } catch (evalError) {
+          logger.debug('Scroll evaluation failed:', evalError.message);
+          // Skip this scroll step and continue
+        }
         
         // Random delay between scroll steps
         await this.page.waitForTimeout(Math.random() * 300 + 200);
@@ -711,10 +730,14 @@ class FacebookAdLibraryScraper {
           
           // Try different scrolling approach if stuck
           if (attempts > 3) {
-            await this.page.evaluate(() => {
-              window.scrollTo(0, document.body.scrollHeight);
-            });
-            await this.page.waitForTimeout(2000);
+            try {
+              await this.page.evaluate(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+              });
+              await this.page.waitForTimeout(2000);
+            } catch (scrollError) {
+              logger.debug('Fallback scroll failed:', scrollError.message);
+            }
           }
         } else {
           currentCount = newCount;
