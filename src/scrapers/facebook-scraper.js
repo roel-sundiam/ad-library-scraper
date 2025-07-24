@@ -86,16 +86,13 @@ class FacebookAdLibraryScraper {
     } finally { await this.closeBrowser(); }
   }
 
-  buildSearchUrl(p) {
-    const params = new URLSearchParams({
-      active_status: 'all',
-      ad_type: 'all',
-      country: this.mapRegionToCountry(p.region),
-      media_type: 'all',
-      ...(p.query && { q: p.query.trim() })
-    });
-    return `${this.baseUrl}?${params}`;
-  }
+buildSearchUrl(p) {
+  // Facebook now uses this pattern
+  const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all';
+  const country = this.mapRegionToCountry(p.region);
+  const query = p.query?.trim() || '';
+  return `${base}&country=${country}&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
+}
 
   async performSearchOnPage(keyword) {
     // 1️⃣ wait for the initial page
