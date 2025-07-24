@@ -268,33 +268,75 @@ class FacebookAdLibraryScraper {
       // We need to click on the category dropdown and select a category
       // or look for ads without specific category filtering
       
-      logger.info(`Found search element: ${searchInput}, trying to interact...`);
+      // Facebook Ad Library process: Location -> Category -> Keyword -> Enter
+      logger.info('Following Facebook Ad Library search process...');
       
       try {
-        // Check if page is still alive before interaction
-        if (!this.page || this.page.isClosed()) {
-          logger.error('Page closed before search interaction');
-          return [];
-        }
+        // Step 1: REQUIRED - Select an ad category first
+        logger.info('Step 1: Selecting ad category (required)');
         
-        logger.info('Attempting simple search interaction...');
-        
-        // Simple approach: just click and type
-        await this.page.focus(searchInput);
-        await this.page.waitForTimeout(1000);
-        
-        await this.page.type(searchInput, keyword, { delay: 80 });
+        // Click the category dropdown to open it
+        await this.page.click(searchInput);
         await this.page.waitForTimeout(2000);
         
-        // Try Enter key
-        await this.page.keyboard.press('Enter');
-        await this.page.waitForTimeout(3000);
-        
-        logger.info('Search interaction completed');
+        // Look for category options in the dropdown
+        const categoryOptions = await this.page.$$('div[role="option"], li[role="option"]');
+        if (categoryOptions.length > 0) {
+          logger.info(`Found ${categoryOptions.length} category options, selecting first available`);
+          await categoryOptions[0].click();
+          await this.page.waitForTimeout(3000);
+          
+          // Step 2: Now look for the keyword search input that should appear
+          logger.info('Step 2: Looking for keyword search input after category selection');
+          
+          const keywordSearchSelectors = [
+            'input[name="q"]',
+            'input[placeholder*="keyword"]',
+            'input[placeholder*="search"]',
+            'input[type="search"]',
+            'input[aria-label*="search"]',
+            'form input[type="text"]:not([placeholder*="category"])',
+            'input[placeholder*="Search"]'
+          ];
+          
+          let keywordInput = null;
+          for (const selector of keywordSearchSelectors) {
+            try {
+              await this.page.waitForSelector(selector, { visible: true, timeout: 5000 });
+              keywordInput = selector;
+              logger.info(`Found keyword search input: ${selector}`);
+              break;
+            } catch (e) {
+              logger.debug(`Keyword selector ${selector} not found`);
+            }
+          }
+          
+          if (keywordInput) {
+            logger.info(`Step 3: Typing keyword "${keyword}" into search input`);
+            await this.page.focus(keywordInput);
+            await this.page.type(keywordInput, keyword, { delay: 80 });
+            await this.page.keyboard.press('Enter');
+            
+            // Wait for redirect to results page
+            await this.page.waitForTimeout(5000);
+            
+            const newUrl = this.page.url();
+            logger.info(`After search, redirected to: ${newUrl}`);
+            
+            if (newUrl.includes('q=') && newUrl.includes('search_type=')) {
+              logger.info('✅ Successfully reached search results page');
+            } else {
+              logger.warn('❌ URL does not contain expected search parameters');
+            }
+          } else {
+            logger.warn('❌ Keyword search input not found after category selection');
+          }
+        } else {
+          logger.warn('❌ No category options found in dropdown');
+        }
         
       } catch (e) {
-        logger.warn(`Search interaction failed: ${e.message}`);
-        // Continue to look for any existing content
+        logger.warn(`Search process failed: ${e.message}`);
       }
   
       // Check if page is still alive
@@ -341,19 +383,27 @@ class FacebookAdLibraryScraper {
         try {
           const pageContent = await this.page.evaluate(() => {
             const mainContent = document.querySelector('div[role="main"]') || document.body;
+            const allText = mainContent.innerText.toLowerCase();
+            
             return {
-              textContent: mainContent.innerText.substring(0, 1000),
+              pageTitle: document.title,
+              currentUrl: window.location.href,
+              mainContentText: mainContent.innerText.substring(0, 1500),
               divCount: document.querySelectorAll('div').length,
-              hasResultsText: mainContent.innerText.toLowerCase().includes('results') || 
-                             mainContent.innerText.toLowerCase().includes('ads') ||
-                             mainContent.innerText.toLowerCase().includes('no ads'),
-              allDivWithText: Array.from(document.querySelectorAll('div'))
-                .filter(div => div.innerText && div.innerText.trim().length > 20)
-                .slice(0, 5)
-                .map(div => div.innerText.substring(0, 200))
+              hasAdsText: allText.includes('ads') || allText.includes('advertisement'),
+              hasNoResultsText: allText.includes('no results') || allText.includes('no ads') || allText.includes('not found'),
+              hasSearchText: allText.includes('search') || allText.includes('category'),
+              visibleDivs: Array.from(document.querySelectorAll('div'))
+                .filter(div => div.offsetHeight > 0 && div.offsetWidth > 0 && div.innerText && div.innerText.trim().length > 30)
+                .slice(0, 8)
+                .map(div => ({
+                  text: div.innerText.substring(0, 150),
+                  classes: div.className,
+                  testId: div.getAttribute('data-testid') || 'none'
+                }))
             };
           });
-          logger.info('Post-search page content:', JSON.stringify(pageContent, null, 2));
+          logger.info('Detailed page analysis:', JSON.stringify(pageContent, null, 2));
         } catch (e) {
           logger.warn('Could not debug page content:', e.message);
         }
