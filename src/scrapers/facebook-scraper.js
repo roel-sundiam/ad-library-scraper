@@ -232,4 +232,3 @@ class FacebookAdLibraryScraper {
 }
 
 module.exports = FacebookAdLibraryScraper;
-EOF < /dev/null
