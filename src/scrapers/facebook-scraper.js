@@ -13,12 +13,12 @@ class FacebookAdLibraryScraper {
   async initBrowser() {
     if (!this.browser) {
       logger.info('Connecting to external browser service...');
-      await this.initBrowserlessConnection();
+      await this.initBrowserWrapper();
     }
   }
 
   async initBrowserlessConnection() {
-    // Use Browserless.io with correct endpoint format
+    // Use Browserless.io with multiple endpoint formats to try
     const token = process.env.BROWSERLESS_TOKEN;
     
     if (!token) {
@@ -26,38 +26,62 @@ class FacebookAdLibraryScraper {
       throw new Error('External browser service unavailable - using mock data fallback');
     }
     
-    // For Cloud subscriptions, use the cloud endpoint format
-    const browserlessEndpoint = `wss://${token}@chrome.browserless.io`;
+    // Try multiple endpoint formats
+    const endpointFormats = [
+      `wss://chrome.browserless.io?token=${token}`,
+      `wss://${token}@chrome.browserless.io`,
+      `wss://chrome.browserless.io/${token}`,
+      `wss://chrome.browserless.io/ws?token=${token}`
+    ];
     
-    try {
-      logger.info('Attempting to connect to Browserless.io with token:', token.substring(0, 8) + '...');
-      logger.info('Token length:', token.length);
-      logger.info('Full endpoint:', browserlessEndpoint.replace(token, token.substring(0, 8) + '...'));
+    for (let i = 0; i < endpointFormats.length; i++) {
+      const endpoint = endpointFormats[i];
+      const maskedEndpoint = endpoint.replace(token, token.substring(0, 8) + '...');
       
-      // Test if token is valid format (should be 32+ characters)
-      if (token.length < 20) {
-        throw new Error('Invalid token format - token too short');
+      try {
+        logger.info(`Attempting Browserless connection format ${i + 1}:`, maskedEndpoint);
+        
+        this.browser = await puppeteer.connect({
+          browserWSEndpoint: endpoint,
+          timeout: 15000, // 15 second timeout per attempt
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--window-size=1920,1080'
+          ]
+        });
+        
+        this.browserType = 'browserless';
+        logger.info(`Connected to Browserless.io successfully using format ${i + 1}`);
+        return; // Success, exit function
+        
+      } catch (formatError) {
+        logger.warn(`Format ${i + 1} failed:`, {
+          endpoint: maskedEndpoint,
+          message: formatError.message,
+          code: formatError.code
+        });
+        
+        // Continue to next format
+        if (i === endpointFormats.length - 1) {
+          // This was the last format, throw error
+          throw formatError;
+        }
       }
-      
-      this.browser = await puppeteer.connect({
-        browserWSEndpoint: browserlessEndpoint,
-        timeout: 30000, // 30 second timeout
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--window-size=1920,1080'
-        ]
-      });
-      this.browserType = 'browserless';
-      logger.info('Connected to Browserless.io successfully');
-      
+    }
+  }
+
+  // Add missing error handling for the main try/catch
+  async initBrowserWrapper() {
+    try {
+      await this.initBrowserlessConnection();
     } catch (browserlessError) {
-      logger.error('Browserless connection failed:', {
+      logger.error('All Browserless connection attempts failed:', {
         message: browserlessError.message,
         code: browserlessError.code,
         stack: browserlessError.stack
