@@ -98,17 +98,7 @@ class FacebookAdLibraryScraper {
   }
 
   buildSearchUrl(p) {
-    const base = 'https://www.facebook.com/ads/library/search/';
-    const params = new URLSearchParams({
-      active_status: 'all',
-      ad_type: 'all',
-      country: this.mapRegionToCountry(p.region),
-      content_languages: '["en_US"]',         // ← NEW
-      search_type: 'keyword_unordered',
-      media_type: 'all',
-      q: p.query?.trim() || '*'
-    });
-    return `${base}?${params.toString()}`;
+    return `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=${this.mapRegionToCountry(p.region)}&media_type=all`;
   }
 
   async performSearchOnPage(keyword) {
@@ -131,43 +121,48 @@ class FacebookAdLibraryScraper {
   }
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
   async extractAdsFromPage(limit = 50) {
-    // Wait up to 15 s for the first ad card to appear
-    const selector = await this.page.waitForSelector(
-      '[data-testid="ad-library-card"], [role="article"]',
-      { visible: true, timeout: 15000 }
-    ).catch(() => null);
+    const keyword = this.query || 'nike';
   
-    if (!selector) {
+    // 1. wait for the search box
+    const searchSel = 'input[name="q"], input[placeholder*="Search"]';
+    await this.page.waitForSelector(searchSel, { visible: true, timeout: 15000 });
+  
+    // 2. clear, type, Enter
+    await this.page.evaluate(sel => (document.querySelector(sel).value = ''), searchSel);
+    await this.page.type(searchSel, keyword, { delay: 60 });
+    await this.page.keyboard.press('Enter');
+  
+    // 3. wait for the first ad card
+    const cardSel = '[data-testid="ad-library-card"], [role="article"]';
+    try {
+      await this.page.waitForSelector(cardSel, { visible: true, timeout: 15000 });
+    } catch {
       const path = `/tmp/fb_zero_${Date.now()}.png`;
       await this.page.screenshot({ path, fullPage: true });
       logger.warn(`Zero ads → saved ${path}`);
       return [];
     }
   
-    // selector is now the ElementHandle; use its selector string
-    const selStr = selector._remoteObject?.description || '[data-testid="ad-library-card"]';
-  
-    await this.scrollToLoadMore(limit, selStr);
+    await this.scrollToLoadMore(limit, cardSel);
   
     const rawAds = await this.page.evaluate((sel, max) =>
       Array.from(document.querySelectorAll(sel))
         .slice(0, max)
-        .map(card => {
-          const text = q => card.querySelector(q)?.textContent?.trim() || '';
-          const advertiser =
-            text('a[role="link"] span') ||
-            text('a[role="link"]') ||
-            text('h3 a') ||
-            'Unknown';
-          const adText = Array.from(card.querySelectorAll('div[dir="auto"], span[dir="auto"]'))
-            .map(el => el.textContent?.trim())
+        .map(card => ({
+          advertiser:
+            card.querySelector('a[role="link"] span')?.textContent?.trim() ||
+            card.querySelector('a[role="link"]')?.textContent?.trim() ||
+            'Unknown',
+          ad_text: Array.from(
+            card.querySelectorAll('div[dir="auto"], span[dir="auto"]')
+          )
+            .map(n => n.textContent?.trim())
             .filter(Boolean)
-            .join(' ');
-          const images = Array.from(card.querySelectorAll('img'))
+            .join(' '),
+          image_urls: Array.from(card.querySelectorAll('img'))
             .map(img => img.src)
-            .filter(src => src && !src.startsWith('data:'));
-          return { advertiser, ad_text: adText, image_urls: images };
-        }), selStr, limit);
+            .filter(src => src && !src.startsWith('data:'))
+        })), cardSel, limit);
   
     return rawAds
       .filter(a => a.advertiser !== 'Unknown' || a.ad_text.length > 0)
