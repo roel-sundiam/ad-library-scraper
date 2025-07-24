@@ -279,8 +279,53 @@ class FacebookAdLibraryScraper {
         await this.page.click(searchInput);
         await this.page.waitForTimeout(2000);
         
-        // Look for category options in the dropdown
-        const categoryOptions = await this.page.$$('div[role="option"], li[role="option"]');
+        // Wait a bit longer for dropdown to fully load
+        await this.page.waitForTimeout(3000);
+        
+        // Debug: Check what elements appear after clicking dropdown
+        try {
+          const dropdownDebug = await this.page.evaluate(() => {
+            const options = document.querySelectorAll('div[role="option"], li[role="option"], [data-testid*="option"], div[tabindex="0"]');
+            return {
+              optionCount: options.length,
+              allOptions: Array.from(options).slice(0, 5).map(opt => ({
+                text: opt.innerText?.substring(0, 100) || 'no text',
+                role: opt.getAttribute('role'),
+                testId: opt.getAttribute('data-testid'),
+                classes: opt.className
+              })),
+              // Also check for any clickable divs that might be options
+              clickableDivs: Array.from(document.querySelectorAll('div')).filter(div => 
+                div.innerText && div.innerText.trim().length > 0 && div.innerText.length < 100
+              ).slice(0, 10).map(div => div.innerText.trim())
+            };
+          });
+          logger.info('Dropdown debug info:', JSON.stringify(dropdownDebug, null, 2));
+        } catch (e) {
+          logger.warn('Could not debug dropdown');
+        }
+        
+        // Look for category options with multiple selector patterns
+        const categorySelectors = [
+          'div[role="option"]',
+          'li[role="option"]',
+          '[data-testid*="option"]',
+          'div[tabindex="0"]',
+          'div[aria-selected]',
+          'ul > li',
+          'div[role="listbox"] > div'
+        ];
+        
+        let categoryOptions = [];
+        for (const selector of categorySelectors) {
+          const options = await this.page.$$(selector);
+          if (options.length > 0) {
+            logger.info(`Found ${options.length} options with selector: ${selector}`);
+            categoryOptions = options;
+            break;
+          }
+        }
+        
         if (categoryOptions.length > 0) {
           logger.info(`Found ${categoryOptions.length} category options, selecting first available`);
           await categoryOptions[0].click();
@@ -333,6 +378,25 @@ class FacebookAdLibraryScraper {
           }
         } else {
           logger.warn('❌ No category options found in dropdown');
+          
+          // Alternative approach: Navigate directly to search results URL
+          logger.info('Trying alternative approach: direct URL navigation');
+          const searchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(keyword)}&search_type=keyword_unordered`;
+          logger.info(`Navigating directly to: ${searchUrl}`);
+          
+          try {
+            await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            await this.page.waitForTimeout(5000);
+            
+            const finalUrl = this.page.url();
+            logger.info(`Direct navigation result: ${finalUrl}`);
+            
+            if (finalUrl.includes('q=') && finalUrl.includes('search_type=')) {
+              logger.info('✅ Successfully reached search results via direct URL');
+            }
+          } catch (e) {
+            logger.warn(`Direct URL navigation failed: ${e.message}`);
+          }
         }
         
       } catch (e) {
