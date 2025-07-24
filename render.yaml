@@ -26,10 +26,29 @@ services:
       echo "=== Installing Node dependencies with Playwright ==="
       npm install
       
-      echo "=== Installing Playwright browsers ==="
-      npx playwright install --with-deps chromium
+      echo "=== Installing Playwright browsers (multiple attempts) ==="
+      # Set environment variables for Playwright
+      export PLAYWRIGHT_BROWSERS_PATH="/opt/render/.cache/ms-playwright"
+      export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=""
+      
+      # Create browser directory
+      mkdir -p /opt/render/.cache/ms-playwright
+      
+      # Install browsers with retry logic
+      npx playwright install chromium || echo "First attempt failed, retrying..."
+      npx playwright install --with-deps chromium || echo "Second attempt failed, using alternative..."
+      
+      # Alternative: Install system chromium as fallback
+      if [ ! -f "/opt/render/.cache/ms-playwright/chromium*/chrome-linux/chrome" ] && [ ! -f "/opt/render/.cache/ms-playwright/chromium*/chrome-linux/headless_shell" ]; then
+        echo "=== Playwright browser install failed, installing system chromium ==="
+        apt-get install -y chromium-browser
+        # Create symlink for Playwright to find system chromium
+        mkdir -p /opt/render/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/
+        ln -sf /usr/bin/chromium-browser /opt/render/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell
+      fi
       
       echo "=== Verifying Playwright installation ==="
+      ls -la /opt/render/.cache/ms-playwright/ || echo "Browser cache not found"
       node -e "console.log('Playwright version:', require('playwright/package.json').version)"
     startCommand: npm start
     envVars:
@@ -37,4 +56,8 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: "/opt/render/.cache/ms-playwright"
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: ""
     healthCheckPath: /api/health

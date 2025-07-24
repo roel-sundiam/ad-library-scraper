@@ -15,8 +15,8 @@ class FacebookAdLibraryScraper {
       logger.info('Launching Playwright Chromium browser...');
       
       try {
-        // Launch browser with enhanced stealth options
-        this.browser = await chromium.launch({
+        // Try to launch browser with enhanced stealth options
+        const launchOptions = {
           headless: true,
           args: [
             '--no-sandbox',
@@ -43,8 +43,14 @@ class FacebookAdLibraryScraper {
             '--disable-domain-reliability',
             '--window-size=1920,1080'
           ]
-        });
-        
+        };
+
+        // Try to find browser executable if default doesn't work
+        if (process.env.PLAYWRIGHT_BROWSERS_PATH) {
+          logger.info('Using PLAYWRIGHT_BROWSERS_PATH:', process.env.PLAYWRIGHT_BROWSERS_PATH);
+        }
+
+        this.browser = await chromium.launch(launchOptions);
         logger.info('Playwright browser launched successfully');
       } catch (error) {
         logger.error('Failed to launch Playwright browser:', error);
