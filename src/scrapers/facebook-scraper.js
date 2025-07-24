@@ -79,17 +79,334 @@ class FacebookAdLibraryScraper {
           '--disable-gpu',
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--disable-default-apps',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-hang-monitor',
+          '--disable-sync',
+          '--disable-client-side-phishing-detection',
+          '--disable-component-update',
+          '--disable-domain-reliability',
+          '--disable-features=VizDisplayCompositor',
+          '--window-size=1920,1080'
         ]
       });
     }
 
     if (!this.page) {
       this.page = await this.browser.newPage();
-      await this.page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      
+      // Advanced stealth techniques
+      await this.setupStealthMode(this.page);
+      
+      // Randomized realistic user agent
+      const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      ];
+      
+      await this.page.setUserAgent(userAgents[Math.floor(Math.random() * userAgents.length)]);
+      await this.page.setViewport({ 
+        width: 1920 + Math.floor(Math.random() * 100), 
+        height: 1080 + Math.floor(Math.random() * 100) 
+      });
+      
+      // Set additional headers to appear more human
+      await this.page.setExtraHTTPHeaders({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      });
+    }
+  }
+
+  async setupStealthMode(page) {
+    // Remove webdriver property
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      });
+    });
+    
+    // Comprehensive stealth injections
+    await page.evaluateOnNewDocument(() => {
+      // Override the plugins property with realistic plugin list
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => {
+          const mockPlugins = [
+            { name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+            { name: 'Chrome PDF Viewer', description: 'Portable Document Format', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+            { name: 'Native Client', description: 'Native Client', filename: 'internal-nacl-plugin' }
+          ];
+          mockPlugins.length = 3;
+          return mockPlugins;
+        },
+      });
+      
+      // Override the languages property
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+      
+      // Mock permissions API
+      const originalQuery = window.navigator.permissions?.query;
+      if (originalQuery) {
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: 'default' }) :
+            originalQuery(parameters)
+        );
+      }
+      
+      // Hide Chrome automation indicators
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      
+      // Mock Chrome runtime
+      if (window.chrome) {
+        Object.defineProperty(window.chrome, 'runtime', {
+          get: () => ({
+            onConnect: undefined,
+            onMessage: undefined
+          })
+        });
+      }
+      
+      // Override getUserMedia
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const originalGetUserMedia = navigator.mediaDevices.getUserMedia;
+        navigator.mediaDevices.getUserMedia = function(constraints) {
+          return originalGetUserMedia.call(this, constraints);
+        };
+      }
+      
+      // Canvas fingerprinting protection
+      const getImageData = HTMLCanvasElement.prototype.getImageData;
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      const toDataURL = HTMLCanvasElement.prototype.toDataURL;
+      const toBlob = HTMLCanvasElement.prototype.toBlob;
+      
+      const noisify = function(canvas, context) {
+        if (context) {
+          const shift = {
+            'r': Math.floor(Math.random() * 10) - 5,
+            'g': Math.floor(Math.random() * 10) - 5,
+            'b': Math.floor(Math.random() * 10) - 5,
+            'a': Math.floor(Math.random() * 10) - 5
+          };
+          
+          const width = canvas.width;
+          const height = canvas.height;
+          if (width && height) {
+            const imageData = getImageData.apply(context, [0, 0, width, height]);
+            for (let i = 0; i < imageData.data.length; i += 4) {
+              imageData.data[i + 0] = imageData.data[i + 0] + shift.r;
+              imageData.data[i + 1] = imageData.data[i + 1] + shift.g;
+              imageData.data[i + 2] = imageData.data[i + 2] + shift.b;
+              imageData.data[i + 3] = imageData.data[i + 3] + shift.a;
+            }
+            context.putImageData(imageData, 0, 0);
+          }
+        }
+      };
+      
+      Object.defineProperty(HTMLCanvasElement.prototype, 'toDataURL', {
+        writable: true,
+        enumerable: true,
+        configurable: true,
+        value: function() {
+          noisify(this, this.getContext('2d'));
+          return toDataURL.apply(this, arguments);
+        }
+      });
+      
+      // WebGL fingerprinting protection
+      const config = {
+        random: {
+          value: function() { return Math.random() },
+          item: function(e) { return e[Math.floor(Math.random() * e.length)] },
+          array: function(e) { return e.map(() => Math.random()) },
+          items: function(e, n) { return Array(n).fill().map(() => this.item(e)) }
+        }
+      };
+      
+      const getParameter = WebGLRenderingContext.prototype.getParameter;
+      WebGLRenderingContext.prototype.getParameter = function(parameter) {
+        if (parameter === 37445) {
+          return config.random.item(['Intel Inc.', 'Intel Open Source Technology Center', 'AMD', 'NVIDIA Corporation']);
+        }
+        if (parameter === 37446) {
+          return config.random.item(['Mesa DRI Intel(R) Ivybridge Mobile', 'ANGLE (Intel(R) HD Graphics 630 Direct3D11 vs_5_0 ps_5_0)', 'AMD Radeon Pro 560X OpenGL Engine']);
+        }
+        return getParameter.call(this, parameter);
+      };
+      
+      // Geolocation spoofing
+      if (navigator.geolocation && navigator.geolocation.getCurrentPosition) {
+        const getCurrentPosition = navigator.geolocation.getCurrentPosition;
+        navigator.geolocation.getCurrentPosition = function(success, error, options) {
+          setTimeout(() => {
+            if (success) {
+              success({
+                coords: {
+                  accuracy: 20,
+                  altitude: null,
+                  altitudeAccuracy: null,
+                  heading: null,
+                  latitude: 37.7749 + (Math.random() - 0.5) * 0.01,
+                  longitude: -122.4194 + (Math.random() - 0.5) * 0.01,
+                  speed: null
+                },
+                timestamp: Date.now()
+              });
+            }
+          }, Math.random() * 100 + 100);
+        };
+      }
+    });
+    
+    // Add realistic mouse movements and timing
+    await page.evaluateOnNewDocument(() => {
+      // Human-like interaction patterns
+      const originalAddEventListener = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (type === 'click') {
+          const newListener = function(event) {
+            setTimeout(() => listener.call(this, event), Math.random() * 50 + 10);
+          };
+          return originalAddEventListener.call(this, type, newListener, options);
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+      };
+      
+      // Mock realistic mouse movements
+      let mouseX = Math.random() * window.innerWidth;
+      let mouseY = Math.random() * window.innerHeight;
+      
+      const simulateMouseMovement = () => {
+        mouseX += (Math.random() - 0.5) * 100;
+        mouseY += (Math.random() - 0.5) * 100;
+        mouseX = Math.max(0, Math.min(window.innerWidth, mouseX));
+        mouseY = Math.max(0, Math.min(window.innerHeight, mouseY));
+        
+        document.dispatchEvent(new MouseEvent('mousemove', {
+          clientX: mouseX,
+          clientY: mouseY,
+          bubbles: true
+        }));
+      };
+      
+      // Simulate occasional mouse movements
+      setInterval(simulateMouseMovement, Math.random() * 5000 + 2000);
+    });
+    
+    // Additional stealth measures
+    await page.setJavaScriptEnabled(true);
+    await page.setDefaultNavigationTimeout(60000);
+    await page.setDefaultTimeout(30000);
+    
+    // Block unnecessary resources to speed up loading and reduce detection
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const resourceType = req.resourceType();
+      const url = req.url();
+      
+      // Block ads, trackers, and unnecessary resources
+      if (resourceType === 'stylesheet' || 
+          resourceType === 'font' ||
+          url.includes('googlesyndication') ||
+          url.includes('doubleclick') ||
+          url.includes('google-analytics') ||
+          url.includes('googletagmanager') ||
+          url.includes('facebook.com/tr/')) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+  }
+
+  async simulateHumanBrowsing() {
+    try {
+      // Simulate natural scrolling behavior
+      const scrollSteps = Math.floor(Math.random() * 3) + 2; // 2-4 scroll steps
+      
+      for (let i = 0; i < scrollSteps; i++) {
+        const scrollDistance = Math.random() * 300 + 100; // 100-400px
+        await this.page.evaluate((distance) => {
+          window.scrollBy(0, distance);
+        }, scrollDistance);
+        
+        // Random pause between scrolls
+        await this.page.waitForTimeout(Math.random() * 500 + 200);
+      }
+      
+      // Sometimes scroll back up a bit
+      if (Math.random() > 0.7) {
+        await this.page.evaluate(() => {
+          window.scrollBy(0, -150);
+        });
+        await this.page.waitForTimeout(Math.random() * 300 + 100);
+      }
+      
+      // Simulate mouse movement over page
+      const viewport = await this.page.viewport();
+      await this.page.mouse.move(
+        Math.random() * viewport.width, 
+        Math.random() * viewport.height
       );
-      await this.page.setViewport({ width: 1920, height: 1080 });
+      
+    } catch (error) {
+      logger.debug('Human browsing simulation failed:', error.message);
+    }
+  }
+
+  async handlePrivacyNotices() {
+    try {
+      // Common privacy notice selectors for Facebook
+      const cookieSelectors = [
+        '[data-testid="cookie-policy-banner-accept"]',
+        '[data-testid="cookie-policy-manage-dialog-accept-button"]',
+        'button[title="Accept all"]',
+        'button[data-cookiebanner="accept_button"]',
+        '[aria-label="Accept all cookies"]',
+        'button:contains("Accept")',
+        'button:contains("Allow")',
+        '[data-testid="non-users-cookie-consent-accept-button"]'
+      ];
+      
+      for (const selector of cookieSelectors) {
+        try {
+          const element = await this.page.$(selector);
+          if (element) {
+            logger.info('Found privacy notice, accepting...');
+            
+            // Human-like delay before clicking
+            await this.page.waitForTimeout(Math.random() * 1000 + 500);
+            
+            await element.click();
+            await this.page.waitForTimeout(1000);
+            break;
+          }
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+      
+      // Wait for any navigation or modal closing
+      await this.page.waitForTimeout(2000);
+      
+    } catch (error) {
+      logger.debug('Privacy notice handling failed:', error.message);
     }
   }
 
@@ -113,12 +430,24 @@ class FacebookAdLibraryScraper {
       const searchUrl = this.buildSearchUrl(searchParams);
       logger.info('Navigating to:', searchUrl);
       
+      // Simulate human-like navigation with random delays
       await this.page.goto(searchUrl, { 
         waitUntil: 'networkidle2',
-        timeout: 30000 
+        timeout: 60000 
       });
 
-      await this.page.waitForTimeout(3000);
+      // Human-like random wait time
+      const randomWait = Math.random() * 3000 + 2000; // 2-5 seconds
+      await this.page.waitForTimeout(randomWait);
+
+      // Simulate human behavior - scroll up and down a bit
+      await this.simulateHumanBrowsing();
+
+      // Try to handle cookie/privacy notices
+      await this.handlePrivacyNotices();
+
+      // Wait for content to load
+      await this.page.waitForTimeout(2000);
 
       const ads = await this.extractAdsFromPage(searchParams.limit);
       
@@ -151,39 +480,102 @@ class FacebookAdLibraryScraper {
 
   async extractAdsFromPage(limit = 50) {
     try {
-      await this.page.waitForSelector('[data-testid="ad-library-card"]', { timeout: 10000 });
+      // Try multiple selectors as Facebook may change them
+      const possibleSelectors = [
+        '[data-testid="ad-library-card"]',
+        '[data-pagelet="AdLibraryMobileQuery"]',
+        '[data-testid="ad_library_result"]',
+        '.x1n2onr6', // Common Facebook CSS class pattern
+        '[role="article"]'
+      ];
       
-      await this.scrollToLoadMore(limit);
+      let selectedSelector = null;
+      for (const selector of possibleSelectors) {
+        try {
+          await this.page.waitForSelector(selector, { timeout: 5000 });
+          selectedSelector = selector;
+          logger.info('Found ads using selector:', selector);
+          break;
+        } catch (e) {
+          logger.debug('Selector not found:', selector);
+        }
+      }
       
-      const ads = await this.page.evaluate((maxAds) => {
-        const adCards = document.querySelectorAll('[data-testid="ad-library-card"]');
+      if (!selectedSelector) {
+        logger.error('No ad cards found with any known selector');
+        return [];
+      }
+      
+      await this.scrollToLoadMore(limit, selectedSelector);
+      
+      const ads = await this.page.evaluate((maxAds, cardSelector) => {
+        const adCards = document.querySelectorAll(cardSelector);
         const extractedAds = [];
+        
+        console.log(`Found ${adCards.length} ad cards to process`);
         
         for (let i = 0; i < Math.min(adCards.length, maxAds); i++) {
           const card = adCards[i];
           
           try {
-            const advertiserElement = card.querySelector('[role="link"]');
-            const advertiserName = advertiserElement?.textContent?.trim() || 'Unknown';
+            // Try multiple methods to extract advertiser name
+            let advertiserName = 'Unknown';
+            const advertiserSelectors = [
+              '[role="link"] span',
+              'a[role="link"]',
+              'h3 a',
+              '.x1i10hfl',
+              '[data-testid="advertiser-link"]'
+            ];
             
-            const textElements = card.querySelectorAll('[data-ad-preview="message"]');
-            const adText = Array.from(textElements)
-              .map(el => el.textContent?.trim())
-              .filter(Boolean)
-              .join(' ') || '';
+            for (const sel of advertiserSelectors) {
+              const element = card.querySelector(sel);
+              if (element && element.textContent?.trim()) {
+                advertiserName = element.textContent.trim();
+                break;
+              }
+            }
             
+            // Try multiple methods to extract ad text
+            let adText = '';
+            const textSelectors = [
+              '[data-ad-preview="message"]',
+              '[data-testid="ad-text"]',
+              '.x1iorvi4',
+              'div[dir="auto"]',
+              'span[dir="auto"]'
+            ];
+            
+            for (const sel of textSelectors) {
+              const elements = card.querySelectorAll(sel);
+              if (elements.length > 0) {
+                adText = Array.from(elements)
+                  .map(el => el.textContent?.trim())
+                  .filter(Boolean)
+                  .join(' ');
+                if (adText) break;
+              }
+            }
+            
+            // Extract images with more selectors
             const imgElements = card.querySelectorAll('img');
             const imageUrls = Array.from(imgElements)
-              .map(img => img.src)
-              .filter(src => src && !src.includes('data:image'));
+              .map(img => img.src || img.dataset?.src)
+              .filter(src => src && !src.includes('data:image') && !src.includes('static'))
+              .slice(0, 5); // Limit to 5 images per ad
             
-            // Extract video URLs
-            const videoElements = card.querySelectorAll('video');
+            // Extract video URLs with better detection
+            const videoElements = card.querySelectorAll('video, [data-video-id]');
             const videoUrls = Array.from(videoElements)
-              .map(video => video.src || video.querySelector('source')?.src)
-              .filter(src => src && src.startsWith('http'));
+              .map(video => {
+                if (video.tagName === 'VIDEO') {
+                  return video.src || video.querySelector('source')?.src;
+                }
+                return video.dataset?.videoId ? `https://facebook.com/video/${video.dataset.videoId}` : null;
+              })
+              .filter(src => src && (src.startsWith('http') || src.startsWith('//')));
             
-            // Also check for video poster images and data attributes
+            // Look for video posters and metadata
             const videoPosters = Array.from(card.querySelectorAll('video[poster]'))
               .map(video => ({
                 poster: video.poster,
@@ -192,32 +584,62 @@ class FacebookAdLibraryScraper {
               }))
               .filter(video => video.src);
             
-            const startDateElement = card.querySelector('[title*="Started running"]');
-            const startDate = startDateElement?.getAttribute('title')?.replace('Started running on ', '') || null;
+            // Try to extract start date with multiple approaches
+            let startDate = null;
+            const dateSelectors = [
+              '[title*="Started running"]',
+              '[title*="running"]',
+              '[data-testid="ad-start-date"]',
+              'time',
+              '[datetime]'
+            ];
             
-            const platformElements = card.querySelectorAll('[alt*="Facebook"], [alt*="Instagram"], [alt*="Messenger"]');
-            const platforms = Array.from(platformElements).map(el => el.alt).filter(Boolean);
+            for (const sel of dateSelectors) {
+              const element = card.querySelector(sel);
+              if (element) {
+                startDate = element.getAttribute('title') || 
+                           element.getAttribute('datetime') || 
+                           element.textContent?.trim();
+                if (startDate) {
+                  startDate = startDate.replace('Started running on ', '').replace('Started running ', '');
+                  break;
+                }
+              }
+            }
             
-            extractedAds.push({
-              advertiser: advertiserName,
-              ad_text: adText,
-              image_urls: imageUrls,
-              video_urls: videoUrls,
-              video_details: videoPosters,
-              has_video: videoUrls.length > 0 || videoPosters.length > 0,
-              start_date: startDate,
-              platforms: platforms,
-              extracted_at: new Date().toISOString()
-            });
+            // Extract platform information
+            const platformElements = card.querySelectorAll('[alt*="Facebook"], [alt*="Instagram"], [alt*="Messenger"], [title*="Facebook"], [title*="Instagram"]');
+            const platforms = Array.from(platformElements)
+              .map(el => el.alt || el.title)
+              .filter(Boolean)
+              .map(platform => platform.replace(' logo', '').trim());
+            
+            // Only add ads that have some content
+            if (advertiserName !== 'Unknown' || adText.length > 0 || imageUrls.length > 0) {
+              extractedAds.push({
+                advertiser: advertiserName,
+                ad_text: adText,
+                image_urls: imageUrls,
+                video_urls: videoUrls,
+                video_details: videoPosters,
+                has_video: videoUrls.length > 0 || videoPosters.length > 0,
+                start_date: startDate,
+                platforms: platforms.length > 0 ? platforms : ['Facebook'],
+                extracted_at: new Date().toISOString(),
+                card_html: card.innerHTML.slice(0, 1000) // Keep sample for debugging
+              });
+            }
             
           } catch (error) {
             console.log('Error extracting ad:', error);
           }
         }
         
+        console.log(`Successfully extracted ${extractedAds.length} ads`);
         return extractedAds;
-      }, limit);
+      }, limit, selectedSelector);
       
+      logger.info(`Extracted ${ads.length} ads from page`);
       return ads.map(ad => this.normalizeAdData(ad));
       
     } catch (error) {
@@ -226,29 +648,57 @@ class FacebookAdLibraryScraper {
     }
   }
 
-  async scrollToLoadMore(targetCount) {
+  async scrollToLoadMore(targetCount, selector) {
     let currentCount = 0;
     let attempts = 0;
     const maxAttempts = 10;
     
     while (currentCount < targetCount && attempts < maxAttempts) {
-      await this.page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-      });
+      // Human-like scrolling pattern
+      const scrollSteps = Math.floor(Math.random() * 3) + 2; // 2-4 steps
       
-      await this.page.waitForTimeout(this.requestDelay);
-      
-      const newCount = await this.page.$$eval('[data-testid="ad-library-card"]', cards => cards.length);
-      
-      if (newCount === currentCount) {
-        attempts++;
-      } else {
-        currentCount = newCount;
-        attempts = 0;
+      for (let i = 0; i < scrollSteps; i++) {
+        await this.page.evaluate(() => {
+          const scrollHeight = document.body.scrollHeight;
+          const currentScroll = window.pageYOffset;
+          const step = (scrollHeight - currentScroll) / 3;
+          window.scrollBy(0, step);
+        });
+        
+        // Random delay between scroll steps
+        await this.page.waitForTimeout(Math.random() * 300 + 200);
       }
       
-      logger.debug('Loaded ads:', currentCount, 'target:', targetCount);
+      // Wait for content to load
+      await this.page.waitForTimeout(this.requestDelay + Math.random() * 1000);
+      
+      try {
+        const newCount = await this.page.$$eval(selector, cards => cards.length);
+        
+        if (newCount === currentCount) {
+          attempts++;
+          
+          // Try different scrolling approach if stuck
+          if (attempts > 3) {
+            await this.page.evaluate(() => {
+              window.scrollTo(0, document.body.scrollHeight);
+            });
+            await this.page.waitForTimeout(2000);
+          }
+        } else {
+          currentCount = newCount;
+          attempts = 0;
+        }
+        
+        logger.debug('Loaded ads:', currentCount, 'target:', targetCount, 'attempts:', attempts);
+        
+      } catch (error) {
+        logger.debug('Error counting ads during scroll:', error.message);
+        attempts++;
+      }
     }
+    
+    logger.info(`Finished scrolling. Final count: ${currentCount}, Target: ${targetCount}`);
   }
 
   normalizeAdData(scrapedAd) {
