@@ -552,7 +552,12 @@ class FacebookAdLibraryScraper {
       
       await this.scrollToLoadMore(limit, selectedSelector);
       
-      const ads = await this.page.evaluate((maxAds, cardSelector) => {
+      // Wait a bit before final evaluation to ensure page is stable
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      let ads = [];
+      try {
+        ads = await this.page.evaluate((maxAds, cardSelector) => {
         const adCards = document.querySelectorAll(cardSelector);
         const extractedAds = [];
         
@@ -681,7 +686,12 @@ class FacebookAdLibraryScraper {
         
         console.log(`Successfully extracted ${extractedAds.length} ads`);
         return extractedAds;
-      }, limit, selectedSelector);
+        }, limit, selectedSelector);
+      } catch (evalError) {
+        logger.error('Page evaluation failed:', evalError.message);
+        logger.info('Returning empty ads array due to evaluation error');
+        ads = [];
+      }
       
       logger.info(`Extracted ${ads.length} ads from page`);
       return ads.map(ad => this.normalizeAdData(ad));
