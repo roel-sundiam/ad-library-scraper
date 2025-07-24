@@ -11,52 +11,105 @@ class FacebookAdLibraryScraper {
 
   async initBrowser() {
     if (!this.browser) {
-      // Try to find Chrome executable for different environments
+      // Enhanced Chrome detection for Render deployment
       const findChrome = () => {
         const fs = require('fs');
         const { execSync } = require('child_process');
         
+        // Expanded list of possible Chrome locations
         const possiblePaths = [
-          '/usr/bin/google-chrome',           // Common Linux path
-          '/usr/bin/google-chrome-stable',   // Ubuntu/Debian
-          '/usr/bin/chromium-browser',       // Alternative
-          '/opt/google/chrome/google-chrome', // Some distributions
-          '/usr/bin/chromium',               // Another common path
+          '/usr/bin/google-chrome-stable',   // Primary Render location
+          '/usr/bin/google-chrome',          // Alternative
+          '/opt/google/chrome/google-chrome', // Google's installation
+          '/opt/google/chrome/chrome',       // Alternative in opt
+          '/usr/bin/chromium-browser',       // Chromium fallback
+          '/usr/bin/chromium',               // Another chromium path
           '/snap/bin/chromium',              // Snap package
-        ];
+          '/usr/local/bin/google-chrome',    // Local installation
+          process.env.CHROME_BIN,            // Environment variable
+        ].filter(Boolean); // Remove undefined values
         
-        // First try direct paths
+        logger.info('Searching for Chrome executable in paths:', possiblePaths);
+        
+        // First try direct paths with detailed logging
         for (const path of possiblePaths) {
           try {
             fs.accessSync(path, fs.constants.F_OK);
+            // Also check if it's executable
+            fs.accessSync(path, fs.constants.X_OK);
             logger.info('Found Chrome at:', path);
-            return path;
+            
+            // Test if Chrome can actually run
+            try {
+              execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
+              logger.info('Chrome executable verified and working:', path);
+              return path;
+            } catch (testError) {
+              logger.warn('Chrome found but failed to run:', path, testError.message);
+              // Continue to try other paths
+            }
           } catch (e) {
-            // Continue to next path
+            logger.debug('Chrome not found at:', path, e.message);
           }
         }
         
-        // Try using 'which' command to find Chrome in PATH
+        // Try using 'which' command with more options
         const commands = [
           'google-chrome-stable',
           'google-chrome',
           'chromium-browser',
-          'chromium'
+          'chromium',
+          'google-chrome-unstable',
+          'google-chrome-beta'
         ];
         
+        logger.info('Trying to find Chrome using which command...');
         for (const cmd of commands) {
           try {
-            const path = execSync(`which ${cmd}`, { encoding: 'utf8' }).trim();
-            if (path) {
-              logger.info('Found Chrome via which:', path);
-              return path;
+            const path = execSync(`which ${cmd}`, { encoding: 'utf8', timeout: 5000 }).trim();
+            if (path && fs.existsSync(path)) {
+              logger.info('Found Chrome via which:', cmd, '→', path);
+              
+              // Test if this Chrome works
+              try {
+                execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
+                logger.info('Chrome from which command verified:', path);
+                return path;
+              } catch (testError) {
+                logger.warn('Chrome from which command failed test:', path, testError.message);
+              }
             }
           } catch (e) {
-            // Command not found, continue
+            logger.debug('Command not found:', cmd);
           }
         }
         
-        logger.error('Chrome executable not found in any standard location');
+        // Last resort: try to find any Chrome-like binary
+        logger.warn('Standard Chrome detection failed, searching filesystem...');
+        try {
+          const findResult = execSync('find /usr /opt -name "*chrome*" -type f -executable 2>/dev/null | head -5', 
+            { encoding: 'utf8', timeout: 10000 }).trim();
+          if (findResult) {
+            const foundPaths = findResult.split('\n');
+            logger.info('Found Chrome-like executables:', foundPaths);
+            for (const path of foundPaths) {
+              try {
+                execSync(`${path} --version --no-sandbox`, { encoding: 'utf8', timeout: 5000 });
+                logger.info('Found working Chrome executable:', path);
+                return path;
+              } catch (e) {
+                logger.debug('Chrome-like executable failed test:', path);
+              }
+            }
+          }
+        } catch (e) {
+          logger.debug('Filesystem search failed:', e.message);
+        }
+        
+        logger.error('Chrome executable not found in any location');
+        logger.error('Available binaries in /usr/bin:', 
+          fs.readdirSync('/usr/bin').filter(f => f.includes('chrome') || f.includes('chromium')));
+        
         return null;
       };
 

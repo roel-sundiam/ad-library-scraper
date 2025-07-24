@@ -4,21 +4,49 @@ services:
     env: node
     plan: starter
     buildCommand: |
-      # Update package list
+      # Update package list and install dependencies
       apt-get update
+      apt-get install -y wget gnupg ca-certificates apt-transport-https
       
-      # Install Chrome directly from Google
+      # Install Chrome with more robust approach
       wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
       echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
       apt-get update
       
-      # Install Chrome and required dependencies
+      # Install Chrome and all dependencies
       apt-get install -y google-chrome-stable
       
-      # Verify Chrome installation
-      google-chrome --version || echo "Chrome installation failed"
-      which google-chrome-stable || echo "Chrome not found in PATH"
-      ls -la /usr/bin/google-chrome* || echo "No Chrome binaries found"
+      # Install additional dependencies for Puppeteer
+      apt-get install -y \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxcursor1 \
+        libxdamage1 \
+        libxi6 \
+        libxtst6 \
+        libnss3 \
+        libcups2 \
+        libxss1 \
+        libxrandr2 \
+        libasound2 \
+        libpangocairo-1.0-0 \
+        libatk1.0-0 \
+        libcairo-gobject2 \
+        libgtk-3-0 \
+        libgdk-pixbuf2.0-0
+      
+      # Verify Chrome installation with detailed checks
+      echo "=== Chrome Installation Verification ==="
+      google-chrome --version || echo "ERROR: google-chrome command failed"
+      google-chrome-stable --version || echo "ERROR: google-chrome-stable command failed"
+      which google-chrome || echo "WARNING: google-chrome not in PATH"
+      which google-chrome-stable || echo "WARNING: google-chrome-stable not in PATH"
+      ls -la /usr/bin/google-chrome* || echo "ERROR: No Chrome binaries found in /usr/bin"
+      ls -la /opt/google/chrome/ || echo "WARNING: Chrome not found in /opt/google/chrome"
+      
+      # Test Chrome launch
+      echo "=== Testing Chrome Launch ==="
+      google-chrome-stable --version --no-sandbox || echo "ERROR: Chrome launch test failed"
       
       # Install Node dependencies
       npm install
