@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const logger = require('./utils/logger');
 const FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
+const ClaudeService = require('./services/claude-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -213,6 +214,155 @@ app.get('/api/scrape/:jobId/results', async (req, res) => {
     });
   }
 });
+
+// AI Analysis endpoint
+app.post('/api/analysis', async (req, res) => {
+  try {
+    const { prompt, filters = {} } = req.body;
+    
+    // Validate required fields
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Analysis prompt is required',
+          details: { prompt }
+        }
+      });
+    }
+
+    logger.info('Starting AI analysis', {
+      prompt: prompt.substring(0, 100) + '...',
+      filters
+    });
+
+    // Get relevant ads data based on filters
+    const adsData = getFilteredAdsData(filters);
+    
+    if (adsData.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_DATA_ERROR', 
+          message: 'No ads data found matching the specified filters',
+          details: { filters, available_jobs: jobs.size }
+        }
+      });
+    }
+
+    // Initialize Claude service and perform analysis
+    const claudeService = new ClaudeService();
+    const analysisResult = await claudeService.analyzeAds(prompt, adsData, filters);
+
+    res.json({
+      success: true,
+      data: {
+        analysis: analysisResult.analysis,
+        metadata: analysisResult.metadata,
+        data_summary: {
+          ads_analyzed: adsData.length,
+          filters_applied: filters,
+          analysis_date: new Date().toISOString()
+        }
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Analysis endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANALYSIS_ERROR',
+        message: 'Failed to perform AI analysis',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Test Claude connection endpoint
+app.get('/api/analysis/test', async (req, res) => {
+  try {
+    const claudeService = new ClaudeService();
+    const testResult = await claudeService.testConnection();
+    
+    res.json({
+      success: testResult.success,
+      data: testResult
+    });
+  } catch (error) {
+    logger.error('Claude connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CONNECTION_ERROR',
+        message: 'Failed to test Claude connection',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Helper function to get filtered ads data
+function getFilteredAdsData(filters = {}) {
+  let allAds = [];
+  
+  // Collect ads from all completed jobs
+  for (const [jobId, job] of jobs.entries()) {
+    if (job.status === 'completed' && job.results && job.results.length > 0) {
+      // Add job metadata to each ad
+      const adsWithMeta = job.results.map(ad => ({
+        ...ad,
+        job_id: jobId,
+        job_query: job.query,
+        job_platform: job.platform,
+        job_region: job.region
+      }));
+      allAds = allAds.concat(adsWithMeta);
+    }
+  }
+  
+  // Apply filters
+  let filteredAds = allAds;
+  
+  if (filters.platform) {
+    filteredAds = filteredAds.filter(ad => 
+      ad.platform?.toLowerCase() === filters.platform.toLowerCase()
+    );
+  }
+  
+  if (filters.advertiser) {
+    filteredAds = filteredAds.filter(ad => 
+      ad.advertiser?.page_name?.toLowerCase().includes(filters.advertiser.toLowerCase())
+    );
+  }
+  
+  if (filters.query) {
+    filteredAds = filteredAds.filter(ad => 
+      ad.job_query?.toLowerCase().includes(filters.query.toLowerCase())
+    );
+  }
+  
+  if (filters.date_from) {
+    const fromDate = new Date(filters.date_from);
+    filteredAds = filteredAds.filter(ad => {
+      const adDate = new Date(ad.scraped_at || ad.created_at);
+      return adDate >= fromDate;
+    });
+  }
+  
+  if (filters.date_to) {
+    const toDate = new Date(filters.date_to);
+    filteredAds = filteredAds.filter(ad => {
+      const adDate = new Date(ad.scraped_at || ad.created_at);
+      return adDate <= toDate;
+    });
+  }
+  
+  // Limit results to prevent overwhelming Claude
+  return filteredAds.slice(0, 100);
+}
 
 // Process scraping job in background
 async function processScrapeJob(jobId) {
