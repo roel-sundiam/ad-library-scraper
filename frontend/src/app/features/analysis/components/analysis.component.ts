@@ -78,6 +78,10 @@ interface AnalysisResult {
                 <mat-label>To Date</mat-label>
                 <input matInput type="date" [(ngModel)]="filters.date_to">
               </mat-form-field>
+
+              <mat-checkbox [(ngModel)]="includeVideoTranscripts" class="video-checkbox">
+                Include Video Transcripts
+              </mat-checkbox>
             </div>
           </div>
 
@@ -103,7 +107,14 @@ interface AnalysisResult {
               mat-button 
               (click)="testConnection()"
               [disabled]="isAnalyzing">
-              Test Connection
+              Test Claude Connection
+            </button>
+
+            <button 
+              mat-button 
+              (click)="testVideoService()"
+              [disabled]="isAnalyzing">
+              Test Video Service
             </button>
           </div>
 
@@ -136,6 +147,7 @@ interface AnalysisResult {
               <p><strong>Model:</strong> {{ analysisResult.metadata.model }}</p>
               <p><strong>Tokens Used:</strong> {{ analysisResult.metadata.tokens_used?.total_tokens || 'N/A' }}</p>
               <p><strong>Ads Analyzed:</strong> {{ analysisResult.data_summary.ads_analyzed }}</p>
+              <p><strong>Video Analysis:</strong> {{ getVideoAnalysisStats() }}</p>
               <p><strong>Filters Applied:</strong></p>
               <pre>{{ analysisResult.data_summary.filters_applied | json }}</pre>
             </div>
@@ -288,6 +300,11 @@ interface AnalysisResult {
       margin: 0.25rem;
       cursor: pointer;
     }
+
+    .video-checkbox {
+      margin-top: 1rem;
+      color: #666;
+    }
   `]
 })
 export class AnalysisComponent implements OnInit {
@@ -295,6 +312,7 @@ export class AnalysisComponent implements OnInit {
   filters: AnalysisFilter = {};
   isAnalyzing: boolean = false;
   analysisResult: AnalysisResult | null = null;
+  includeVideoTranscripts: boolean = true;
 
   examplePrompts = [
     {
@@ -316,6 +334,14 @@ export class AnalysisComponent implements OnInit {
     {
       title: 'Target Audience Insights',
       prompt: 'Based on the ad copy and creative elements, what target audiences do these ads appear to be designed for? What demographic or psychographic segments are being addressed?'
+    },
+    {
+      title: 'Video Content Analysis',
+      prompt: 'Analyze the video content and transcripts. What storytelling techniques, pacing, and audio messaging strategies are being used? How do video elements complement the text and visual components?'
+    },
+    {
+      title: 'Multi-Media Consistency',
+      prompt: 'How consistent is the messaging across text, images, and video content? Are there any disconnects or particularly strong alignment between different creative elements?'
     }
   ];
 
@@ -380,14 +406,39 @@ export class AnalysisComponent implements OnInit {
     });
   }
 
+  testVideoService() {
+    this.http.get<any>('/api/videos/test').subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.snackBar.open('Video transcription service connected!', 'Close', { duration: 3000 });
+        } else {
+          this.snackBar.open('Video service failed: ' + response.data.error, 'Close', { duration: 5000 });
+        }
+      },
+      error: (error) => {
+        console.error('Video service test error:', error);
+        this.snackBar.open('Video service test failed', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
   clearForm() {
     this.analysisPrompt = '';
     this.filters = {};
     this.analysisResult = null;
+    this.includeVideoTranscripts = true;
   }
 
   useExamplePrompt(example: any) {
     this.analysisPrompt = example.prompt;
+  }
+
+  getVideoAnalysisStats(): string {
+    if (!this.analysisResult?.data_summary) return 'No data available';
+    
+    // This would need to be added to the API response
+    // For now, return a placeholder message
+    return 'Video transcription analysis included';
   }
 
   formatAnalysis(analysis: string): string {

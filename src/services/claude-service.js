@@ -77,6 +77,9 @@ When analyzing ads, consider:
 - Performance patterns (if metrics available)
 - Competitive positioning
 - Seasonal or temporal trends
+- Video content and audio messaging (if video transcripts available)
+- Storytelling techniques across different media formats
+- Consistency between text, visual, and audio messaging
 
 Format your response with clear sections and use markdown formatting for better readability.`;
   }
@@ -99,6 +102,13 @@ Format your response with clear sections and use markdown formatting for better 
 - Title: ${ad.creative?.title || 'No title'}
 - Call to Action: ${ad.creative?.call_to_action || 'None'}
 - Images: ${ad.creative?.image_urls?.length || 0} image(s)
+- Videos: ${ad.creative?.video_urls?.length || 0} video(s)
+${ad.creative?.video_transcripts?.length > 0 ? `- Video Transcripts:
+${ad.creative.video_transcripts.map((transcript, idx) => 
+  transcript.success 
+    ? `  Video ${idx + 1}: "${transcript.transcript.substring(0, 200)}${transcript.transcript.length > 200 ? '...' : ''}" (Confidence: ${transcript.confidence || 'N/A'}%)`
+    : `  Video ${idx + 1}: [Transcription failed: ${transcript.error}]`
+).join('\n')}` : ''}
 - Scraped: ${ad.scraped_at || ad.created_at || 'Unknown date'}
 ${ad.metrics ? `- Impressions: ${ad.metrics.impressions_min || 'N/A'}` : ''}
 ${ad.metrics ? `- Spend: $${ad.metrics.spend_min || 'N/A'}` : ''}

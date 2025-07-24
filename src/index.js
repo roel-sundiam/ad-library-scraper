@@ -6,6 +6,7 @@ require('dotenv').config();
 const logger = require('./utils/logger');
 const FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
 const ClaudeService = require('./services/claude-service');
+const VideoTranscriptService = require('./services/video-transcript-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -304,6 +305,131 @@ app.get('/api/analysis/test', async (req, res) => {
   }
 });
 
+// Video transcription endpoints
+app.post('/api/videos/transcript', async (req, res) => {
+  try {
+    const { video_url, options = {} } = req.body;
+    
+    if (!video_url) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Video URL is required',
+          details: { video_url }
+        }
+      });
+    }
+
+    logger.info('Processing video transcription request', { video_url });
+
+    const videoService = new VideoTranscriptService();
+    const transcriptionResult = await videoService.transcribeVideo(video_url, options);
+
+    res.json({
+      success: true,
+      data: transcriptionResult
+    });
+
+  } catch (error) {
+    logger.error('Video transcription endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'TRANSCRIPTION_ERROR',
+        message: 'Failed to transcribe video',
+        details: error.message
+      }
+    });
+  }
+});
+
+app.get('/api/videos/test', async (req, res) => {
+  try {
+    const videoService = new VideoTranscriptService();
+    const testResult = await videoService.testConnection();
+    
+    res.json({
+      success: testResult.success,
+      data: testResult
+    });
+  } catch (error) {
+    logger.error('Video service connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CONNECTION_ERROR',
+        message: 'Failed to test video transcription service',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Enhanced job status endpoint with video processing info
+app.get('/api/scrape/:jobId/videos', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    const job = jobs.get(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'JOB_NOT_FOUND',
+          message: 'Job not found'
+        }
+      });
+    }
+
+    // Count video processing statistics
+    const videoStats = {
+      total_ads: job.results?.length || 0,
+      ads_with_video: 0,
+      videos_detected: 0,
+      videos_transcribed: 0,
+      transcription_pending: 0,
+      transcription_failed: 0
+    };
+
+    if (job.results) {
+      job.results.forEach(ad => {
+        if (ad.creative?.has_video) {
+          videoStats.ads_with_video++;
+          const videoCount = (ad.creative.video_urls?.length || 0) + (ad.creative.video_details?.length || 0);
+          videoStats.videos_detected += videoCount;
+          
+          const transcripts = ad.creative.video_transcripts || [];
+          videoStats.videos_transcribed += transcripts.filter(t => t.transcript).length;
+          videoStats.transcription_failed += transcripts.filter(t => t.error).length;
+        }
+      });
+      
+      videoStats.transcription_pending = videoStats.videos_detected - videoStats.videos_transcribed - videoStats.transcription_failed;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        job_id: jobId,
+        status: job.status,
+        video_processing: videoStats,
+        last_updated: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error getting video processing status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'VIDEO_STATUS_ERROR',
+        message: 'Failed to get video processing status'
+      }
+    });
+  }
+});
+
 // Helper function to get filtered ads data
 function getFilteredAdsData(filters = {}) {
   let allAds = [];
@@ -395,6 +521,15 @@ async function processScrapeJob(jobId) {
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
     
+    // Process video transcriptions if videos are found
+    if (results.some(ad => ad.creative?.has_video)) {
+      job.status = 'processing_videos';
+      jobs.set(jobId, job);
+      
+      logger.info(`Processing video transcriptions for job ${jobId}`);
+      await processVideoTranscriptions(jobId, results);
+    }
+
     // Update job with results
     job.status = 'completed';
     job.completed_at = new Date().toISOString();
@@ -450,6 +585,78 @@ function generateMockResults(job) {
   }
   
   return results;
+}
+
+// Process video transcriptions for ads with videos
+async function processVideoTranscriptions(jobId, ads) {
+  const videoService = new VideoTranscriptService();
+  
+  try {
+    for (const ad of ads) {
+      if (!ad.creative?.has_video) continue;
+      
+      const videoUrls = [
+        ...(ad.creative.video_urls || []),
+        ...(ad.creative.video_details || []).map(v => v.src).filter(Boolean)
+      ];
+      
+      if (videoUrls.length === 0) continue;
+      
+      logger.info(`Processing ${videoUrls.length} videos for ad ${ad.ad_id}`);
+      
+      for (const videoUrl of videoUrls) {
+        try {
+          const transcriptionResult = await videoService.transcribeVideo(videoUrl, {
+            language: 'en', // Could be made configurable
+            format: 'verbose_json'
+          });
+          
+          ad.creative.video_transcripts.push({
+            video_url: videoUrl,
+            success: true,
+            ...transcriptionResult
+          });
+          
+          logger.info(`Video transcription completed for ${videoUrl}`, {
+            transcript_length: transcriptionResult.transcript.length,
+            confidence: transcriptionResult.confidence
+          });
+          
+        } catch (error) {
+          logger.error(`Video transcription failed for ${videoUrl}:`, error);
+          
+          ad.creative.video_transcripts.push({
+            video_url: videoUrl,
+            success: false,
+            error: error.message,
+            transcribed_at: new Date().toISOString()
+          });
+        }
+        
+        // Add delay between video processing to avoid overwhelming the API
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    // Update job with video transcriptions
+    const job = jobs.get(jobId);
+    if (job) {
+      job.results = ads;
+      jobs.set(jobId, job);
+    }
+    
+    logger.info(`Video transcription processing completed for job ${jobId}`);
+    
+  } catch (error) {
+    logger.error(`Video transcription processing failed for job ${jobId}:`, error);
+    
+    // Update job status to indicate video processing failure
+    const job = jobs.get(jobId);
+    if (job) {
+      job.video_processing_error = error.message;
+      jobs.set(jobId, job);
+    }
+  }
 }
 
 app.listen(PORT, () => {

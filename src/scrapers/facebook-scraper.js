@@ -118,6 +118,21 @@ class FacebookAdLibraryScraper {
               .map(img => img.src)
               .filter(src => src && !src.includes('data:image'));
             
+            // Extract video URLs
+            const videoElements = card.querySelectorAll('video');
+            const videoUrls = Array.from(videoElements)
+              .map(video => video.src || video.querySelector('source')?.src)
+              .filter(src => src && src.startsWith('http'));
+            
+            // Also check for video poster images and data attributes
+            const videoPosters = Array.from(card.querySelectorAll('video[poster]'))
+              .map(video => ({
+                poster: video.poster,
+                src: video.src || video.querySelector('source')?.src,
+                duration: video.duration || null
+              }))
+              .filter(video => video.src);
+            
             const startDateElement = card.querySelector('[title*="Started running"]');
             const startDate = startDateElement?.getAttribute('title')?.replace('Started running on ', '') || null;
             
@@ -128,6 +143,9 @@ class FacebookAdLibraryScraper {
               advertiser: advertiserName,
               ad_text: adText,
               image_urls: imageUrls,
+              video_urls: videoUrls,
+              video_details: videoPosters,
+              has_video: videoUrls.length > 0 || videoPosters.length > 0,
               start_date: startDate,
               platforms: platforms,
               extracted_at: new Date().toISOString()
@@ -188,7 +206,11 @@ class FacebookAdLibraryScraper {
         body: scrapedAd.ad_text || '',
         title: this.extractTitle(scrapedAd.ad_text),
         call_to_action: this.extractCTA(scrapedAd.ad_text),
-        image_urls: scrapedAd.image_urls || []
+        image_urls: scrapedAd.image_urls || [],
+        video_urls: scrapedAd.video_urls || [],
+        video_details: scrapedAd.video_details || [],
+        has_video: scrapedAd.has_video || false,
+        video_transcripts: [] // Will be populated by video processing service
       },
       metrics: {
         impressions_min: Math.floor(Math.random() * 50000) + 10000,
