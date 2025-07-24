@@ -582,17 +582,40 @@ function generateMockResults(job) {
       platform: job.platform,
       advertiser: {
         page_name: `${brands[i % brands.length]} ${job.query}`,
-        verified: Math.random() > 0.5
+        verified: Math.random() > 0.5,
+        category: ['Retail', 'Technology', 'Sports & Recreation', 'Fashion', 'Electronics'][Math.floor(Math.random() * 5)]
       },
       creative: {
         body: `Sample ad for ${job.query}. This is mock data until real scraper is added.`,
         title: `Amazing ${job.query} Product`,
-        call_to_action: 'Learn More'
+        description: `High quality ${job.query} at competitive prices`,
+        call_to_action: 'Learn More',
+        landing_url: `https://example.com/${job.query.replace(/ /g, '-')}`,
+        has_video: Math.random() > 0.7
+      },
+      targeting: {
+        age_range: ['18-24', '25-34', '35-44', '45-54'][Math.floor(Math.random() * 4)],
+        gender: ['All', 'Male', 'Female'][Math.floor(Math.random() * 3)],
+        locations: ['United States', 'Canada', 'United Kingdom'],
+        interests: ['Sports', 'Fashion', 'Technology', 'Fitness', 'Shopping']
       },
       metrics: {
         impressions_min: Math.floor(Math.random() * 50000) + 10000,
+        impressions_max: Math.floor(Math.random() * 100000) + 60000,
         spend_min: Math.floor(Math.random() * 1000) + 500,
+        spend_max: Math.floor(Math.random() * 2000) + 1500,
+        ctr_estimate: (Math.random() * 3 + 1).toFixed(2) + '%',
+        cpc_estimate: '$' + (Math.random() * 2 + 0.5).toFixed(2),
         currency: 'USD'
+      },
+      performance_indicators: {
+        high_engagement: Math.random() > 0.6,
+        trending: Math.random() > 0.8,
+        seasonal: Math.random() > 0.7
+      },
+      dates: {
+        created: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        duration_days: Math.floor(Math.random() * 30) + 1
       },
       scraped_at: new Date().toISOString()
     });
