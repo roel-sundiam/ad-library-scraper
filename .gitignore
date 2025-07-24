@@ -17,3 +17,5 @@ frontend/node_modules/
 # Keep environment template
 !.env.example
 !.env.production
+# Local Netlify folder
+.netlify

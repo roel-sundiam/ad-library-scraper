@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const logger = require('../utils/logger');
 
 class FacebookAdLibraryScraper {
@@ -11,7 +11,34 @@ class FacebookAdLibraryScraper {
 
   async initBrowser() {
     if (!this.browser) {
+      // Try to find Chrome executable for different environments
+      const findChrome = () => {
+        const possiblePaths = [
+          '/usr/bin/google-chrome',           // Common Linux path
+          '/usr/bin/google-chrome-stable',   // Ubuntu/Debian
+          '/usr/bin/chromium-browser',       // Alternative
+          '/opt/google/chrome/google-chrome', // Some distributions
+          'google-chrome-stable',            // If in PATH
+          'chromium-browser'                 // Alternative in PATH
+        ];
+        
+        for (const path of possiblePaths) {
+          try {
+            require('fs').accessSync(path);
+            return path;
+          } catch (e) {
+            // Continue to next path
+          }
+        }
+        
+        // Fallback for local development
+        return null;
+      };
+
+      const executablePath = findChrome();
+      
       this.browser = await puppeteer.launch({
+        executablePath: executablePath,
         headless: 'new',
         args: [
           '--no-sandbox',
@@ -20,7 +47,10 @@ class FacebookAdLibraryScraper {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
           '--disable-dev-shm-usage',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
         ]
       });
     }
