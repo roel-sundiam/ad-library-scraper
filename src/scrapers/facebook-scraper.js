@@ -13,29 +13,58 @@ class FacebookAdLibraryScraper {
     if (!this.browser) {
       // Try to find Chrome executable for different environments
       const findChrome = () => {
+        const fs = require('fs');
+        const { execSync } = require('child_process');
+        
         const possiblePaths = [
           '/usr/bin/google-chrome',           // Common Linux path
           '/usr/bin/google-chrome-stable',   // Ubuntu/Debian
           '/usr/bin/chromium-browser',       // Alternative
           '/opt/google/chrome/google-chrome', // Some distributions
-          'google-chrome-stable',            // If in PATH
-          'chromium-browser'                 // Alternative in PATH
+          '/usr/bin/chromium',               // Another common path
+          '/snap/bin/chromium',              // Snap package
         ];
         
+        // First try direct paths
         for (const path of possiblePaths) {
           try {
-            require('fs').accessSync(path);
+            fs.accessSync(path, fs.constants.F_OK);
+            logger.info('Found Chrome at:', path);
             return path;
           } catch (e) {
             // Continue to next path
           }
         }
         
-        // Fallback for local development
+        // Try using 'which' command to find Chrome in PATH
+        const commands = [
+          'google-chrome-stable',
+          'google-chrome',
+          'chromium-browser',
+          'chromium'
+        ];
+        
+        for (const cmd of commands) {
+          try {
+            const path = execSync(`which ${cmd}`, { encoding: 'utf8' }).trim();
+            if (path) {
+              logger.info('Found Chrome via which:', path);
+              return path;
+            }
+          } catch (e) {
+            // Command not found, continue
+          }
+        }
+        
+        logger.error('Chrome executable not found in any standard location');
         return null;
       };
 
       const executablePath = findChrome();
+      
+      if (!executablePath) {
+        throw new Error('Chrome executable not found. Please ensure Chrome is installed on the system.');
+      }
       
       this.browser = await puppeteer.launch({
         executablePath: executablePath,
