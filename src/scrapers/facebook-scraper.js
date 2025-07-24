@@ -18,13 +18,23 @@ class FacebookAdLibraryScraper {
   }
 
   async initBrowserlessConnection() {
-    // Use Browserless.io as primary option (free tier available)
-    const browserlessEndpoint = 'wss://chrome.browserless.io?token=';
+    // Use Browserless.io with correct endpoint format
+    const token = process.env.BROWSERLESS_TOKEN;
+    
+    if (!token) {
+      logger.error('BROWSERLESS_TOKEN environment variable not set');
+      throw new Error('External browser service unavailable - using mock data fallback');
+    }
+    
+    const browserlessEndpoint = `wss://chrome.browserless.io?token=${token}`;
     
     try {
-      logger.info('Attempting to connect to Browserless.io...');
+      logger.info('Attempting to connect to Browserless.io with token:', token.substring(0, 8) + '...');
+      logger.info('Full endpoint:', browserlessEndpoint.replace(token, token.substring(0, 8) + '...'));
+      
       this.browser = await puppeteer.connect({
-        browserWSEndpoint: `${browserlessEndpoint}${process.env.BROWSERLESS_TOKEN || ''}`,
+        browserWSEndpoint: browserlessEndpoint,
+        timeout: 30000, // 30 second timeout
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -40,7 +50,11 @@ class FacebookAdLibraryScraper {
       logger.info('Connected to Browserless.io successfully');
       
     } catch (browserlessError) {
-      logger.error('Browserless connection failed:', browserlessError.message);
+      logger.error('Browserless connection failed:', {
+        message: browserlessError.message,
+        code: browserlessError.code,
+        stack: browserlessError.stack
+      });
       
       // Enhanced mock data as fallback
       logger.warn('All browser connections failed, will use enhanced mock data');
