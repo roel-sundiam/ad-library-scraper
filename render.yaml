@@ -4,60 +4,17 @@ services:
     env: node
     plan: starter
     buildCommand: |
-      # Install Playwright dependencies
-      apt-get update
-      apt-get install -y \
-        libnss3 \
-        libatk-bridge2.0-0 \
-        libx11-xcb1 \
-        libxcomposite1 \
-        libxrandr2 \
-        libxss1 \
-        libxtst6 \
-        libxdamage1 \
-        libxi6 \
-        libgdk-pixbuf2.0-0 \
-        libgtk-3-0 \
-        libasound2 \
-        libdrm2 \
-        libxkbcommon0 \
-        libatspi2.0-0
-      
-      echo "=== Installing Node dependencies with Playwright ==="
+      echo "=== Installing Node dependencies ==="
       npm install
       
-      echo "=== Installing Playwright browsers (multiple attempts) ==="
-      # Set environment variables for Playwright
-      export PLAYWRIGHT_BROWSERS_PATH="/opt/render/.cache/ms-playwright"
-      export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=""
-      
-      # Create browser directory
-      mkdir -p /opt/render/.cache/ms-playwright
-      
-      # Install browsers with retry logic
-      npx playwright install chromium || echo "First attempt failed, retrying..."
-      npx playwright install --with-deps chromium || echo "Second attempt failed, using alternative..."
-      
-      # Alternative: Install system chromium as fallback
-      if [ ! -f "/opt/render/.cache/ms-playwright/chromium*/chrome-linux/chrome" ] && [ ! -f "/opt/render/.cache/ms-playwright/chromium*/chrome-linux/headless_shell" ]; then
-        echo "=== Playwright browser install failed, installing system chromium ==="
-        apt-get install -y chromium-browser
-        # Create symlink for Playwright to find system chromium
-        mkdir -p /opt/render/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/
-        ln -sf /usr/bin/chromium-browser /opt/render/.cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell
-      fi
-      
-      echo "=== Verifying Playwright installation ==="
-      ls -la /opt/render/.cache/ms-playwright/ || echo "Browser cache not found"
-      node -e "console.log('Playwright version:', require('playwright/package.json').version)"
+      echo "=== Skipping browser installation - using external browser services ==="
+      echo "Fallback strategy: Playwright (if available) -> Browserless.io -> Local Puppeteer"
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: "/opt/render/.cache/ms-playwright"
-      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+      - key: BROWSERLESS_TOKEN
         value: ""
     healthCheckPath: /api/health

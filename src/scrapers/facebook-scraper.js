@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const puppeteer = require('puppeteer-core');
 const logger = require('../utils/logger');
 
 class FacebookAdLibraryScraper {
@@ -12,53 +13,100 @@ class FacebookAdLibraryScraper {
 
   async initBrowser() {
     if (!this.browser) {
-      logger.info('Launching Playwright Chromium browser...');
+      logger.info('Attempting to launch browser...');
       
+      // Try Playwright first, then fallback to Browserless
       try {
-        // Try to launch browser with enhanced stealth options
-        const launchOptions = {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--disable-features=TranslateUI',
-            '--disable-ipc-flooding-protection',
-            '--no-first-run',
-            '--no-default-browser-check',
-            '--disable-default-apps',
-            '--disable-popup-blocking',
-            '--disable-prompt-on-repost',
-            '--disable-hang-monitor',
-            '--disable-sync',
-            '--disable-client-side-phishing-detection',
-            '--disable-component-update',
-            '--disable-domain-reliability',
-            '--window-size=1920,1080'
-          ]
-        };
-
-        // Try to find browser executable if default doesn't work
-        if (process.env.PLAYWRIGHT_BROWSERS_PATH) {
-          logger.info('Using PLAYWRIGHT_BROWSERS_PATH:', process.env.PLAYWRIGHT_BROWSERS_PATH);
-        }
-
-        this.browser = await chromium.launch(launchOptions);
-        logger.info('Playwright browser launched successfully');
-      } catch (error) {
-        logger.error('Failed to launch Playwright browser:', error);
-        throw new Error('Failed to launch browser: ' + error.message);
+        await this.initPlaywrightBrowser();
+      } catch (playwrightError) {
+        logger.warn('Playwright failed, trying Browserless fallback:', playwrightError.message);
+        await this.initBrowserlessConnection();
       }
     }
+  }
 
-    if (!this.context) {
+  async initPlaywrightBrowser() {
+    const launchOptions = {
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-default-apps',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-hang-monitor',
+        '--disable-sync',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-update',
+        '--disable-domain-reliability',
+        '--window-size=1920,1080'
+      ]
+    };
+
+    this.browser = await chromium.launch(launchOptions);
+    this.browserType = 'playwright';
+    logger.info('Playwright browser launched successfully');
+  }
+
+  async initBrowserlessConnection() {
+    // Use Browserless.io free tier as fallback
+    const browserlessEndpoint = 'wss://chrome.browserless.io?token=';
+    
+    try {
+      this.browser = await puppeteer.connect({
+        browserWSEndpoint: `${browserlessEndpoint}${process.env.BROWSERLESS_TOKEN || ''}`,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--window-size=1920,1080'
+        ]
+      });
+      this.browserType = 'browserless';
+      logger.info('Connected to Browserless.io successfully');
+    } catch (browserlessError) {
+      logger.error('Browserless connection failed:', browserlessError.message);
+      // Final fallback - try local Puppeteer (will likely fail but worth trying)
+      await this.initLocalPuppeteer();
+    }
+  }
+
+  async initLocalPuppeteer() {
+    logger.info('Attempting local Puppeteer as final fallback...');
+    
+    // This will likely fail on Render, but let's try
+    const puppeteerRegular = require('puppeteer');
+    this.browser = await puppeteerRegular.launch({
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--window-size=1920,1080'
+      ]
+    });
+    this.browserType = 'puppeteer';
+    logger.info('Local Puppeteer launched successfully');
+  }
+
+  async setupBrowserContext() {
+    if (!this.context && this.browserType === 'playwright') {
       // Create browser context with stealth settings
       const userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -120,13 +168,20 @@ class FacebookAdLibraryScraper {
       });
     }
 
+    }
+
     if (!this.page) {
-      this.page = await this.context.newPage();
-      
-      // Set up advanced stealth mode
-      await this.setupStealthMode();
-      
-      logger.info('Playwright page created with stealth configuration');
+      if (this.browserType === 'playwright') {
+        await this.setupBrowserContext();
+        this.page = await this.context.newPage();
+        await this.setupStealthMode();
+        logger.info('Playwright page created with stealth configuration');
+      } else {
+        // Puppeteer/Browserless
+        this.page = await this.browser.newPage();
+        await this.setupPuppeteerStealth();
+        logger.info('Puppeteer page created with stealth configuration');
+      }
     }
   }
 
@@ -322,6 +377,69 @@ class FacebookAdLibraryScraper {
         route.abort();
       } else {
         route.continue();
+      }
+    });
+  }
+
+  async setupPuppeteerStealth() {
+    // Puppeteer stealth mode setup
+    const userAgents = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    ];
+
+    await this.page.setUserAgent(userAgents[Math.floor(Math.random() * userAgents.length)]);
+    await this.page.setViewport({ 
+      width: 1920 + Math.floor(Math.random() * 100), 
+      height: 1080 + Math.floor(Math.random() * 100) 
+    });
+
+    await this.page.setExtraHTTPHeaders({
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'DNT': '1',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+    });
+
+    // Puppeteer stealth injections
+    await this.page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined,
+      });
+
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [
+          { name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+          { name: 'Chrome PDF Viewer', description: 'Portable Document Format', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+          { name: 'Native Client', description: 'Native Client', filename: 'internal-nacl-plugin' }
+        ],
+      });
+
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US', 'en'],
+      });
+    });
+
+    // Set up request interception for Puppeteer
+    await this.page.setRequestInterception(true);
+    this.page.on('request', (req) => {
+      const resourceType = req.resourceType();
+      const url = req.url();
+      
+      if (resourceType === 'stylesheet' || 
+          resourceType === 'font' ||
+          url.includes('googlesyndication') ||
+          url.includes('doubleclick') ||
+          url.includes('google-analytics') ||
+          url.includes('googletagmanager') ||
+          url.includes('facebook.com/tr/')) {
+        req.abort();
+      } else {
+        req.continue();
       }
     });
   }
