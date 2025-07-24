@@ -97,24 +97,45 @@ class FacebookAdLibraryScraper {
     return `${this.baseUrl}?${params}`;
   }
 
+  async performSearchOnPage(keyword) {
+    // wait for the big search input
+    const searchInput = await this.page.waitForSelector(
+      'input[placeholder*="Search"], input[aria-label*="Search"]',
+      { timeout: 15000 }
+    );
+    await searchInput.click({ delay: 100 });
+    await searchInput.type(keyword, { delay: 50 });
+    await this.page.keyboard.press('Enter');
+    await this.page.waitForTimeout(3000 + Math.random() * 2000);
+  }
+
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
-  async extractAdsFromPage(limit = 50) {
+   async extractAdsFromPage(limit = 50) {
+    // 1. actually trigger the search
+    await this.performSearchOnPage(this.query);
+
+    // 2. selectors after the search
     const selectors = [
       '[data-testid="ad-library-card"]',
       '[data-testid="ad_library_result"]',
-      '[role="article"]'
+      '[role="article"]',
+      '[data-testid="search-results"] [data-visualcompletion="ignore-dynamic"]'
     ];
-
     let selector = null;
     for (const sel of selectors) {
       try {
-        await this.page.waitForSelector(sel, { timeout: 5000 });
+        await this.page.waitForSelector(sel, { timeout: 10000 });
         selector = sel;
         logger.debug(`Using selector → ${sel}`);
         break;
-      } catch { /* try next */ }
+      } catch { /* next */ }
     }
-    if (!selector) { logger.warn('No ad cards found'); return []; }
+    if (!selector) {
+      const path = `/tmp/fb_zero_${Date.now()}.png`;
+      await this.page.screenshot({ path, fullPage: true });
+      logger.warn(`Zero ads → saved ${path}`);
+      return [];
+    }
 
     await this.scrollToLoadMore(limit, selector);
 
