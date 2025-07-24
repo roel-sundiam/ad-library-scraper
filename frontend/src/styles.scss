@@ -1,3 +1,27 @@
+/* Angular Material Theme */
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+/* Define custom palette */
+$custom-primary: mat.define-palette(mat.$indigo-palette, 500);
+$custom-accent: mat.define-palette(mat.$purple-palette, A200, A100, A400);
+$custom-warn: mat.define-palette(mat.$red-palette);
+
+/* Create the theme object */
+$custom-theme: mat.define-light-theme((
+  color: (
+    primary: $custom-primary,
+    accent: $custom-accent,
+    warn: $custom-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+/* Apply the theme to all Material components */
+@include mat.all-component-themes($custom-theme);
+
 /* Global Styles */
 
 html, body {
@@ -62,6 +86,61 @@ body {
   align-items: center;
   justify-content: center;
   padding: 32px;
+}
+
+/* Custom Material Form Field Styling */
+.mat-mdc-form-field {
+  &.mat-form-field-appearance-outline {
+    .mdc-notched-outline {
+      border-radius: 8px !important;
+      border-color: rgba(0, 0, 0, 0.23) !important;
+    }
+    
+    &.mat-focused {
+      .mdc-notched-outline {
+        border-color: #667eea !important;
+        border-width: 2px !important;
+      }
+      
+      .mdc-floating-label {
+        color: #667eea !important;
+      }
+    }
+    
+    &:hover:not(.mat-focused) {
+      .mdc-notched-outline {
+        border-color: rgba(102, 126, 234, 0.6) !important;
+      }
+    }
+  }
+  
+  .mdc-text-field__input {
+    color: #333 !important;
+  }
+  
+  .mdc-floating-label {
+    color: #666 !important;
+  }
+}
+
+.mat-mdc-select-trigger {
+  color: #333 !important;
+}
+
+.mat-mdc-select-arrow {
+  color: #667eea !important;
+}
+
+/* Custom button styling */
+.mat-mdc-raised-button.mat-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border-radius: 25px !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+  
+  &:hover {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+  }
 }
 
 /* Responsive design */

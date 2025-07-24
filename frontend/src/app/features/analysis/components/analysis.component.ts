@@ -24,16 +24,34 @@ interface AnalysisResult {
 @Component({
   selector: 'ads-analysis',
   template: `
-    <div class="page-container">
-      <h1>AI Analysis with Claude Opus</h1>
-      
-      <!-- Analysis Input Form -->
-      <mat-card class="analysis-form">
-        <mat-card-header>
-          <mat-card-title>Custom Analysis Prompt</mat-card-title>
-          <mat-card-subtitle>Ask Claude Opus to analyze your scraped ad data</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
+    <div class="analysis-container">
+      <!-- Hero Section -->
+      <div class="hero-section">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <mat-icon>psychology</mat-icon>
+            <span>AI-Powered Analysis</span>
+          </div>
+          <h1>AI Analysis with Claude Opus</h1>
+          <p>Transform your scraped ad data into actionable competitive intelligence with advanced AI analysis</p>
+        </div>
+        <div class="hero-visual">
+          <div class="floating-card">
+            <mat-icon>insights</mat-icon>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="content-grid">
+        <!-- Analysis Form -->
+        <div class="form-section">
+          <mat-card class="analysis-form-card">
+            <div class="card-header">
+              <h2>Custom Analysis Prompt</h2>
+              <p>Ask Claude Opus specific questions about your competitive ad data</p>
+            </div>
+            <mat-card-content>
           <!-- Prompt Input -->
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Analysis Question</mat-label>
@@ -127,134 +145,333 @@ interface AnalysisResult {
         </mat-card-content>
       </mat-card>
 
-      <!-- Analysis Results -->
-      <mat-card *ngIf="analysisResult" class="results-card">
-        <mat-card-header>
-          <mat-card-title>Analysis Results</mat-card-title>
-          <mat-card-subtitle>
-            Analyzed {{ analysisResult.data_summary.ads_analyzed }} ads • 
-            {{ analysisResult.data_summary.analysis_date | date:'short' }}
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="analysis-content" [innerHTML]="formatAnalysis(analysisResult.analysis)"></div>
-          
-          <!-- Metadata -->
-          <mat-expansion-panel class="metadata-panel">
-            <mat-expansion-panel-header>
-              <mat-panel-title>Analysis Details</mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="metadata-content">
-              <p><strong>Model:</strong> {{ analysisResult.metadata.model }}</p>
-              <p><strong>Tokens Used:</strong> {{ analysisResult.metadata.tokens_used?.total_tokens || 'N/A' }}</p>
-              <p><strong>Ads Analyzed:</strong> {{ analysisResult.data_summary.ads_analyzed }}</p>
-              <p><strong>Video Analysis:</strong> {{ getVideoAnalysisStats() }}</p>
-              <p><strong>Filters Applied:</strong></p>
-              <pre>{{ analysisResult.data_summary.filters_applied | json }}</pre>
+        </div>
+
+        <!-- Analysis Results -->
+        <mat-card *ngIf="analysisResult" class="results-card">
+          <mat-card-header>
+            <mat-card-title>Analysis Results</mat-card-title>
+            <mat-card-subtitle>
+              Analyzed {{ analysisResult.data_summary.ads_analyzed }} ads • 
+              {{ analysisResult.data_summary.analysis_date | date:'short' }}
+            </mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="analysis-content" [innerHTML]="formatAnalysis(analysisResult.analysis)"></div>
+            
+            <!-- Metadata -->
+            <mat-expansion-panel class="metadata-panel">
+              <mat-expansion-panel-header>
+                <mat-panel-title>Analysis Details</mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="metadata-content">
+                <p><strong>Model:</strong> {{ analysisResult.metadata.model }}</p>
+                <p><strong>Tokens Used:</strong> {{ analysisResult.metadata.tokens_used?.total_tokens || 'N/A' }}</p>
+                <p><strong>Ads Analyzed:</strong> {{ analysisResult.data_summary.ads_analyzed }}</p>
+                <p><strong>Video Analysis:</strong> {{ getVideoAnalysisStats() }}</p>
+                <p><strong>Filters Applied:</strong></p>
+                <pre>{{ analysisResult.data_summary.filters_applied | json }}</pre>
+              </div>
+            </mat-expansion-panel>
+
+            <!-- Export Options -->
+            <div class="export-actions">
+              <button mat-button color="accent" (click)="exportAnalysis()">
+                <mat-icon>download</mat-icon>
+                Export Analysis
+              </button>
+              <button mat-button (click)="shareAnalysis()">
+                <mat-icon>share</mat-icon>
+                Share
+              </button>
             </div>
-          </mat-expansion-panel>
+          </mat-card-content>
+        </mat-card>
 
-          <!-- Export Options -->
-          <div class="export-actions">
-            <button mat-button color="accent" (click)="exportAnalysis()">
-              <mat-icon>download</mat-icon>
-              Export Analysis
-            </button>
-            <button mat-button (click)="shareAnalysis()">
-              <mat-icon>share</mat-icon>
-              Share
-            </button>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Example Prompts -->
-      <mat-card class="examples-card">
-        <mat-card-header>
-          <mat-card-title>Example Analysis Prompts</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="example-prompts">
-            <mat-chip-set>
-              <mat-chip 
-                *ngFor="let example of examplePrompts" 
-                (click)="useExamplePrompt(example)"
-                [disabled]="isAnalyzing">
-                {{ example.title }}
-              </mat-chip>
-            </mat-chip-set>
-          </div>
-        </mat-card-content>
-      </mat-card>
+        <!-- Example Prompts -->
+        <mat-card class="examples-card">
+          <mat-card-header>
+            <mat-card-title>Example Analysis Prompts</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="example-prompts">
+              <mat-chip-set>
+                <mat-chip 
+                  *ngFor="let example of examplePrompts" 
+                  (click)="useExamplePrompt(example)"
+                  [disabled]="isAnalyzing">
+                  {{ example.title }}
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
     </div>
   `,
   styles: [`
-    .page-container {
+    .analysis-container {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+      color: white;
+      padding: 4rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="0.5" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+      opacity: 0.3;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 25px;
+      padding: 0.5rem 1rem;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .hero-badge mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .hero-section h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      background: linear-gradient(45deg, #ffffff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-section p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .hero-visual {
+      position: absolute;
+      top: 50%;
+      right: 2rem;
+      transform: translateY(-50%);
+      display: none;
+    }
+
+    @media (min-width: 1200px) {
+      .hero-visual {
+        display: block;
+      }
+    }
+
+    .floating-card {
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .floating-card mat-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    /* Main Content */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 3rem 2rem;
       max-width: 1200px;
       margin: 0 auto;
+      background: #f8fafc;
+      position: relative;
+    }
+
+    .form-section {
+      grid-column: 1;
+    }
+
+    /* Card Styling */
+    .analysis-form-card {
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      border: none;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
       padding: 2rem;
+      text-align: center;
     }
 
-    h1 {
-      margin-bottom: 2rem;
-      color: #333;
+    .card-header h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+      font-weight: 600;
     }
 
-    .analysis-form {
-      margin-bottom: 2rem;
+    .card-header p {
+      margin: 0;
+      opacity: 0.9;
+      font-size: 1rem;
     }
 
+    mat-card-content {
+      padding: 2rem !important;
+    }
+
+    /* Form Styling */
     .full-width {
       width: 100%;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .full-width .mat-mdc-form-field {
+      width: 100%;
     }
 
     .filters-section {
       margin: 2rem 0;
+      padding: 1.5rem;
+      background: rgba(102, 126, 234, 0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(102, 126, 234, 0.1);
     }
 
     .filters-section h3 {
-      margin-bottom: 1rem;
-      color: #666;
+      margin: 0 0 1.5rem 0;
+      color: #4c51bf;
+      font-weight: 600;
+      font-size: 1.1rem;
     }
 
     .filters-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem;
+      align-items: start;
     }
 
+    .video-checkbox {
+      grid-column: 1 / -1;
+      margin-top: 1rem;
+      color: #4c51bf;
+      font-weight: 500;
+    }
+
+    /* Action Buttons */
     .action-buttons {
       display: flex;
+      flex-wrap: wrap;
       gap: 1rem;
       margin-top: 2rem;
+      justify-content: center;
     }
 
+    .action-buttons button {
+      border-radius: 25px;
+      padding: 0.75rem 2rem;
+      font-weight: 600;
+      text-transform: none;
+      font-size: 1rem;
+    }
+
+    .action-buttons .mat-mdc-raised-button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      transform: translateY(0);
+      transition: all 0.3s ease;
+    }
+
+    .action-buttons .mat-mdc-raised-button:hover:not([disabled]) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Loading */
     .loading-section {
       margin-top: 2rem;
+      text-align: center;
     }
 
     .loading-text {
-      text-align: center;
-      color: #666;
+      color: #6b7280;
       margin-top: 1rem;
+      font-weight: 500;
     }
 
+    /* Results */
     .results-card {
-      margin-bottom: 2rem;
+      margin-top: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      border: none;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
     }
 
     .analysis-content {
-      line-height: 1.6;
-      margin-bottom: 2rem;
+      line-height: 1.7;
+      color: #374151;
+      font-size: 1rem;
     }
 
     .analysis-content h1,
     .analysis-content h2,
     .analysis-content h3 {
-      color: #333;
+      color: #1f2937;
       margin-top: 2rem;
       margin-bottom: 1rem;
+      font-weight: 600;
     }
 
     .analysis-content ul {
@@ -262,49 +479,77 @@ interface AnalysisResult {
     }
 
     .analysis-content blockquote {
-      border-left: 4px solid #e0e0e0;
+      border-left: 4px solid #667eea;
       padding-left: 1rem;
       margin: 1rem 0;
       font-style: italic;
+      background: rgba(102, 126, 234, 0.05);
+      padding: 1rem;
+      border-radius: 8px;
     }
 
+    /* Examples */
+    .examples-card {
+      margin-top: 2rem;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      border: none;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+    }
+
+    .example-prompts mat-chip {
+      margin: 0.25rem;
+      cursor: pointer;
+      border-radius: 20px;
+      background: rgba(102, 126, 234, 0.1);
+      color: #4c51bf;
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .example-prompts mat-chip:hover {
+      background: rgba(102, 126, 234, 0.2);
+      transform: translateY(-1px);
+    }
+
+    /* Metadata and Export */
     .metadata-panel {
       margin: 2rem 0;
-    }
-
-    .metadata-content {
-      padding: 1rem 0;
-    }
-
-    .metadata-content pre {
-      background: #f5f5f5;
-      padding: 1rem;
-      border-radius: 4px;
-      overflow-x: auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     }
 
     .export-actions {
       display: flex;
       gap: 1rem;
       margin-top: 2rem;
+      justify-content: center;
     }
 
-    .examples-card {
-      margin-bottom: 2rem;
+    .export-actions button {
+      border-radius: 25px;
+      padding: 0.5rem 1.5rem;
     }
 
-    .example-prompts {
-      margin-top: 1rem;
-    }
-
-    .example-prompts mat-chip {
-      margin: 0.25rem;
-      cursor: pointer;
-    }
-
-    .video-checkbox {
-      margin-top: 1rem;
-      color: #666;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-section {
+        padding: 3rem 1rem;
+      }
+      
+      .hero-section h1 {
+        font-size: 2.5rem;
+      }
+      
+      .content-grid {
+        padding: 2rem 1rem;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+      }
     }
   `]
 })
