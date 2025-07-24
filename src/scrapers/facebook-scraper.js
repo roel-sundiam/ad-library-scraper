@@ -26,11 +26,18 @@ class FacebookAdLibraryScraper {
       throw new Error('External browser service unavailable - using mock data fallback');
     }
     
-    const browserlessEndpoint = `wss://chrome.browserless.io?token=${token}`;
+    // For Cloud subscriptions, use the cloud endpoint format
+    const browserlessEndpoint = `wss://${token}@chrome.browserless.io`;
     
     try {
       logger.info('Attempting to connect to Browserless.io with token:', token.substring(0, 8) + '...');
+      logger.info('Token length:', token.length);
       logger.info('Full endpoint:', browserlessEndpoint.replace(token, token.substring(0, 8) + '...'));
+      
+      // Test if token is valid format (should be 32+ characters)
+      if (token.length < 20) {
+        throw new Error('Invalid token format - token too short');
+      }
       
       this.browser = await puppeteer.connect({
         browserWSEndpoint: browserlessEndpoint,
