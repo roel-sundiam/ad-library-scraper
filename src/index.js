@@ -4,6 +4,7 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
+const FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -229,18 +230,27 @@ async function processScrapeJob(jobId) {
       query: job.query
     });
     
-    // For now, we'll use mock data until we add Puppeteer
-    const mockResults = generateMockResults(job);
-    
-    // Simulate scraping delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Use real Facebook scraper for facebook platform
+    let results;
+    if (job.platform.toLowerCase() === 'facebook') {
+      const scraper = new FacebookAdLibraryScraper();
+      results = await scraper.scrapeAds({
+        query: job.query,
+        limit: job.limit,
+        region: job.region
+      });
+    } else {
+      // Use mock data for other platforms
+      results = generateMockResults(job);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
     
     // Update job with results
     job.status = 'completed';
     job.completed_at = new Date().toISOString();
-    job.results = mockResults;
+    job.results = results;
     job.progress = {
-      current: mockResults.length,
+      current: results.length,
       total: job.limit,
       percentage: 100
     };
@@ -248,7 +258,7 @@ async function processScrapeJob(jobId) {
     jobs.set(jobId, job);
     
     logger.info(`Scrape job ${jobId} completed successfully`, {
-      adsFound: mockResults.length
+      adsFound: results.length
     });
     
   } catch (error) {
