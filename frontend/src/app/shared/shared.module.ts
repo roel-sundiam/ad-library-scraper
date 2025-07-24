@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 
 // Angular Material modules
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -32,6 +33,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
+    HttpClientModule,
     
     // Material modules
     MatToolbarModule,
@@ -61,6 +63,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
+    HttpClientModule,
     
     // Material modules
     MatToolbarModule,
@@ -83,7 +86,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
     MatDialogModule,
     MatMenuModule,
     MatListModule,
-    MatRadioModule
+    MatRadioModule,
+    MatExpansionModule
   ]
 })
 export class SharedModule { }
