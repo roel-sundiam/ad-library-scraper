@@ -1,0 +1,16 @@
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav #drawer class="sidenav" fixedInViewport="true" 
+               [attr.role]="'navigation'" 
+               [mode]="'side'" 
+               [opened]="sidenavOpened">
+    <ads-sidebar></ads-sidebar>
+  </mat-sidenav>
+  
+  <mat-sidenav-content>
+    <ads-header (menuToggle)="toggleSidenav()"></ads-header>
+    
+    <main class="main-content">
+      <ng-content></ng-content>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

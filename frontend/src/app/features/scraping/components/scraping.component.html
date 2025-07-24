@@ -1,0 +1,304 @@
+<div class="scraping-container">
+  <div class="page-header">
+    <h1>Ad Scraping</h1>
+    <p>Configure and start scraping jobs to collect advertising data from multiple platforms</p>
+  </div>
+
+  <div class="content-layout">
+    <!-- Scraping Form -->
+    <div class="form-section">
+      <mat-card class="scraping-form-card">
+        <mat-card-header>
+          <mat-card-title>Configure Scraping Job</mat-card-title>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <form [formGroup]="scrapingForm" (ngSubmit)="onSubmit()">
+            
+            <!-- Platform Selection -->
+            <div class="form-group">
+              <label class="section-label">Platform</label>
+              <mat-radio-group formControlName="platform" class="platform-selection">
+                <div class="platform-grid">
+                  <mat-radio-button 
+                    *ngFor="let platform of platforms" 
+                    [value]="platform.id"
+                    [disabled]="!platform.available"
+                    class="platform-option">
+                    <div class="platform-content">
+                      <mat-icon>{{ platform.icon }}</mat-icon>
+                      <span>{{ platform.name }}</span>
+                      <span *ngIf="!platform.available" class="coming-soon">Coming Soon</span>
+                    </div>
+                  </mat-radio-button>
+                </div>
+              </mat-radio-group>
+            </div>
+
+            <!-- Search Query -->
+            <div class="form-group">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Search Query</mat-label>
+                <input matInput formControlName="query" placeholder="e.g., fitness supplements, real estate, fashion">
+                <mat-hint>Keywords to search for in ad content</mat-hint>
+                <mat-error *ngIf="scrapingForm.get('query')?.hasError('required')">
+                  Search query is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <!-- Limit and Region -->
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Limit</mat-label>
+                <input matInput type="number" formControlName="limit" min="1" max="1000">
+                <mat-hint>Max ads to scrape (1-1000)</mat-hint>
+                <mat-error *ngIf="scrapingForm.get('limit')?.hasError('required')">
+                  Limit is required
+                </mat-error>
+                <mat-error *ngIf="scrapingForm.get('limit')?.hasError('min') || scrapingForm.get('limit')?.hasError('max')">
+                  Limit must be between 1 and 1000
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Region</mat-label>
+                <mat-select formControlName="region">
+                  <mat-option value="US">United States</mat-option>
+                  <mat-option value="GB">United Kingdom</mat-option>
+                  <mat-option value="CA">Canada</mat-option>
+                  <mat-option value="AU">Australia</mat-option>
+                  <mat-option value="DE">Germany</mat-option>
+                  <mat-option value="FR">France</mat-option>
+                  <mat-option value="ALL">All Regions</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <!-- Date Range -->
+            <div class="form-group">
+              <mat-form-field appearance="outline" class="half-width">
+                <mat-label>Date Range</mat-label>
+                <mat-select formControlName="dateRange">
+                  <mat-option value="7_days">Last 7 days</mat-option>
+                  <mat-option value="30_days">Last 30 days</mat-option>
+                  <mat-option value="90_days">Last 90 days</mat-option>
+                  <mat-option value="all">All time</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <!-- Advanced Filters -->
+            <div class="form-group" formGroupName="filters">
+              <label class="section-label">Advanced Filters</label>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Ad Type</mat-label>
+                  <mat-select formControlName="adType">
+                    <mat-option value="all">All Types</mat-option>
+                    <mat-option value="image">Image Ads</mat-option>
+                    <mat-option value="video">Video Ads</mat-option>
+                    <mat-option value="carousel">Carousel Ads</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                  <mat-label>Minimum Impressions</mat-label>
+                  <input matInput type="number" formControlName="minImpressions" placeholder="e.g., 10000">
+                  <mat-hint>Filter ads with minimum impression count</mat-hint>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+              <button mat-raised-button color="primary" type="submit" 
+                      [disabled]="scrapingForm.invalid || isSubmitting">
+                <mat-icon *ngIf="isSubmitting">hourglass_empty</mat-icon>
+                <mat-icon *ngIf="!isSubmitting">play_arrow</mat-icon>
+                {{ isSubmitting ? 'Starting Job...' : 'Start Scraping' }}
+              </button>
+              
+              <button mat-button type="button" (click)="resetForm()" [disabled]="isSubmitting">
+                <mat-icon>refresh</mat-icon>
+                Reset Form
+              </button>
+            </div>
+
+            <!-- Error Display -->
+            <div *ngIf="jobError" class="error-message">
+              <mat-icon>error</mat-icon>
+              <span>{{ jobError }}</span>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Job Status -->
+    <div class="status-section">
+      <mat-card class="job-status-card">
+        <mat-card-header>
+          <mat-card-title>Job Status</mat-card-title>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div *ngIf="!currentJob && !isSubmitting" class="no-job">
+            <mat-icon>info</mat-icon>
+            <p>No active scraping job</p>
+            <p class="hint">Configure and start a scraping job to see progress here</p>
+          </div>
+
+          <div *ngIf="isSubmitting" class="job-starting">
+            <mat-spinner diameter="40"></mat-spinner>
+            <p>Starting scraping job...</p>
+          </div>
+
+          <div *ngIf="currentJob && !isSubmitting" class="job-active">
+            <div class="job-info">
+              <h4>Job Started Successfully!</h4>
+              <p><strong>Job ID:</strong> {{ currentJob.data?.job_id || 'N/A' }}</p>
+              <p><strong>Status:</strong> 
+                <span class="status-badge success">{{ currentJob.data?.status || 'queued' }}</span>
+              </p>
+              <p><strong>Estimated Duration:</strong> {{ currentJob.data?.estimated_duration || '5-10 minutes' }}</p>
+            </div>
+            
+            <div class="job-actions">
+              <button mat-raised-button color="accent" 
+                      (click)="viewResults(currentJob.data?.job_id)"
+                      [disabled]="isLoadingResults">
+                <mat-icon *ngIf="isLoadingResults">hourglass_empty</mat-icon>
+                <mat-icon *ngIf="!isLoadingResults">visibility</mat-icon>
+                {{ isLoadingResults ? 'Loading...' : 'View Results' }}
+              </button>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Quick Tips -->
+      <mat-card class="tips-card">
+        <mat-card-header>
+          <mat-card-title>💡 Quick Tips</mat-card-title>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <ul class="tips-list">
+            <li><strong>Start Small:</strong> Try 50-100 ads for your first scraping job</li>
+            <li><strong>Specific Queries:</strong> Use specific keywords for better targeting</li>
+            <li><strong>Facebook/Meta:</strong> Most comprehensive data available</li>
+            <li><strong>Google Ads:</strong> Great for transparency data</li>
+            <li><strong>Be Patient:</strong> Scraping jobs may take 5-15 minutes depending on volume</li>
+          </ul>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
+
+<!-- Results Viewer Modal -->
+<div *ngIf="showResults" class="results-overlay">
+  <div class="results-modal">
+    <div class="results-header">
+      <h2>Scraped Ad Results</h2>
+      <button mat-icon-button (click)="closeResults()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-summary">
+        <p><strong>Total Ads Found:</strong> {{ scrapedAds.length }}</p>
+        <p><em>This is what real scraped ad data looks like:</em></p>
+      </div>
+      
+      <div class="ads-list">
+        <mat-card *ngFor="let ad of scrapedAds; let i = index" class="ad-card">
+          <mat-card-header>
+            <div class="ad-header">
+              <span class="ad-number">#{{ i + 1 }}</span>
+              <div class="advertiser-info">
+                <strong>{{ ad.advertiser.page_name }}</strong>
+                <mat-icon *ngIf="ad.advertiser.verified" class="verified-icon">verified</mat-icon>
+                <span class="category">{{ ad.advertiser.category }}</span>
+              </div>
+            </div>
+          </mat-card-header>
+          
+          <mat-card-content>
+            <!-- Creative Content -->
+            <div class="creative-section">
+              <h4>{{ ad.creative.title }}</h4>
+              <p class="ad-body">{{ ad.creative.body }}</p>
+              <p><strong>Description:</strong> {{ ad.creative.description }}</p>
+              <div class="cta-info">
+                <span class="cta-button">{{ ad.creative.call_to_action }}</span>
+                <a [href]="ad.creative.landing_url" target="_blank" class="landing-link">
+                  {{ ad.creative.landing_url }}
+                </a>
+              </div>
+            </div>
+            
+            <!-- Targeting Information -->
+            <div class="targeting-section">
+              <h5>Targeting</h5>
+              <div class="targeting-grid">
+                <div><strong>Age:</strong> {{ ad.targeting.age_range }}</div>
+                <div><strong>Gender:</strong> {{ ad.targeting.gender }}</div>
+                <div><strong>Locations:</strong> {{ ad.targeting.locations.join(', ') }}</div>
+                <div><strong>Interests:</strong> {{ ad.targeting.interests.slice(0, 3).join(', ') }}...</div>
+              </div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="metrics-section">
+              <h5>Performance</h5>
+              <div class="metrics-grid">
+                <div class="metric">
+                  <span class="metric-label">Impressions</span>
+                  <span class="metric-value">{{ ad.metrics.impressions_min | number }}-{{ ad.metrics.impressions_max | number }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Spend</span>
+                  <span class="metric-value">${{ ad.metrics.spend_min }}-${{ ad.metrics.spend_max }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">CTR</span>
+                  <span class="metric-value">{{ ad.metrics.ctr_estimate }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">CPC</span>
+                  <span class="metric-value">{{ ad.metrics.cpc_estimate }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Performance Indicators -->
+            <div class="indicators-section">
+              <span *ngIf="ad.performance_indicators.high_engagement" class="indicator high-engagement">
+                High Engagement
+              </span>
+              <span *ngIf="ad.performance_indicators.trending" class="indicator trending">
+                Trending
+              </span>
+              <span *ngIf="ad.performance_indicators.seasonal" class="indicator seasonal">
+                Seasonal
+              </span>
+            </div>
+            
+            <!-- Dates -->
+            <div class="dates-section">
+              <small>
+                <strong>Created:</strong> {{ ad.dates.created | date:'short' }} | 
+                <strong>Duration:</strong> {{ ad.dates.duration_days }} days | 
+                <strong>Ad ID:</strong> {{ ad.ad_id }}
+              </small>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</div>

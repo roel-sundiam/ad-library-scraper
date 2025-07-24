@@ -1,0 +1,19 @@
+node_modules/
+*.log
+.env
+.env.local
+data/ads.db
+logs/*.log
+.DS_Store
+coverage/
+*.sqlite
+*.db
+
+# Angular cache files
+frontend/.angular/
+frontend/dist/
+frontend/node_modules/
+
+# Keep environment template
+!.env.example
+!.env.production

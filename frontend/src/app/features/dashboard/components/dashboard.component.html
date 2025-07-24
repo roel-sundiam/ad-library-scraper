@@ -1,0 +1,127 @@
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Monitor your ad scraping and analysis activities</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Connecting to API...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !isLoading" class="error-container">
+    <mat-card class="error-card">
+      <mat-card-content>
+        <div class="error-content">
+          <mat-icon class="error-icon">error</mat-icon>
+          <div>
+            <h3>Connection Error</h3>
+            <p>{{ error }}</p>
+            <p class="error-help">Make sure your Node.js backend server is running on port 3000.</p>
+            <button mat-raised-button color="primary" (click)="checkApiHealth()">
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Success State -->
+  <div *ngIf="apiHealth && !isLoading" class="dashboard-content">
+    <!-- Welcome Card -->
+    <mat-card class="welcome-card">
+      <mat-card-content>
+        <div class="welcome-content">
+          <div>
+            <h2>Welcome to Ad Library Scraper! 🚀</h2>
+            <p>Your API is running and ready to scrape advertising data from multiple platforms.</p>
+          </div>
+          <mat-icon class="welcome-icon">check_circle</mat-icon>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- API Status Card -->
+    <mat-card class="status-card">
+      <mat-card-header>
+        <mat-card-title>API Status</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="status-label">Status</span>
+            <span class="status-value success">{{ apiHealth.data?.status || 'Unknown' }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Version</span>
+            <span class="status-value">{{ apiHealth.data?.version || 'N/A' }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Database</span>
+            <span class="status-value success">{{ apiHealth.data?.database || 'Unknown' }}</span>
+          </div>
+          <div class="status-item">
+            <span class="status-label">Uptime</span>
+            <span class="status-value">{{ apiHealth.data?.uptime || 0 }}s</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <h3>Quick Actions</h3>
+      <div class="actions-grid">
+        <mat-card class="action-card" routerLink="/scraping">
+          <mat-card-content>
+            <mat-icon class="action-icon">search</mat-icon>
+            <h4>Start Scraping</h4>
+            <p>Begin collecting ad data from platforms</p>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="action-card" routerLink="/analysis">
+          <mat-card-content>
+            <mat-icon class="action-icon">analytics</mat-icon>
+            <h4>AI Analysis</h4>
+            <p>Analyze ads with multiple AI models</p>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="action-card" routerLink="/export">
+          <mat-card-content>
+            <mat-icon class="action-icon">download</mat-icon>
+            <h4>Export Data</h4>
+            <p>Download results in various formats</p>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Getting Started -->
+    <mat-card class="getting-started-card">
+      <mat-card-header>
+        <mat-card-title>Getting Started</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <ol class="steps-list">
+          <li>
+            <strong>Configure API Keys:</strong> Add your Anthropic and OpenAI API keys to the backend .env file
+          </li>
+          <li>
+            <strong>Start Scraping:</strong> Use the scraping interface to collect ad data from Facebook, Google, TikTok, or LinkedIn
+          </li>
+          <li>
+            <strong>Analyze with AI:</strong> Process your scraped ads using Claude 4 Sonnet, Claude 4 Opus, or ChatGPT-4o
+          </li>
+          <li>
+            <strong>Export Results:</strong> Download your analysis results in JSON, CSV, or Excel format
+          </li>
+        </ol>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

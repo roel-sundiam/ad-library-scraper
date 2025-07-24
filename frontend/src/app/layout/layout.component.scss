@@ -1,0 +1,25 @@
+.sidenav-container {
+  height: 100vh;
+}
+
+.sidenav {
+  width: 250px;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.1);
+}
+
+.main-content {
+  padding: 20px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+  background-color: #fafafa;
+}
+
+@media (max-width: 768px) {
+  .sidenav {
+    width: 200px;
+  }
+  
+  .main-content {
+    padding: 16px;
+  }
+}
