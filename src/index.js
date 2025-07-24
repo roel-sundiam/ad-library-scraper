@@ -6,6 +6,7 @@ require('dotenv').config();
 const logger = require('./utils/logger');
 const ClaudeService = require('./services/claude-service');
 const VideoTranscriptService = require('./services/video-transcript-service');
+const MockAnalysisService = require('./services/mock-analysis-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -251,9 +252,17 @@ app.post('/api/analysis', async (req, res) => {
       });
     }
 
-    // Initialize Claude service and perform analysis
-    const claudeService = new ClaudeService();
-    const analysisResult = await claudeService.analyzeAds(prompt, adsData, filters);
+    // Use mock analysis if API keys not available, otherwise use real Claude
+    let analysisResult;
+    if (!process.env.ANTHROPIC_API_KEY) {
+      logger.info('Using mock analysis service (no API key configured)');
+      const mockService = new MockAnalysisService();
+      analysisResult = await mockService.analyzeAds(prompt, adsData, filters);
+    } else {
+      logger.info('Using real Claude analysis service');
+      const claudeService = new ClaudeService();
+      analysisResult = await claudeService.analyzeAds(prompt, adsData, filters);
+    }
 
     res.json({
       success: true,
@@ -281,23 +290,29 @@ app.post('/api/analysis', async (req, res) => {
   }
 });
 
-// Test Claude connection endpoint
+// Test Claude connection endpoint  
 app.get('/api/analysis/test', async (req, res) => {
   try {
-    const claudeService = new ClaudeService();
-    const testResult = await claudeService.testConnection();
+    let testResult;
+    if (!process.env.ANTHROPIC_API_KEY) {
+      const mockService = new MockAnalysisService();
+      testResult = await mockService.testConnection();
+    } else {
+      const claudeService = new ClaudeService();
+      testResult = await claudeService.testConnection();
+    }
     
     res.json({
       success: testResult.success,
       data: testResult
     });
   } catch (error) {
-    logger.error('Claude connection test failed:', error);
+    logger.error('Analysis service connection test failed:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'CONNECTION_ERROR',
-        message: 'Failed to test Claude connection',
+        message: 'Failed to test analysis service connection',
         details: error.message
       }
     });
@@ -345,8 +360,19 @@ app.post('/api/videos/transcript', async (req, res) => {
 
 app.get('/api/videos/test', async (req, res) => {
   try {
-    const videoService = new VideoTranscriptService();
-    const testResult = await videoService.testConnection();
+    let testResult;
+    if (!process.env.OPENAI_API_KEY) {
+      testResult = {
+        success: true,
+        message: 'Mock video transcription service ready',
+        model_available: true,
+        api_key_configured: false,
+        mock_service: true
+      };
+    } else {
+      const videoService = new VideoTranscriptService();
+      testResult = await videoService.testConnection();
+    }
     
     res.json({
       success: testResult.success,
