@@ -3,7 +3,7 @@ services:
     name: ad-library-scraper
     env: node
     plan: starter
-    buildCommand: npm ci --only=production
+    buildCommand: rm -rf node_modules package-lock.json && npm install --production
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -12,6 +12,4 @@ services:
         value: 3000
       - key: DB_PATH
         value: ./data/ads.db
-      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: false
     healthCheckPath: /api/health
