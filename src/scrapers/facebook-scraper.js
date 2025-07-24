@@ -98,20 +98,25 @@ class FacebookAdLibraryScraper {
   }
 
   async performSearchOnPage(keyword) {
-    const sel = 'input[placeholder*="Search"], input[aria-label*="Search"]';
+    // 1️⃣ wait for the iframe that contains the ad-library
+    const iframeSelector = 'iframe[src*="ads/library/search"]';
+    await this.page.waitForSelector(iframeSelector, { timeout: 15000 });
   
-    // 1️⃣ wait until present in DOM
-    await this.page.waitForSelector(sel, { visible: true, timeout: 15000 });
+    // 2️⃣ grab its frame
+    const frameHandle = await this.page.$(iframeSelector);
+    const frame       = await frameHandle.contentFrame();
   
-    // 2️⃣ clear, then type keyword + Enter
-    await this.page.evaluate(s => (document.querySelector(s).value = ''), sel);
-    await this.page.type(sel, keyword, { delay: 60 });
-    await this.page.keyboard.press('Enter');
+    // 3️⃣ inside the iframe: wait for the search box
+    await frame.waitForSelector('input[name="q"]', { visible: true, timeout: 15000 });
   
-    // 3️⃣ give the results container a chance to load
+    // 4️⃣ clear, type keyword, press Enter
+    await frame.evaluate(() => (document.querySelector('input[name="q"]').value = ''));
+    await frame.type('input[name="q"]', keyword, { delay: 60 });
+    await frame.keyboard.press('Enter');
+  
+    // 5️⃣ give results time to load
     await this.page.waitForTimeout(3000 + Math.random() * 2000);
   }
-
   /* ---------- 4.  extraction (small, safe evaluate blocks) ---------- */
    async extractAdsFromPage(limit = 50) {
     // 1. actually trigger the search
