@@ -327,9 +327,26 @@ class FacebookAdLibraryScraper {
         }
         
         if (categoryOptions.length > 0) {
-          logger.info(`Found ${categoryOptions.length} category options, selecting first available`);
-          await categoryOptions[0].click();
-          await this.page.waitForTimeout(3000);
+          logger.info(`Found ${categoryOptions.length} category options, trying to select one`);
+          
+          // Try clicking the first few options until one works
+          let clicked = false;
+          for (let i = 0; i < Math.min(5, categoryOptions.length); i++) {
+            try {
+              await categoryOptions[i].click();
+              logger.info(`✅ Successfully clicked category option ${i + 1}`);
+              clicked = true;
+              await this.page.waitForTimeout(3000);
+              break;
+            } catch (e) {
+              logger.debug(`Option ${i + 1} not clickable: ${e.message}`);
+            }
+          }
+          
+          if (!clicked) {
+            logger.warn('❌ No category options were clickable, trying direct URL approach');
+            throw new Error('No clickable category options found');
+          }
           
           // Step 2: Now look for the keyword search input that should appear
           logger.info('Step 2: Looking for keyword search input after category selection');
@@ -401,6 +418,25 @@ class FacebookAdLibraryScraper {
         
       } catch (e) {
         logger.warn(`Search process failed: ${e.message}`);
+        
+        // Fallback: Try direct URL navigation
+        logger.info('🔄 Falling back to direct URL navigation');
+        const searchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(keyword)}&search_type=keyword_unordered`;
+        logger.info(`Navigating directly to: ${searchUrl}`);
+        
+        try {
+          await this.page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+          await this.page.waitForTimeout(5000);
+          
+          const finalUrl = this.page.url();
+          logger.info(`Direct navigation result: ${finalUrl}`);
+          
+          if (finalUrl.includes('q=') && finalUrl.includes('search_type=')) {
+            logger.info('✅ Successfully reached search results via direct URL');
+          }
+        } catch (directNavError) {
+          logger.warn(`Direct URL navigation also failed: ${directNavError.message}`);
+        }
       }
   
       // Check if page is still alive
