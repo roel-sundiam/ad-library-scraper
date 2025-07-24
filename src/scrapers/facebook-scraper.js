@@ -16,17 +16,18 @@ class FacebookAdLibraryScraper {
         const fs = require('fs');
         const { execSync } = require('child_process');
         
-        // Expanded list of possible Chrome locations
+        // Expanded list of possible Chrome locations (prioritized)
         const possiblePaths = [
-          '/usr/bin/google-chrome-stable',   // Primary Render location
+          '/usr/bin/google-chrome-stable',   // Primary target
           '/usr/bin/google-chrome',          // Alternative
+          '/usr/bin/chromium-browser',       // Chromium fallback (common on Ubuntu)
+          '/usr/bin/chromium',               // Alternative chromium
           '/opt/google/chrome/google-chrome', // Google's installation
           '/opt/google/chrome/chrome',       // Alternative in opt
-          '/usr/bin/chromium-browser',       // Chromium fallback
-          '/usr/bin/chromium',               // Another chromium path
           '/snap/bin/chromium',              // Snap package
           '/usr/local/bin/google-chrome',    // Local installation
           process.env.CHROME_BIN,            // Environment variable
+          process.env.CHROMIUM_BIN,          // Chromium environment variable
         ].filter(Boolean); // Remove undefined values
         
         logger.info('Searching for Chrome executable in paths:', possiblePaths);
@@ -53,14 +54,16 @@ class FacebookAdLibraryScraper {
           }
         }
         
-        // Try using 'which' command with more options
+        // Try using 'which' command with more options (prioritized order)
         const commands = [
-          'google-chrome-stable',
-          'google-chrome',
-          'chromium-browser',
-          'chromium',
-          'google-chrome-unstable',
-          'google-chrome-beta'
+          'google-chrome-stable',      // Primary target
+          'google-chrome',            // Alternative Chrome
+          'chromium-browser',         // Ubuntu Chromium
+          'chromium',                 // Alternative Chromium
+          'google-chrome-unstable',   // Dev versions
+          'google-chrome-beta',
+          'chrome',                   // Generic chrome command
+          'chromium-snap'            // Snap chromium
         ];
         
         logger.info('Trying to find Chrome using which command...');
