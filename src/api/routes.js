@@ -120,12 +120,13 @@ async function processScrapeJob(jobId) {
     let scraper;
     switch (job.platform.toLowerCase()) {
       case 'facebook':
-        // Use real scraper in production, mock in development
-        if (process.env.NODE_ENV === 'production') {
-          logger.info('Using real Facebook scraper for production');
+        // Try real scraper first, fallback to mock if Puppeteer not available
+        try {
+          const puppeteer = require('puppeteer');
+          logger.info('Using real Facebook scraper with Puppeteer');
           scraper = new FacebookAdLibraryScraper();
-        } else {
-          logger.info('Using mock Facebook scraper for development');
+        } catch (error) {
+          logger.warn('Puppeteer not available, using mock scraper:', error.message);
           const MockFacebookScraper = require('../scrapers/mock-facebook-scraper');
           scraper = new MockFacebookScraper();
         }

@@ -18,10 +18,12 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "helmet": "^7.2.0",
-    "puppeteer": "^21.0.0",
     "rate-limiter-flexible": "^3.0.0",
     "sqlite3": "^5.1.6",
     "winston": "^3.17.0"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^21.0.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
