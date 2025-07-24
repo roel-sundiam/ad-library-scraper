@@ -371,7 +371,7 @@ class FacebookAdLibraryScraper {
         }, scrollDistance);
         
         // Random pause between scrolls
-        await this.page.waitForTimeout(Math.random() * 500 + 200);
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200));
       }
       
       // Sometimes scroll back up a bit
@@ -379,7 +379,7 @@ class FacebookAdLibraryScraper {
         await this.page.evaluate(() => {
           window.scrollBy(0, -150);
         });
-        await this.page.waitForTimeout(Math.random() * 300 + 100);
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 300 + 100));
       }
       
       // Simulate mouse movement over page with Playwright
@@ -415,10 +415,10 @@ class FacebookAdLibraryScraper {
             logger.info('Found privacy notice, accepting...');
             
             // Human-like delay before clicking
-            await this.page.waitForTimeout(Math.random() * 1000 + 500);
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
             
             await element.click();
-            await this.page.waitForTimeout(1000);
+            await new Promise(resolve => setTimeout(resolve, 1000));
             break;
           }
         } catch (e) {
@@ -427,7 +427,7 @@ class FacebookAdLibraryScraper {
       }
       
       // Wait for any navigation or modal closing
-      await this.page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
     } catch (error) {
       logger.debug('Privacy notice handling failed:', error.message);
@@ -482,7 +482,7 @@ class FacebookAdLibraryScraper {
 
       // Human-like random wait time
       const randomWait = Math.random() * 3000 + 2000; // 2-5 seconds
-      await this.page.waitForTimeout(randomWait);
+      await new Promise(resolve => setTimeout(resolve, randomWait));
 
       // Simulate human behavior - scroll up and down a bit
       await this.simulateHumanBrowsing();
@@ -491,7 +491,7 @@ class FacebookAdLibraryScraper {
       await this.handlePrivacyNotices();
 
       // Wait for content to load
-      await this.page.waitForTimeout(2000);
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const ads = await this.extractAdsFromPage(searchParams.limit);
       
@@ -715,11 +715,11 @@ class FacebookAdLibraryScraper {
         }
         
         // Random delay between scroll steps
-        await this.page.waitForTimeout(Math.random() * 300 + 200);
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 300 + 200));
       }
       
       // Wait for content to load
-      await this.page.waitForTimeout(this.requestDelay + Math.random() * 1000);
+      await new Promise(resolve => setTimeout(resolve, this.requestDelay + Math.random() * 1000));
       
       try {
         const elements = await this.page.$$(selector);
@@ -734,7 +734,7 @@ class FacebookAdLibraryScraper {
               await this.page.evaluate(() => {
                 window.scrollTo(0, document.body.scrollHeight);
               });
-              await this.page.waitForTimeout(2000);
+              await new Promise(resolve => setTimeout(resolve, 2000));
             } catch (scrollError) {
               logger.debug('Fallback scroll failed:', scrollError.message);
             }
