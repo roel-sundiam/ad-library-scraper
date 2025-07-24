@@ -98,14 +98,17 @@ class FacebookAdLibraryScraper {
   }
 
   async performSearchOnPage(keyword) {
-    // wait for the big search input
-    const searchInput = await this.page.waitForSelector(
-      'input[placeholder*="Search"], input[aria-label*="Search"]',
-      { timeout: 15000 }
-    );
-    await searchInput.click({ delay: 100 });
-    await searchInput.type(keyword, { delay: 50 });
+    const sel = 'input[placeholder*="Search"], input[aria-label*="Search"]';
+  
+    // 1️⃣ wait until present in DOM
+    await this.page.waitForSelector(sel, { visible: true, timeout: 15000 });
+  
+    // 2️⃣ clear, then type keyword + Enter
+    await this.page.evaluate(s => (document.querySelector(s).value = ''), sel);
+    await this.page.type(sel, keyword, { delay: 60 });
     await this.page.keyboard.press('Enter');
+  
+    // 3️⃣ give the results container a chance to load
     await this.page.waitForTimeout(3000 + Math.random() * 2000);
   }
 
