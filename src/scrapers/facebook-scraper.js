@@ -195,8 +195,19 @@ class FacebookAdLibraryScraper {
         return [];
       }
       
-      // 1. Wait for initial page load
+      // 1. Wait for initial page load and check page status
       await this.page.waitForTimeout(5000);
+      
+      // Check page title and URL to understand what we loaded
+      const pageTitle = await this.page.title();
+      const currentUrl = this.page.url();
+      logger.info(`Page loaded - Title: "${pageTitle}", URL: ${currentUrl}`);
+      
+      // Check if we're blocked or redirected
+      if (currentUrl.includes('login') || currentUrl.includes('checkpoint') || pageTitle.includes('Log in')) {
+        logger.error('Facebook is requiring login - page may be blocked');
+        return [];
+      }
       
       // Take a debug screenshot to see current page structure
       try {
@@ -207,19 +218,17 @@ class FacebookAdLibraryScraper {
       }
       
       // Wait for page to load and try multiple search selector patterns
+      // Based on the screenshot, we need to look for the category search input
       const searchSelectors = [
-        'input[aria-label*="Search"]',
-        'input[placeholder*="Search"]', 
-        'input[placeholder*="search"]',
-        'input[name="q"]',
-        '[data-testid="search-input"]',
-        '[data-testid="ads-library-search-input"]',
-        'input[type="text"]',
-        'input[type="search"]',
-        '[role="searchbox"]',
+        'input[placeholder*="Choose an ad category"]',
+        'input[placeholder*="category"]',
+        '[role="combobox"]',
+        '[data-testid="category-selector"]',
+        'input[aria-label*="category"]',
+        'input[aria-label*="search"]',
         '.x1i10hfl input',
-        'form input[type="text"]',
-        'div[role="search"] input'
+        'div[role="button"] input',
+        'input[type="text"]'
       ];
       
       let searchInput = null;
@@ -235,48 +244,62 @@ class FacebookAdLibraryScraper {
       }
       
       if (!searchInput) {
-        // Debug: log what inputs are actually present
+        // Debug: log basic page info and some elements
         try {
-          const allInputs = await this.page.evaluate(() => {
-            const inputs = Array.from(document.querySelectorAll('input'));
-            return inputs.map(input => ({
-              tagName: input.tagName,
-              type: input.type,
-              placeholder: input.placeholder,
-              name: input.name,
-              ariaLabel: input.getAttribute('aria-label'),
-              id: input.id,
-              className: input.className,
-              outerHTML: input.outerHTML.substring(0, 200)
-            }));
+          const debugInfo = await this.page.evaluate(() => {
+            return {
+              bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No body',
+              inputCount: document.querySelectorAll('input').length,
+              formCount: document.querySelectorAll('form').length,
+              hasSearchText: document.body.innerText.toLowerCase().includes('search'),
+              firstInputHTML: document.querySelector('input') ? document.querySelector('input').outerHTML : 'No input found'
+            };
           });
-          logger.info('Available inputs on page:', JSON.stringify(allInputs, null, 2));
+          logger.info('Page debug info:', JSON.stringify(debugInfo, null, 2));
         } catch (e) {
-          logger.warn('Could not debug inputs');
+          logger.warn('Could not get debug info:', e.message);
         }
         
         logger.error(`No search input found after trying all selectors`);
         return [];
       }
   
-      // 2. clear, type, Enter
-      await this.page.evaluate(sel => {
-        const input = document.querySelector(sel);
-        if (input) input.value = '';
-      }, searchInput);
-      await this.page.type(searchInput, keyword, { delay: 60 });
-      await this.page.keyboard.press('Enter');
+      // 2. The Facebook Ad Library uses a different search mechanism
+      // We need to click on the category dropdown and select a category
+      // or look for ads without specific category filtering
       
-      // Wait for search results to load
-      await this.page.waitForTimeout(3000);
+      logger.info(`Found search element: ${searchInput}, trying to interact...`);
+      
+      try {
+        // Click the category dropdown to open it
+        await this.page.click(searchInput);
+        await this.page.waitForTimeout(2000);
+        
+        // Type the search keyword to filter categories
+        await this.page.type(searchInput, keyword, { delay: 100 });
+        await this.page.waitForTimeout(2000);
+        
+        // Press Enter or click search
+        await this.page.keyboard.press('Enter');
+        await this.page.waitForTimeout(3000);
+        
+      } catch (e) {
+        logger.warn(`Could not perform search interaction: ${e.message}`);
+        // Continue anyway to see if there are default ads shown
+      }
   
       // 3. wait for the first ad card with multiple selector patterns
+      // Look for ad results or any content that appears after search
       const cardSelectors = [
         '[data-testid="ad-library-card"]',
         '[role="article"]',
         '[data-testid="search-result-container"]',
         '.x1i10hfl',  // Common FB class
-        'div[role="main"] > div > div'
+        'div[role="main"] > div > div',
+        'div[data-testid*="ad"]',
+        'div[aria-label*="ad"]',
+        '.ads-library-results div',
+        '[data-testid="ads-library-result"]'
       ];
       
       let cardSel = null;
