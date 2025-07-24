@@ -24,7 +24,7 @@ app.get('/api/health', (req, res) => {
     success: true,
     data: {
       status: 'healthy',
-      version: '1.0.0',
+      version: '1.0.1',
       uptime: Math.floor(process.uptime()),
       database: 'memory',
       timestamp: new Date().toISOString()
