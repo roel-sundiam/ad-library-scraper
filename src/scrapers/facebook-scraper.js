@@ -195,13 +195,31 @@ class FacebookAdLibraryScraper {
         return [];
       }
       
-      // 1. Wait for page to load and try multiple search selector patterns
+      // 1. Wait for initial page load
+      await this.page.waitForTimeout(5000);
+      
+      // Take a debug screenshot to see current page structure
+      try {
+        await this.page.screenshot({ path: `/tmp/fb_debug_${Date.now()}.png`, fullPage: false });
+        logger.info('Debug screenshot saved to /tmp/');
+      } catch (e) {
+        logger.warn('Could not take debug screenshot');
+      }
+      
+      // Wait for page to load and try multiple search selector patterns
       const searchSelectors = [
         'input[aria-label*="Search"]',
         'input[placeholder*="Search"]', 
+        'input[placeholder*="search"]',
         'input[name="q"]',
         '[data-testid="search-input"]',
-        'input[type="text"]'
+        '[data-testid="ads-library-search-input"]',
+        'input[type="text"]',
+        'input[type="search"]',
+        '[role="searchbox"]',
+        '.x1i10hfl input',
+        'form input[type="text"]',
+        'div[role="search"] input'
       ];
       
       let searchInput = null;
@@ -217,6 +235,26 @@ class FacebookAdLibraryScraper {
       }
       
       if (!searchInput) {
+        // Debug: log what inputs are actually present
+        try {
+          const allInputs = await this.page.evaluate(() => {
+            const inputs = Array.from(document.querySelectorAll('input'));
+            return inputs.map(input => ({
+              tagName: input.tagName,
+              type: input.type,
+              placeholder: input.placeholder,
+              name: input.name,
+              ariaLabel: input.getAttribute('aria-label'),
+              id: input.id,
+              className: input.className,
+              outerHTML: input.outerHTML.substring(0, 200)
+            }));
+          });
+          logger.info('Available inputs on page:', JSON.stringify(allInputs, null, 2));
+        } catch (e) {
+          logger.warn('Could not debug inputs');
+        }
+        
         logger.error(`No search input found after trying all selectors`);
         return [];
       }
