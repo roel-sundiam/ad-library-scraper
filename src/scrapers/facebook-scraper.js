@@ -26,12 +26,52 @@ class FacebookAdLibraryScraper {
       throw new Error('External browser service unavailable - using mock data fallback');
     }
     
-    // For now, let's skip Browserless and use enhanced mock data
-    // The 403/401 errors suggest the token needs activation or account setup
-    logger.warn('Browserless.io token appears invalid or account not properly activated');
-    logger.info('Using enhanced mock data with realistic Facebook ad patterns instead');
-    logger.info('To fix: Check Browserless.io account activation and token validity');
-    throw new Error('External browser service unavailable - using mock data fallback');
+    // Try Browserless Cloud production endpoints
+    const productionEndpoints = [
+      `wss://production-sfo.browserless.io?token=${token}`,
+      `wss://production-lon.browserless.io?token=${token}`
+    ];
+    
+    for (let i = 0; i < productionEndpoints.length; i++) {
+      const endpoint = productionEndpoints[i];
+      const maskedEndpoint = endpoint.replace(token, token.substring(0, 8) + '...');
+      
+      try {
+        logger.info(`Attempting Browserless Cloud production endpoint ${i + 1}:`, maskedEndpoint);
+        
+        this.browser = await puppeteer.connect({
+          browserWSEndpoint: endpoint,
+          timeout: 30000,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--window-size=1920,1080'
+          ]
+        });
+        
+        this.browserType = 'browserless';
+        logger.info(`Connected to Browserless Cloud successfully using endpoint ${i + 1}`);
+        return; // Success, exit function
+        
+      } catch (formatError) {
+        logger.warn(`Production endpoint ${i + 1} failed:`, {
+          endpoint: maskedEndpoint,
+          message: formatError.message,
+          code: formatError.code
+        });
+        
+        // Continue to next endpoint
+        if (i === productionEndpoints.length - 1) {
+          // This was the last endpoint, throw error
+          throw formatError;
+        }
+      }
+    }
   }
 
   // Add missing error handling for the main try/catch
