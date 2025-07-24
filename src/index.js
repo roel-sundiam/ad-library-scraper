@@ -6,7 +6,8 @@ require('dotenv').config();
 const logger = require('./utils/logger');
 const ClaudeService = require('./services/claude-service');
 const VideoTranscriptService = require('./services/video-transcript-service');
-const MockAnalysisService = require('./services/mock-analysis-service');\nconst FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
+const MockAnalysisService = require('./services/mock-analysis-service');
+const FacebookAdLibraryScraper = require('./scrapers/facebook-scraper');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
