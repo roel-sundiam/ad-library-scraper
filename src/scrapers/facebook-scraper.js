@@ -87,10 +87,16 @@ class FacebookAdLibraryScraper {
   }
 
   buildSearchUrl(p) {
-    const base = 'https://www.facebook.com/ads/library/?active_status=all&ad_type=all';
-    const country = this.mapRegionToCountry(p.region);
-    const query = p.query?.trim() || '';
-    return `${base}&country=${country}&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
+    const base = 'https://www.facebook.com/ads/library/search/';
+    const params = new URLSearchParams({
+      active_status: 'all',
+      ad_type: 'all',
+      country: this.mapRegionToCountry(p.region),
+      q: p.query?.trim() || '*',
+      search_type: 'keyword_unordered',
+      media_type: 'all'
+    });
+    return `${base}?${params.toString()}`;
   }
 
   async performSearchOnPage(keyword) {
