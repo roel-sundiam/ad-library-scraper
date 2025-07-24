@@ -4,7 +4,7 @@ services:
     env: node
     plan: starter
     buildCommand: npm install --production
-    startCommand: node src/index-simple.js
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
