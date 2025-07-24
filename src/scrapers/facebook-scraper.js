@@ -337,29 +337,52 @@ class FacebookAdLibraryScraper {
       if (!cardSel) {
         // Debug: Check what content is actually on the page after search
         try {
+          // Wait a bit more for search results to load
+          await this.page.waitForTimeout(5000);
+          
           const pageContent = await this.page.evaluate(() => {
             const mainContent = document.querySelector('div[role="main"]') || document.body;
             const allText = mainContent.innerText.toLowerCase();
             
+            // Look for common ad-related elements
+            const potentialAdElements = Array.from(document.querySelectorAll('div'))
+              .filter(div => {
+                const text = div.innerText;
+                const hasAdContent = text && (
+                  text.includes('Sponsored') || 
+                  text.includes('Advertisement') ||
+                  text.includes('Ad by') ||
+                  text.includes('Nike') ||
+                  text.length > 50
+                );
+                return hasAdContent && div.offsetHeight > 100 && div.offsetWidth > 200;
+              })
+              .slice(0, 10);
+            
             return {
               pageTitle: document.title,
               currentUrl: window.location.href,
-              mainContentText: mainContent.innerText.substring(0, 1500),
-              divCount: document.querySelectorAll('div').length,
-              hasAdsText: allText.includes('ads') || allText.includes('advertisement'),
-              hasNoResultsText: allText.includes('no results') || allText.includes('no ads') || allText.includes('not found'),
-              hasSearchText: allText.includes('search') || allText.includes('category'),
-              visibleDivs: Array.from(document.querySelectorAll('div'))
-                .filter(div => div.offsetHeight > 0 && div.offsetWidth > 0 && div.innerText && div.innerText.trim().length > 30)
-                .slice(0, 8)
-                .map(div => ({
-                  text: div.innerText.substring(0, 150),
-                  classes: div.className,
-                  testId: div.getAttribute('data-testid') || 'none'
-                }))
+              mainContentText: mainContent.innerText.substring(0, 2000),
+              hasAdsText: allText.includes('ads') || allText.includes('advertisement') || allText.includes('sponsored'),
+              hasNoResultsText: allText.includes('no results') || allText.includes('no ads') || allText.includes('not found') || allText.includes('no active ads'),
+              hasLoadingText: allText.includes('loading') || allText.includes('please wait'),
+              potentialAds: potentialAdElements.map(div => ({
+                text: div.innerText.substring(0, 200),
+                classes: div.className.substring(0, 100),
+                testId: div.getAttribute('data-testid') || 'none',
+                role: div.getAttribute('role') || 'none',
+                height: div.offsetHeight,
+                width: div.offsetWidth
+              })),
+              // Check for specific Facebook ad library structures
+              fbStructures: {
+                articles: document.querySelectorAll('article').length,
+                dataTestIds: Array.from(document.querySelectorAll('[data-testid]')).slice(0, 20).map(el => el.getAttribute('data-testid')),
+                roles: Array.from(new Set(Array.from(document.querySelectorAll('[role]')).map(el => el.getAttribute('role'))))
+              }
             };
           });
-          logger.info('Detailed page analysis:', JSON.stringify(pageContent, null, 2));
+          logger.info('Search results page analysis:', JSON.stringify(pageContent, null, 2));
         } catch (e) {
           logger.warn('Could not debug page content:', e.message);
         }
