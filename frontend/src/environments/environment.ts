@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
-  websocketUrl: 'http://localhost:3000',
+  apiUrl: 'https://ad-library-scraper.onrender.com/api',
+  websocketUrl: 'https://ad-library-scraper.onrender.com',
   enableDebugTools: true,
   logLevel: 'debug'
 };

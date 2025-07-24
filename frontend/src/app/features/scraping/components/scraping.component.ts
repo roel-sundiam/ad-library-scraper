@@ -70,7 +70,7 @@ export class ScrapingComponent implements OnInit {
         
       } catch (error: any) {
         console.error('Scraping request failed:', error);
-        this.jobError = error.error?.message || 'Failed to start scraping job';
+        this.jobError = error.error?.error?.message || error.message || 'Failed to start scraping job';
       } finally {
         this.isSubmitting = false;
       }

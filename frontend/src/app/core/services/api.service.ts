@@ -37,28 +37,29 @@ export class ApiService {
 
   // Analysis endpoints
   startAnalysis(request: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/analyze`, request);
+    return this.http.post(`${this.baseUrl}/analysis`, request);
   }
 
-  getAnalysisResults(analysisId: string): Observable<any> {
-    return this.http.get(`${this.baseUrl}/analyze/${analysisId}`);
+  testAnalysisConnection(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/analysis/test`);
   }
 
-  // Export endpoints
+  // Video transcription endpoints
+  transcribeVideo(request: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/videos/transcript`, request);
+  }
+
+  testVideoService(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/videos/test`);
+  }
+
+  // Video processing status
+  getVideoProcessingStatus(jobId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/scrape/${jobId}/videos`);
+  }
+
+  // Export endpoints (placeholder for future implementation)
   exportData(params: any): Observable<any> {
     return this.http.get(`${this.baseUrl}/export`, { params });
-  }
-
-  // Models and usage
-  getAvailableModels(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/models`);
-  }
-
-  getUsageStats(period?: string): Observable<any> {
-    let httpParams = new HttpParams();
-    if (period) {
-      httpParams = httpParams.set('period', period);
-    }
-    return this.http.get(`${this.baseUrl}/usage`, { params: httpParams });
   }
 }

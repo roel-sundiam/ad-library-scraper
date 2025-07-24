@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ApiService } from '@core/services/api.service';
 
 interface AnalysisFilter {
   platform?: string;
@@ -347,11 +348,25 @@ export class AnalysisComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private apiService: ApiService
   ) {}
 
   ngOnInit() {
-    // Component initialization
+    // Test API connection on component load
+    this.testApiConnection();
+  }
+
+  private testApiConnection() {
+    this.apiService.testAnalysisConnection().subscribe({
+      next: (response) => {
+        console.log('API connection successful:', response);
+      },
+      error: (error) => {
+        console.error('API connection failed:', error);
+        this.snackBar.open('Warning: Could not connect to API server', 'Close', { duration: 5000 });
+      }
+    });
   }
 
   startAnalysis() {
@@ -368,7 +383,7 @@ export class AnalysisComponent implements OnInit {
       filters: this.filters
     };
 
-    this.http.post<any>('/api/analysis', payload).subscribe({
+    this.apiService.startAnalysis(payload).subscribe({
       next: (response) => {
         if (response.success) {
           this.analysisResult = response.data;
@@ -391,7 +406,7 @@ export class AnalysisComponent implements OnInit {
   }
 
   testConnection() {
-    this.http.get<any>('/api/analysis/test').subscribe({
+    this.apiService.testAnalysisConnection().subscribe({
       next: (response) => {
         if (response.success) {
           this.snackBar.open('Claude connection successful!', 'Close', { duration: 3000 });
@@ -407,7 +422,7 @@ export class AnalysisComponent implements OnInit {
   }
 
   testVideoService() {
-    this.http.get<any>('/api/videos/test').subscribe({
+    this.apiService.testVideoService().subscribe({
       next: (response) => {
         if (response.success) {
           this.snackBar.open('Video transcription service connected!', 'Close', { duration: 3000 });
