@@ -347,52 +347,42 @@ class FacebookAdLibraryScraper {
       if (!cardSel) {
         // Debug: Check what content is actually on the page after search
         try {
-          // Wait a bit more for search results to load
+          // Wait for search results to load
           await this.page.waitForTimeout(5000);
           
-          const pageContent = await this.page.evaluate(() => {
-            const mainContent = document.querySelector('div[role="main"]') || document.body;
-            const allText = mainContent.innerText.toLowerCase();
-            
-            // Look for common ad-related elements
-            const potentialAdElements = Array.from(document.querySelectorAll('div'))
-              .filter(div => {
-                const text = div.innerText;
-                const hasAdContent = text && (
-                  text.includes('Sponsored') || 
-                  text.includes('Advertisement') ||
-                  text.includes('Ad by') ||
-                  text.includes('Nike') ||
-                  text.length > 50
-                );
-                return hasAdContent && div.offsetHeight > 100 && div.offsetWidth > 200;
-              })
-              .slice(0, 10);
-            
+          // Try simpler debugging first
+          const basicInfo = await this.page.evaluate(() => {
             return {
-              pageTitle: document.title,
-              currentUrl: window.location.href,
-              mainContentText: mainContent.innerText.substring(0, 2000),
-              hasAdsText: allText.includes('ads') || allText.includes('advertisement') || allText.includes('sponsored'),
-              hasNoResultsText: allText.includes('no results') || allText.includes('no ads') || allText.includes('not found') || allText.includes('no active ads'),
-              hasLoadingText: allText.includes('loading') || allText.includes('please wait'),
-              potentialAds: potentialAdElements.map(div => ({
-                text: div.innerText.substring(0, 200),
-                classes: div.className.substring(0, 100),
-                testId: div.getAttribute('data-testid') || 'none',
-                role: div.getAttribute('role') || 'none',
-                height: div.offsetHeight,
-                width: div.offsetWidth
-              })),
-              // Check for specific Facebook ad library structures
-              fbStructures: {
+              title: document.title,
+              url: window.location.href,
+              bodyText: document.body ? document.body.innerText.substring(0, 500) : 'No body'
+            };
+          });
+          logger.info('Basic page info:', JSON.stringify(basicInfo, null, 2));
+          
+          // Take a screenshot for debugging
+          try {
+            await this.page.screenshot({ path: `/tmp/search_results_${Date.now()}.png` });
+            logger.info('Search results screenshot saved');
+          } catch (e) {
+            logger.warn('Could not take screenshot');
+          }
+          
+          // Check if the page shows "no ads" or if there are actually ads
+          const pageStatus = await this.page.evaluate(() => {
+            const bodyText = document.body.innerText.toLowerCase();
+            return {
+              hasNoAdsMessage: bodyText.includes('no ads') || bodyText.includes('no active ads') || bodyText.includes('no results'),
+              hasNikeText: bodyText.includes('nike'),
+              elementCounts: {
+                divs: document.querySelectorAll('div').length,
                 articles: document.querySelectorAll('article').length,
-                dataTestIds: Array.from(document.querySelectorAll('[data-testid]')).slice(0, 20).map(el => el.getAttribute('data-testid')),
-                roles: Array.from(new Set(Array.from(document.querySelectorAll('[role]')).map(el => el.getAttribute('role'))))
+                imgs: document.querySelectorAll('img').length
               }
             };
           });
-          logger.info('Search results page analysis:', JSON.stringify(pageContent, null, 2));
+          logger.info('Page status check:', JSON.stringify(pageStatus, null, 2));
+          
         } catch (e) {
           logger.warn('Could not debug page content:', e.message);
         }
