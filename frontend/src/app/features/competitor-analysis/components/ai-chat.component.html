@@ -1,0 +1,155 @@
+<div class="ai-chat-container">
+  <!-- Chat Header -->
+  <mat-card class="chat-header-card">
+    <mat-card-content>
+      <div class="chat-header">
+        <div class="header-content">
+          <mat-icon class="ai-icon">smart_toy</mat-icon>
+          <div class="header-text">
+            <h3>AI Analysis Assistant</h3>
+            <p>Ask questions about your competitor analysis results</p>
+          </div>
+        </div>
+        <div class="status-indicator" [class.online]="isOnline">
+          <mat-icon>{{ isOnline ? 'circle' : 'radio_button_unchecked' }}</mat-icon>
+          <span>{{ isOnline ? 'AI Online' : 'AI Offline' }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Chat Messages -->
+  <mat-card class="chat-messages-card">
+    <mat-card-content>
+      <div class="messages-container" #messagesContainer>
+        <!-- Welcome Message -->
+        <div *ngIf="messages.length === 0" class="welcome-message">
+          <div class="ai-avatar">
+            <mat-icon>smart_toy</mat-icon>
+          </div>
+          <div class="message-content">
+            <p><strong>Welcome to AI Analysis Assistant!</strong></p>
+            <p>I can help you understand your competitor analysis results. Try asking:</p>
+            <ul class="suggestion-list">
+              <li>"Why is my performance score lower than competitors?"</li>
+              <li>"What creative strategies should I focus on?"</li>
+              <li>"How can I improve my ad campaign effectiveness?"</li>
+              <li>"What are the key differences between my ads and competitors?"</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div *ngFor="let message of messages; let i = index" class="message-wrapper" [class.user-message]="message.sender === 'user'" [class.ai-message]="message.sender === 'ai'">
+          <div class="message-bubble">
+            <div class="message-avatar" *ngIf="message.sender === 'ai'">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+            <div class="message-avatar user-avatar" *ngIf="message.sender === 'user'">
+              <mat-icon>person</mat-icon>
+            </div>
+            <div class="message-content">
+              <div class="message-text" [innerHTML]="formatMessage(message.text)"></div>
+              <div class="message-timestamp">{{ formatTimestamp(message.timestamp) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div *ngIf="isTyping" class="message-wrapper ai-message">
+          <div class="message-bubble">
+            <div class="message-avatar">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+            <div class="typing-indicator">
+              <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="typing-text">AI is thinking...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Chat Input -->
+  <mat-card class="chat-input-card">
+    <mat-card-content>
+      <div class="chat-input-container">
+        <mat-form-field appearance="outline" class="message-input">
+          <mat-label>Ask me about your competitor analysis...</mat-label>
+          <textarea 
+            matInput 
+            [(ngModel)]="currentMessage" 
+            (keydown)="onEnterPressed($event)"
+            [disabled]="isSending"
+            rows="2"
+            maxlength="500"
+            placeholder="Type your question here..."
+          ></textarea>
+          <mat-hint align="end">{{ currentMessage.length }}/500</mat-hint>
+        </mat-form-field>
+        
+        <div class="input-actions">
+          <button 
+            mat-fab 
+            color="primary"
+            (click)="sendMessage()"
+            [disabled]="!currentMessage.trim() || isSending"
+            class="send-button"
+          >
+            <mat-icon *ngIf="!isSending">send</mat-icon>
+            <mat-spinner *ngIf="isSending" diameter="24"></mat-spinner>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions" *ngIf="messages.length === 0">
+        <h4>Quick Questions:</h4>
+        <div class="action-chips">
+          <div class="chip-buttons">
+            <button 
+              *ngFor="let question of quickQuestions" 
+              mat-stroked-button
+              (click)="sendQuickQuestion(question)"
+              [disabled]="isSending"
+              class="question-chip"
+            >
+              <mat-icon>help_outline</mat-icon>
+              {{ question }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Analysis Context -->
+  <mat-card class="context-card" *ngIf="analysisResults">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>assessment</mat-icon>
+        Analysis Context
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="context-summary">
+        <div class="context-item">
+          <strong>Your Brand:</strong> {{ analysisResults.analysis.summary.your_page.page_name }}
+          <span class="score">(Score: {{ analysisResults.analysis.summary.your_page.performance_score }})</span>
+        </div>
+        <div class="context-item">
+          <strong>Competitors:</strong> 
+          {{ getCompetitorNames() }}
+        </div>
+        <div class="context-item">
+          <strong>Total Ads Analyzed:</strong> {{ getTotalAds() }}
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,186 @@
+<div class="progress-dashboard-container">
+  <div class="page-header">
+    <h1>Analysis in Progress</h1>
+    <p>Your competitor analysis is being processed. This typically takes 5-10 minutes.</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="60"></mat-spinner>
+    <p>Connecting to analysis service...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage && !isLoading" class="error-container">
+    <mat-card class="error-card">
+      <mat-card-content>
+        <div class="error-content">
+          <mat-icon class="error-icon">error</mat-icon>
+          <div>
+            <h3>Analysis Failed</h3>
+            <p>{{ errorMessage }}</p>
+            <button mat-raised-button color="warn" (click)="startNewAnalysis()">
+              Back to Form
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Progress Dashboard -->
+  <div *ngIf="workflowStatus && !isLoading" class="progress-content">
+    <!-- Progress Card -->
+    <mat-card class="progress-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="header-icon">trending_up</mat-icon>
+          Analysis Progress
+        </mat-card-title>
+        <mat-card-subtitle>{{ workflowStatus.progress.message }}</mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <!-- Progress Bar -->
+        <div class="progress-section">
+          <div class="progress-info">
+            <span class="progress-text">
+              Step {{ workflowStatus.progress.current_step }} of {{ workflowStatus.progress.total_steps }}
+            </span>
+            <span class="progress-percentage">{{ workflowStatus.progress.percentage }}%</span>
+          </div>
+          <mat-progress-bar 
+            mode="determinate" 
+            [value]="workflowStatus.progress.percentage"
+            class="progress-bar">
+          </mat-progress-bar>
+        </div>
+
+        <!-- Status Info -->
+        <div class="status-info">
+          <div class="status-item">
+            <mat-icon>schedule</mat-icon>
+            <span>Started: {{ formatTime(workflowStatus.started_at || workflowStatus.created_at) }}</span>
+          </div>
+          <div class="status-item">
+            <mat-icon>attach_money</mat-icon>
+            <span>Credits: {{ workflowStatus.credits_used }}</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <button mat-button (click)="viewFlowRun()">
+            <mat-icon>visibility</mat-icon>
+            View Details
+          </button>
+          <button 
+            mat-button 
+            color="warn"
+            *ngIf="workflowStatus.status !== 'completed' && workflowStatus.status !== 'failed'"
+            (click)="cancelWorkflow()">
+            <mat-icon>cancel</mat-icon>
+            Cancel Analysis
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Pages Status -->
+    <div class="pages-grid">
+      <!-- Your Page -->
+      <mat-card class="page-status-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="page-icon">home</mat-icon>
+            Your Page
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="page-url">{{ workflowStatus.pages.your_page.url }}</div>
+          <div class="status-chip">
+            <span 
+              class="chip"
+              [class]="'status-' + workflowStatus.pages.your_page.status">
+              {{ workflowStatus.pages.your_page.status }}
+            </span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Competitor 1 -->
+      <mat-card class="page-status-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="page-icon">business</mat-icon>
+            Competitor 1
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="page-url">{{ workflowStatus.pages.competitor_1.url }}</div>
+          <div class="status-chip">
+            <span 
+              class="chip"
+              [class]="'status-' + workflowStatus.pages.competitor_1.status">
+              {{ workflowStatus.pages.competitor_1.status }}
+            </span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Competitor 2 -->
+      <mat-card class="page-status-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="page-icon">business</mat-icon>
+            Competitor 2
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="page-url">{{ workflowStatus.pages.competitor_2.url }}</div>
+          <div class="status-chip">
+            <span 
+              class="chip"
+              [class]="'status-' + workflowStatus.pages.competitor_2.status">
+              {{ workflowStatus.pages.competitor_2.status }}
+            </span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- AI Analysis Status -->
+    <mat-card class="analysis-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="header-icon">psychology</mat-icon>
+          AI Analysis
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="analysis-status">
+          <div class="status-chip">
+            <span 
+              class="chip"
+              [class]="'status-' + workflowStatus.analysis.status">
+              {{ workflowStatus.analysis.status }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Completion Message -->
+    <mat-card *ngIf="workflowStatus.status === 'completed'" class="completion-card">
+      <mat-card-content>
+        <div class="completion-content">
+          <mat-icon class="success-icon">check_circle</mat-icon>
+          <div>
+            <h3>Analysis Complete!</h3>
+            <p>Redirecting to results...</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

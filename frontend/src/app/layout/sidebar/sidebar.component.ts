@@ -14,8 +14,7 @@ interface NavItem {
 export class SidebarComponent {
   navItems: NavItem[] = [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
-    { label: 'Scraping', route: '/scraping', icon: 'search' },
-    { label: 'Analysis', route: '/analysis', icon: 'analytics' },
+    { label: 'Competitor Analysis', route: '/competitor-analysis', icon: 'compare_arrows' },
     { label: 'Export', route: '/export', icon: 'download' }
   ];
 }

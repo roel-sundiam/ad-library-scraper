@@ -62,4 +62,21 @@ export class ApiService {
   exportData(params: any): Observable<any> {
     return this.http.get(`${this.baseUrl}/export`, { params });
   }
+
+  // Competitor Analysis Workflow endpoints
+  startCompetitorAnalysis(request: { yourPageUrl: string; competitor1Url: string; competitor2Url: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/workflow/competitor-analysis`, request);
+  }
+
+  getWorkflowStatus(workflowId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/workflow/${workflowId}/status`);
+  }
+
+  getWorkflowResults(workflowId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/workflow/${workflowId}/results`);
+  }
+
+  cancelWorkflow(workflowId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/workflow/${workflowId}/cancel`, {});
+  }
 }

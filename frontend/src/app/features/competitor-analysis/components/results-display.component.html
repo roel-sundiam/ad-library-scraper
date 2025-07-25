@@ -1,0 +1,277 @@
+<div class="results-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-icon-wrapper">
+        <mat-icon class="header-icon">analytics</mat-icon>
+      </div>
+      <div class="header-text">
+        <h1>Competitor Analysis Results</h1>
+        <p>Your comprehensive competitive intelligence report</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content-wrapper">
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="loading-section">
+      <mat-card class="loading-card">
+        <mat-card-content>
+          <div class="loading-content">
+            <mat-spinner diameter="48"></mat-spinner>
+            <p>Loading analysis results...</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage && !isLoading" class="error-section">
+      <mat-card class="error-card">
+        <mat-card-content>
+          <div class="error-content">
+            <mat-icon class="error-icon">error</mat-icon>
+            <div class="error-text">
+              <strong>Analysis Failed</strong>
+              <p>{{ errorMessage }}</p>
+            </div>
+          </div>
+          <button 
+            mat-raised-button 
+            color="warn"
+            (click)="startNewAnalysis()"
+            class="retry-button"
+          >
+            <mat-icon>refresh</mat-icon>
+            Start New Analysis
+          </button>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Results Display -->
+    <div *ngIf="results && !isLoading" class="results-section">
+      <!-- Action Bar -->
+      <mat-card class="action-bar-card">
+        <mat-card-content>
+          <div class="action-bar">
+            <div class="completion-info">
+              <mat-icon class="completion-icon">schedule</mat-icon>
+              <span>Analysis completed {{ formatDate(results.completed_at) }}</span>
+            </div>
+            <div class="action-buttons">
+              <button 
+                mat-stroked-button
+                (click)="downloadResults()"
+                class="download-button"
+              >
+                <mat-icon>download</mat-icon>
+                Download Results
+              </button>
+              <button 
+                mat-raised-button 
+                color="primary"
+                (click)="startNewAnalysis()"
+                class="new-analysis-button"
+              >
+                <mat-icon>add</mat-icon>
+                New Analysis
+              </button>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Summary Cards -->
+      <div class="summary-grid">
+        <!-- Your Brand -->
+        <mat-card class="summary-card your-brand">
+          <mat-card-content>
+            <div class="card-header">
+              <h3>Your Brand</h3>
+              <div class="status-indicator your-brand-indicator"></div>
+            </div>
+            <div class="card-body">
+              <div class="brand-name">{{ results.analysis.summary.your_page.page_name }}</div>
+              <div class="ads-count">{{ results.analysis.summary.your_page.total_ads }} ads found</div>
+              <div class="performance-score">
+                <span class="score-label">Performance Score:</span>
+                <mat-chip 
+                  [class]="getScoreClass(results.analysis.summary.your_page.performance_score)"
+                >
+                  {{ results.analysis.summary.your_page.performance_score }}
+                </mat-chip>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Competitor 1 -->
+        <mat-card class="summary-card competitor-1">
+          <mat-card-content>
+            <div class="card-header">
+              <h3>Competitor 1</h3>
+              <div class="status-indicator competitor-1-indicator"></div>
+            </div>
+            <div class="card-body">
+              <div class="brand-name">{{ results.analysis.summary.competitors[0]?.page_name || 'Unknown' }}</div>
+              <div class="ads-count">{{ results.analysis.summary.competitors[0]?.total_ads || 0 }} ads found</div>
+              <div class="performance-score">
+                <span class="score-label">Performance Score:</span>
+                <mat-chip 
+                  [class]="getScoreClass(results.analysis.summary.competitors[0]?.performance_score || 0)"
+                >
+                  {{ results.analysis.summary.competitors[0]?.performance_score || 0 }}
+                </mat-chip>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Competitor 2 -->
+        <mat-card class="summary-card competitor-2">
+          <mat-card-content>
+            <div class="card-header">
+              <h3>Competitor 2</h3>
+              <div class="status-indicator competitor-2-indicator"></div>
+            </div>
+            <div class="card-body">
+              <div class="brand-name">{{ results.analysis.summary.competitors[1]?.page_name || 'Unknown' }}</div>
+              <div class="ads-count">{{ results.analysis.summary.competitors[1]?.total_ads || 0 }} ads found</div>
+              <div class="performance-score">
+                <span class="score-label">Performance Score:</span>
+                <mat-chip 
+                  [class]="getScoreClass(results.analysis.summary.competitors[1]?.performance_score || 0)"
+                >
+                  {{ results.analysis.summary.competitors[1]?.performance_score || 0 }}
+                </mat-chip>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Key Metrics -->
+      <div class="metrics-grid">
+        <mat-card class="metric-card">
+          <mat-card-content>
+            <div class="metric-content">
+              <div class="metric-value">{{ getTotalAdsAnalyzed() }}</div>
+              <div class="metric-label">Total Ads Analyzed</div>
+              <mat-icon class="metric-icon">bar_chart</mat-icon>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        
+        <mat-card class="metric-card">
+          <mat-card-content>
+            <div class="metric-content">
+              <div class="metric-value">{{ getTopPerformer().name }}</div>
+              <div class="metric-label">Top Performer</div>
+              <mat-icon class="metric-icon">trophy</mat-icon>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        
+        <mat-card class="metric-card">
+          <mat-card-content>
+            <div class="metric-content">
+              <div class="metric-value">{{ results.credits_used }}</div>
+              <div class="metric-label">Credits Used</div>
+              <mat-icon class="metric-icon">account_balance_wallet</mat-icon>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Insights Section -->
+      <mat-card class="insights-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="section-icon">lightbulb</mat-icon>
+            Key Insights
+          </mat-card-title>
+          <mat-card-subtitle>AI-powered competitive intelligence findings</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="insights-grid">
+            <div *ngFor="let insight of results.analysis.insights; let i = index" 
+                 class="insight-item">
+              <div class="insight-number">{{ i + 1 }}</div>
+              <div class="insight-content">
+                <p>{{ insight }}</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Recommendations Section -->
+      <mat-card class="recommendations-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="section-icon">trending_up</mat-icon>
+            Recommendations
+          </mat-card-title>
+          <mat-card-subtitle>Actionable strategies to improve your competitive position</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="recommendations-list">
+            <div *ngFor="let recommendation of results.analysis.recommendations; let i = index" 
+                 class="recommendation-item">
+              <div class="recommendation-number">{{ i + 1 }}</div>
+              <div class="recommendation-content">
+                <p>{{ recommendation }}</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Analysis Details -->
+      <mat-card class="details-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="section-icon">info</mat-icon>
+            Analysis Details
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="details-grid">
+            <div class="detail-item">
+              <span class="detail-label">Analysis Date:</span>
+              <span class="detail-value">{{ formatDate(results.analysis.analyzed_at) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">AI Provider:</span>
+              <span class="detail-value">{{ results.analysis.ai_provider || 'Mock Analysis' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Workflow ID:</span>
+              <span class="detail-value workflow-id">{{ results.workflow_id }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Credits Used:</span>
+              <span class="detail-value">{{ results.credits_used }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- AI Chat Assistant -->
+      <mat-card class="ai-chat-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="section-icon">smart_toy</mat-icon>
+            Ask AI About Your Results
+          </mat-card-title>
+          <mat-card-subtitle>Get personalized insights and recommendations</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <app-ai-chat [analysisResults]="results"></app-ai-chat>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

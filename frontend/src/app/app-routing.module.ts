@@ -24,6 +24,10 @@ const routes: Routes = [
     loadChildren: () => import('./features/export/export.module').then(m => m.ExportModule)
   },
   {
+    path: 'competitor-analysis',
+    loadChildren: () => import('./features/competitor-analysis/competitor-analysis.module').then(m => m.CompetitorAnalysisModule)
+  },
+  {
     path: '**',
     redirectTo: '/dashboard'
   }

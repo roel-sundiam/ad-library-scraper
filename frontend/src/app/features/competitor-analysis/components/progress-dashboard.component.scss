@@ -1,0 +1,288 @@
+.progress-dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem 0;
+    color: #333;
+  }
+
+  p {
+    color: #666;
+    margin: 0;
+    font-size: 1.1rem;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  text-align: center;
+  
+  p {
+    margin-top: 1rem;
+    color: #666;
+  }
+}
+
+.error-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.error-card {
+  max-width: 500px;
+  width: 100%;
+}
+
+.error-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  
+  .error-icon {
+    color: #f44336;
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  h3 {
+    margin: 0 0 0.5rem 0;
+    color: #f44336;
+  }
+  
+  p {
+    margin: 0 0 1rem 0;
+    color: #666;
+  }
+}
+
+.progress-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.progress-card {
+  .header-icon {
+    margin-right: 0.5rem;
+    color: #3f51b5;
+  }
+
+  .progress-section {
+    margin-bottom: 1.5rem;
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+
+      .progress-text {
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .progress-percentage {
+        font-weight: 500;
+        color: #3f51b5;
+      }
+    }
+
+    .progress-bar {
+      height: 8px;
+      border-radius: 4px;
+    }
+  }
+
+  .status-info {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: #666;
+
+      mat-icon {
+        font-size: 1.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        color: #3f51b5;
+      }
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+
+    button {
+      mat-icon {
+        margin-right: 0.5rem;
+      }
+    }
+  }
+}
+
+.pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+
+  .page-status-card {
+    .page-icon {
+      margin-right: 0.5rem;
+      color: #3f51b5;
+    }
+
+    .page-url {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 1rem;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .status-chip {
+      .chip {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        
+        &.status-completed {
+          background-color: #e8f5e8;
+          color: #2e7d32;
+        }
+        
+        &.status-running {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        
+        &.status-pending {
+          background-color: #fff3e0;
+          color: #f57c00;
+        }
+        
+        &.status-failed {
+          background-color: #ffebee;
+          color: #d32f2f;
+        }
+      }
+    }
+  }
+}
+
+.analysis-card {
+  .header-icon {
+    margin-right: 0.5rem;
+    color: #3f51b5;
+  }
+
+  .analysis-status {
+    .status-chip {
+      .chip {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 16px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        
+        &.status-completed {
+          background-color: #e8f5e8;
+          color: #2e7d32;
+        }
+        
+        &.status-running {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        
+        &.status-pending {
+          background-color: #fff3e0;
+          color: #f57c00;
+        }
+        
+        &.status-failed {
+          background-color: #ffebee;
+          color: #d32f2f;
+        }
+      }
+    }
+  }
+}
+
+.completion-card {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+  color: white;
+
+  .completion-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .success-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      color: white;
+    }
+
+    h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.25rem;
+    }
+
+    p {
+      margin: 0;
+      opacity: 0.9;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .page-header {
+    h1 {
+      font-size: 1.5rem;
+    }
+  }
+
+  .pages-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-card .status-info {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .progress-card .action-buttons {
+    flex-direction: column;
+    
+    button {
+      width: 100%;
+    }
+  }
+}

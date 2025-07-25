@@ -1,0 +1,246 @@
+.competitor-analysis-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem 0;
+    color: #333;
+  }
+
+  p {
+    color: #666;
+    margin: 0;
+    font-size: 1.1rem;
+  }
+}
+
+.content-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  align-items: start;
+}
+
+.form-section {
+  .analysis-form-card {
+    mat-card-header {
+      .header-icon {
+        margin-right: 0.5rem;
+        color: #3f51b5;
+      }
+    }
+
+    .error-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      background-color: #ffebee;
+      border: 1px solid #ffcdd2;
+      border-radius: 4px;
+
+      .error-icon {
+        color: #f44336;
+        font-size: 1.5rem;
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+
+      strong {
+        color: #c62828;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+
+      p {
+        color: #d32f2f;
+        margin: 0;
+        font-size: 0.9rem;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+
+      .section-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+    }
+
+    .submit-section {
+      margin-top: 2rem;
+      text-align: center;
+
+      .submit-button {
+        min-width: 250px;
+        height: 48px;
+        font-size: 1rem;
+        font-weight: 500;
+
+        mat-icon {
+          margin-right: 0.5rem;
+        }
+
+        mat-spinner {
+          margin-right: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .info-card {
+    mat-card-header {
+      .info-icon {
+        margin-right: 0.5rem;
+        color: #3f51b5;
+      }
+    }
+
+    .steps-list {
+      padding-left: 1.5rem;
+      margin: 0;
+
+      li {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        color: #555;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        strong {
+          color: #333;
+        }
+      }
+    }
+
+    .requirements-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        color: #555;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .check-icon {
+          color: #4caf50;
+          font-size: 1.25rem;
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+      }
+    }
+
+    &.example-card {
+      .example-section {
+        .example-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          .example-icon {
+            margin-top: 0.125rem;
+            font-size: 1.25rem;
+            width: 1.25rem;
+            height: 1.25rem;
+
+            &.correct {
+              color: #4caf50;
+            }
+
+            &.incorrect {
+              color: #f44336;
+            }
+          }
+
+          strong {
+            display: block;
+            margin-bottom: 0.25rem;
+          }
+
+          code {
+            background-color: #f5f5f5;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+          }
+
+          &.correct {
+            strong {
+              color: #2e7d32;
+            }
+          }
+
+          &.incorrect {
+            strong {
+              color: #c62828;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .content-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .info-section {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    h1 {
+      font-size: 1.5rem;
+    }
+  }
+
+  .form-section .analysis-form-card .submit-section .submit-button {
+    width: 100%;
+  }
+}
