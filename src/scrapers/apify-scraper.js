@@ -362,8 +362,16 @@ class ApifyScraper {
         response.on('end', () => {
           try {
             const result = JSON.parse(data);
-            resolve(result.data.status);
+            logger.info(`Raw status response for run:`, JSON.stringify(result, null, 2).substring(0, 500));
+            
+            if (result && result.data && result.data.status) {
+              resolve(result.data.status);
+            } else {
+              logger.warn(`Invalid status response structure:`, result);
+              reject(new Error(`Invalid status response: ${JSON.stringify(result)}`));
+            }
           } catch (parseError) {
+            logger.error(`Failed to parse status response:`, parseError.message, 'Data:', data);
             reject(parseError);
           }
         });
