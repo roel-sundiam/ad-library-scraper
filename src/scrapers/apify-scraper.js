@@ -77,29 +77,73 @@ class ApifyScraper {
       // Continue anyway in case it's a permission issue
     }
     
-    // Start with the simplest format that should work
-    const inputVariations = [
-      // Format 1: Most basic - just query
-      {
-        query: query
-      },
-      // Format 2: Query + limit  
-      {
-        query: query,
-        limit: limit
-      },
-      // Format 3: Standard format
-      {
-        searchTerms: query,
-        country: country,
-        maxAds: limit
-      }
-    ];
+    // Different input formats for different actors
+    let inputVariations = [];
+    
+    if (scraperName === 'XtaWFhbtfxyzqrFmd') {
+      // curious_coder/facebook-ads-library-scraper format
+      inputVariations = [
+        {
+          "searchTerms": query,
+          "country": country.toUpperCase(),
+          "limit": limit
+        },
+        {
+          "queries": [query],
+          "country": country.toUpperCase(),
+          "maxAds": limit
+        },
+        {
+          "searchTerm": query,
+          "adActiveStatus": "ALL",
+          "country": country.toUpperCase(),
+          "limit": limit
+        }
+      ];
+    } else if (scraperName === 'jj5sAMeSoXotatkss') {
+      // premium actor format
+      inputVariations = [
+        {
+          "searchKeywords": query,
+          "country": country.toUpperCase(), 
+          "maxResults": limit
+        },
+        {
+          "query": query,
+          "region": country.toUpperCase(),
+          "limit": limit
+        },
+        {
+          "searchTerms": query,
+          "country": country.toUpperCase(),
+          "maxAds": limit
+        }
+      ];
+    } else {
+      // Fallback generic formats
+      inputVariations = [
+        {
+          query: query,
+          country: country,
+          limit: limit
+        },
+        {
+          searchTerms: query,
+          country: country,
+          maxAds: limit
+        },
+        {
+          q: query,
+          country: country.toUpperCase(),
+          limit: limit
+        }
+      ];
+    }
     
     // Try each input format
     for (const [index, inputData] of inputVariations.entries()) {
       try {
-        logger.info(`Trying ${scraperName} with input format ${index + 1}`);
+        logger.info(`Trying ${scraperName} with input format ${index + 1}:`, JSON.stringify(inputData));
         const runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
