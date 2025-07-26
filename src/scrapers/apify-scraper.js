@@ -140,13 +140,13 @@ class ApifyScraper {
         {
           "url": keywordSearchUrl
         },
-        // Format 3: Simplified URL
+        // Format 3: Try startUrls array format (common Apify pattern)
         {
-          "metaAdLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered`
+          "startUrls": [keywordSearchUrl]
         },
-        // Format 4: Basic keyword search
+        // Format 4: Try different field name variations
         {
-          "metaAdLibraryUrl": `https://www.facebook.com/ads/library/?q=${encodeURIComponent(query)}&search_type=keyword_unordered`
+          "facebookUrl": keywordSearchUrl
         }
       ];
     } else {
@@ -170,19 +170,19 @@ class ApifyScraper {
       ];
     }
     
-    // DEBUGGING: Only try first format to get detailed error info
-    if (inputVariations.length > 0) {
-      const inputData = inputVariations[0];
+    // DEBUGGING: Try all formats since premium actor keeps returning 0 results
+    for (let i = 0; i < inputVariations.length && i < 4; i++) {
+      const inputData = inputVariations[i];
       let runResponse = null;
       try {
         const inputStr = JSON.stringify(inputData, null, 2);
-        logger.info(`DEBUGGING: Trying format 1 with input:`);
+        logger.info(`DEBUGGING: Trying format ${i + 1} with input:`);
         logger.info(`INPUT JSON: ${inputStr}`);
         runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
           const runId = runResponse.id;
-          logger.info(`Apify run started: ${runId} with format 1`);
+          logger.info(`Apify run started: ${runId} with format ${i + 1}`);
           
           // Wait for this specific run to complete
           logger.info(`⏳ Waiting for run ${runId} to complete...`);
@@ -214,15 +214,15 @@ class ApifyScraper {
           logger.info(`Normalized ${normalizedResults.length} results from ${scraperName}`);
           
           if (normalizedResults && normalizedResults.length > 0) {
-            logger.info(`🎉 SUCCESS! Actor ${scraperName} format 1 returned ${normalizedResults.length} ads`);
+            logger.info(`🎉 SUCCESS! Actor ${scraperName} format ${i + 1} returned ${normalizedResults.length} ads`);
             logger.info(`Working input format:`, JSON.stringify(inputData));
             return normalizedResults;
           } else {
-            logger.warn(`Format 1 returned 0 ads despite raw data:`, results ? results.length : 'null');
+            logger.warn(`Format ${i + 1} returned 0 ads despite raw data:`, results ? results.length : 'null');
           }
         }
       } catch (error) {
-        logger.error(`DEBUGGING: Format 1 failed for ${scraperName}:`, error.message);
+        logger.error(`DEBUGGING: Format ${i + 1} failed for ${scraperName}:`, error.message);
         logger.error(`DEBUGGING: Full error:`, error);
         
         // Try to get run details if we have a run ID
@@ -235,11 +235,12 @@ class ApifyScraper {
           }
         }
         
-        throw error;
+        // Continue to next format instead of throwing
+        logger.info(`Continuing to next input format...`);
       }
     }
     
-    throw new Error(`Input format 1 failed for ${scraperName}`);
+    throw new Error(`All input formats failed for ${scraperName}`);
   }
 
   /**
