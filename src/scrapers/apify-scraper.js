@@ -467,6 +467,8 @@ class ApifyScraper {
         logger.info('No APIFY_API_TOKEN configured');
         return false;
       }
+      
+      logger.info('Testing Apify access with token:', this.apiToken ? this.apiToken.substring(0, 20) + '...' : 'none');
 
       // Test API connectivity without running expensive operations
       const userInfo = await this.getUserInfo();
