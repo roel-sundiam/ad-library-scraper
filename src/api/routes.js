@@ -1154,18 +1154,45 @@ async function processApifyAnalysis(runId) {
         
         logger.info(`Scraping page ${i + 1}/${job.page_urls.length}: ${pageName}`);
         
-        // Try Apify first (you have $4.97 credits), then Facebook API as fallback
-        logger.info(`Calling Apify with query: "${pageName}" (extracted from ${pageUrl})`);
-        const adsData = await apifyScraper.scrapeAds({
-          query: pageName,
-          country: 'US',
-          limit: 50
-        });
-        logger.info(`Apify returned ${adsData.length} ads for query: "${pageName}"`);
+        // Try Facebook API first (more reliable), then Apify as fallback
+        logger.info(`Trying Facebook API first for query: "${pageName}" (extracted from ${pageUrl})`);
+        let finalAdsData = [];
+        let source = 'none';
         
-        // Try multiple scraping methods in sequence
-        let finalAdsData = adsData;
-        let source = 'apify';
+        // Try Facebook API first if token is configured
+        if (process.env.FACEBOOK_ACCESS_TOKEN) {
+          try {
+            const apiClient = new FacebookAdLibraryAPI();
+            finalAdsData = await apiClient.scrapeAds({
+              query: pageName,
+              limit: 50,
+              region: 'US'
+            });
+            
+            if (finalAdsData.length > 0) {
+              logger.info(`Facebook API found ${finalAdsData.length} ads for "${pageName}"`);
+              source = 'facebook_api';
+            }
+          } catch (apiError) {
+            logger.warn(`Facebook API failed for "${pageName}":`, apiError.message);
+          }
+        }
+        
+        // If Facebook API failed or no token, try Apify
+        if (finalAdsData.length === 0) {
+          logger.info(`Calling Apify as fallback for query: "${pageName}"`);
+          const adsData = await apifyScraper.scrapeAds({
+            query: pageName,
+            country: 'US',
+            limit: 50
+          });
+          logger.info(`Apify returned ${adsData.length} ads for query: "${pageName}"`);
+          
+          if (adsData.length > 0) {
+            finalAdsData = adsData;
+            source = 'apify';
+          }
+        }
         
         if (finalAdsData.length === 0) {
           logger.info(`Apify returned 0 ads for "${pageName}", trying Facebook API fallback...`);

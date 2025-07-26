@@ -8,13 +8,13 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Try more recent/working actors first, then fallbacks
+    // Working actors from Apify Store (updated Jan 2025)
     this.scrapers = [
-      'apify/facebook-ad-library-scraper', // Official Apify actor (most reliable)
-      'dtrungtin/facebook-ads-scraper', // Most popular
-      'misceres/facebook-ad-library-scraper', // Recently updated  
-      'lhotanok/facebook-ad-library-scraper', // Backup
-      'simplengtaolang2004/facebook-ad-library-scraper' // Custom actor last
+      'trudax/facebook-ad-library-scraper', // Active, well-maintained
+      'natasha.lekh/facebook-ad-library-scraper', // Recently updated
+      'drobnikj/facebook-ad-library-scraper', // Reliable performer
+      'lukaskrivka/facebook-ad-library-scraper', // Alternative option
+      'apify/web-scraper' // Generic fallback option
     ];
   }
 
