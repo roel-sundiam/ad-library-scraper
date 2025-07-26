@@ -1154,7 +1154,7 @@ async function processApifyAnalysis(runId) {
         
         logger.info(`Scraping page ${i + 1}/${job.page_urls.length}: ${pageName}`);
         
-        // Scrape ads using Apify
+        // Try Apify first (you have $4.97 credits), then Facebook API as fallback
         logger.info(`Calling Apify with query: "${pageName}" (extracted from ${pageUrl})`);
         const adsData = await apifyScraper.scrapeAds({
           query: pageName,
@@ -1167,10 +1167,10 @@ async function processApifyAnalysis(runId) {
         let finalAdsData = adsData;
         let source = 'apify';
         
-        if (adsData.length === 0) {
-          logger.info(`Apify returned 0 ads for "${pageName}", trying fallback scrapers...`);
+        if (finalAdsData.length === 0) {
+          logger.info(`Apify returned 0 ads for "${pageName}", trying Facebook API fallback...`);
           
-          // Try Facebook API first (if token is valid)
+          // Try Facebook API as fallback (if token is configured)
           try {
             const apiClient = new FacebookAdLibraryAPI();
             const fallbackAds = await apiClient.scrapeAds({
@@ -1186,9 +1186,14 @@ async function processApifyAnalysis(runId) {
             }
           } catch (fallbackError) {
             logger.warn(`Facebook API failed for "${pageName}":`, fallbackError.message);
-            
-            // Try HTTP scraper as second fallback
-            try {
+          }
+        }
+        
+        if (finalAdsData.length === 0) {
+          logger.info(`Both Apify and Facebook API returned 0 ads for "${pageName}", trying HTTP scraper...`);
+          
+          // Try HTTP scraper as final fallback
+          try {
               const FacebookHTTPAdvanced = require('../scrapers/facebook-http-advanced');
               const httpScraper = new FacebookHTTPAdvanced();
               const httpAds = await httpScraper.scrapeAds({
