@@ -342,7 +342,7 @@ class ApifyScraper {
    * Get Apify run status
    */
   async getRunStatus(runId) {
-    const url = `${this.baseUrl}/acts/runs/${runId}`;
+    const url = `${this.baseUrl}/actor-runs/${runId}`;
     
     return new Promise((resolve, reject) => {
       const options = {
@@ -383,7 +383,7 @@ class ApifyScraper {
    * Get Apify run details for debugging
    */
   async getRunDetails(runId) {
-    const url = `${this.baseUrl}/acts/runs/${runId}`;
+    const url = `${this.baseUrl}/actor-runs/${runId}`;
     
     return new Promise((resolve, reject) => {
       const options = {
@@ -416,7 +416,7 @@ class ApifyScraper {
    * Get Apify run results
    */
   async getRunResults(runId) {
-    const url = `${this.baseUrl}/acts/runs/${runId}/dataset/items`;
+    const url = `${this.baseUrl}/actor-runs/${runId}/dataset/items`;
     
     return new Promise((resolve, reject) => {
       const options = {
