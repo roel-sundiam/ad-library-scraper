@@ -128,10 +128,11 @@ class ApifyScraper {
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
       // premium actor expects proper keyword search URL format
-      const keywordSearchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
+      // Based on working screenshot URL
+      const keywordSearchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(query)}&search_type=keyword_unordered`;
       
       inputVariations = [
-        // Format 1: Proper keyword search URL
+        // Format 1: Exact format from working screenshot
         {
           "metaAdLibraryUrl": keywordSearchUrl
         },
