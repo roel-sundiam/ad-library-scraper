@@ -84,32 +84,28 @@ class ApifyScraper {
     let inputVariations = [];
     
     if (scraperName === 'XtaWFhbtfxyzqrFmd') {
-      // Actor requires input.urls field according to error message
-      const adLibraryUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(query)}&search_type=keyword_unordered`;
+      // Actor requires valid URLs in input.urls field
+      // Test with simple, known-working URLs first
       
       inputVariations = [
-        // Format 1: Required urls field
+        // Format 1: Basic Facebook Ad Library URL
         {
-          "urls": [adLibraryUrl]
+          "urls": ["https://www.facebook.com/ads/library/"]
         },
         
-        // Format 2: Try with additional parameters
+        // Format 2: With basic search parameters
         {
-          "urls": [adLibraryUrl],
-          "maxAds": limit
+          "urls": ["https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US"]
         },
         
-        // Format 3: Different URL format
+        // Format 3: Hardcoded working Nike search URL
         {
-          "urls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`]
+          "urls": ["https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=nike&search_type=keyword_unordered"]
         },
         
-        // Format 4: Multiple URL variations
+        // Format 4: Simple search format
         {
-          "urls": [
-            adLibraryUrl,
-            `https://www.facebook.com/ads/library/?q=${encodeURIComponent(query)}&search_type=keyword_unordered`
-          ]
+          "urls": [`https://www.facebook.com/ads/library/?q=${query}&search_type=keyword_unordered`]
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
@@ -164,6 +160,11 @@ class ApifyScraper {
         const inputStr = JSON.stringify(inputData, null, 2);
         logger.info(`DEBUGGING: Trying format ${i + 1} with input:`);
         logger.info(`INPUT JSON: ${inputStr}`);
+        
+        // Log URLs specifically for debugging
+        if (inputData.urls) {
+          logger.info(`URLs being sent: ${JSON.stringify(inputData.urls)}`);
+        }
         runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
