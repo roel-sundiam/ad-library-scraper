@@ -124,22 +124,28 @@ class ApifyScraper {
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
-      // premium actor format
+      // premium actor format - try simplest first
       inputVariations = [
+        // Format 1: Minimal input
         {
-          "searchKeywords": query,
-          "country": country.toUpperCase(), 
-          "maxResults": limit
+          "searchKeyword": query
         },
+        // Format 2: Direct URL format (premium actors often use this)
+        {
+          "startUrls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}`],
+          "maxItems": limit
+        },
+        // Format 3: Basic parameters
         {
           "query": query,
-          "region": country.toUpperCase(),
-          "limit": limit
+          "country": "US",
+          "maxItems": limit
         },
+        // Format 4: Alternative naming
         {
-          "searchTerms": query,
-          "country": country.toUpperCase(),
-          "maxAds": limit
+          "searchTerm": query,
+          "countryCode": "US",
+          "resultsLimit": limit
         }
       ];
     } else {
@@ -275,6 +281,13 @@ class ApifyScraper {
           logger.info(`Run ${runId} SUCCEEDED - got ${results ? results.length : 'null'} items`);
           return results;
         } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+          // Get more details about the failure
+          try {
+            const runDetails = await this.getRunDetails(runId);
+            logger.error(`Apify run ${runId} ${status}:`, runDetails.error || runDetails);
+          } catch (detailsError) {
+            logger.error(`Could not get run details for ${runId}:`, detailsError.message);
+          }
           logger.warn(`Apify run ${runId} ${status} - trying next scraper`);
           throw new Error(`Apify run ${status.toLowerCase()}`);
         }
@@ -316,6 +329,39 @@ class ApifyScraper {
           try {
             const result = JSON.parse(data);
             resolve(result.data.status);
+          } catch (parseError) {
+            reject(parseError);
+          }
+        });
+      }).on('error', reject);
+    });
+  }
+
+  /**
+   * Get Apify run details for debugging
+   */
+  async getRunDetails(runId) {
+    const url = `${this.baseUrl}/acts/runs/${runId}`;
+    
+    return new Promise((resolve, reject) => {
+      const options = {
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`
+        },
+        timeout: 10000
+      };
+
+      https.get(url, options, (response) => {
+        let data = '';
+        
+        response.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        response.on('end', () => {
+          try {
+            const result = JSON.parse(data);
+            resolve(result.data);
           } catch (parseError) {
             reject(parseError);
           }
