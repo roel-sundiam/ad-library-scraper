@@ -71,11 +71,15 @@ export class CompetitorAnalysisComponent implements OnInit {
         formData.competitor2Url
       ];
 
-      this.apiService.startFacebookAnalysis({ pageUrls }).subscribe({
-        next: (response: FacebookAnalysisResponse) => {
-          if (response.success && response.data.runId) {
-            // Navigate to progress dashboard with new runId
-            this.router.navigate(['/competitor-analysis/progress', response.data.runId]);
+      this.apiService.startCompetitorAnalysis({
+        yourPageUrl: formData.yourPageUrl,
+        competitor1Url: formData.competitor1Url,
+        competitor2Url: formData.competitor2Url
+      }).subscribe({
+        next: (response: any) => {
+          if (response.success && response.data.workflow_id) {
+            // Navigate to progress dashboard with workflow ID
+            this.router.navigate(['/competitor-analysis/progress', response.data.workflow_id]);
           } else {
             this.errorMessage = 'Failed to start analysis. Please try again.';
             this.isSubmitting = false;

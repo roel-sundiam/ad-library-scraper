@@ -1132,9 +1132,10 @@ async function processApifyAnalysis(runId) {
     // Initialize Apify scraper
     const apifyScraper = new ApifyScraper();
     
-    // Check if API token is configured
+    // Check if API token is configured - if not, the scraper will return empty results and trigger fallback
     if (!process.env.APIFY_API_TOKEN) {
-      throw new Error('APIFY_API_TOKEN is not configured. Please add your Apify API token to the .env file.');
+      logger.warn('APIFY_API_TOKEN is not configured. Skipping Apify and using fallback scrapers.');
+      // Don't throw error - let it fall back to other scrapers
     }
     
     const results = [];
