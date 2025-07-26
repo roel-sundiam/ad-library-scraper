@@ -1194,22 +1194,21 @@ async function processApifyAnalysis(runId) {
           
           // Try HTTP scraper as final fallback
           try {
-              const FacebookHTTPAdvanced = require('../scrapers/facebook-http-advanced');
-              const httpScraper = new FacebookHTTPAdvanced();
-              const httpAds = await httpScraper.scrapeAds({
-                query: pageName,
-                limit: 50,
-                region: 'US'
-              });
-              
-              if (httpAds.length > 0) {
-                logger.info(`HTTP scraper found ${httpAds.length} ads for "${pageName}"`);
-                finalAdsData = httpAds;
-                source = 'http_scraper';
-              }
-            } catch (httpError) {
-              logger.warn(`HTTP scraper also failed for "${pageName}":`, httpError.message);
+            const FacebookHTTPAdvanced = require('../scrapers/facebook-http-advanced');
+            const httpScraper = new FacebookHTTPAdvanced();
+            const httpAds = await httpScraper.scrapeAds({
+              query: pageName,
+              limit: 50,
+              region: 'US'
+            });
+            
+            if (httpAds.length > 0) {
+              logger.info(`HTTP scraper found ${httpAds.length} ads for "${pageName}"`);
+              finalAdsData = httpAds;
+              source = 'http_scraper';
             }
+          } catch (httpError) {
+            logger.warn(`HTTP scraper also failed for "${pageName}":`, httpError.message);
           }
         }
         
