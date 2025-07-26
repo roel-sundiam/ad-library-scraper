@@ -84,46 +84,32 @@ class ApifyScraper {
     let inputVariations = [];
     
     if (scraperName === 'XtaWFhbtfxyzqrFmd') {
-      // curious_coder/facebook-ads-library-scraper format - comprehensive variations
+      // Actor requires input.urls field according to error message
+      const adLibraryUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(query)}&search_type=keyword_unordered`;
+      
       inputVariations = [
-        // Format 1: Empty object (some actors work with no params)
-        {},
-        
-        // Format 2: Basic search term
+        // Format 1: Required urls field
         {
-          "searchTerm": query
+          "urls": [adLibraryUrl]
         },
         
-        // Format 3: Query field
+        // Format 2: Try with additional parameters
         {
-          "query": query
-        },
-        
-        // Format 4: Keywords array
-        {
-          "keywords": [query]
-        },
-        
-        // Format 5: Search parameters object
-        {
-          "search": {
-            "query": query,
-            "country": "US"
-          }
-        },
-        
-        // Format 6: Direct URL approach
-        {
-          "startUrls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=keyword_unordered&media_type=all`]
-        },
-        
-        // Format 7: Comprehensive parameters
-        {
-          "searchTerm": query,
-          "country": "US",
-          "adType": "ALL",
-          "activeStatus": "ALL",
+          "urls": [adLibraryUrl],
           "maxAds": limit
+        },
+        
+        // Format 3: Different URL format
+        {
+          "urls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`]
+        },
+        
+        // Format 4: Multiple URL variations
+        {
+          "urls": [
+            adLibraryUrl,
+            `https://www.facebook.com/ads/library/?q=${encodeURIComponent(query)}&search_type=keyword_unordered`
+          ]
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
