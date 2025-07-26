@@ -81,23 +81,16 @@ class ApifyScraper {
     let inputVariations = [];
     
     if (scraperName === 'XtaWFhbtfxyzqrFmd') {
-      // curious_coder/facebook-ads-library-scraper format
+      // curious_coder/facebook-ads-library-scraper format - try very basic formats
       inputVariations = [
         {
-          "searchTerms": query,
-          "country": country.toUpperCase(),
-          "limit": limit
+          "startUrls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=keyword_unordered&media_type=all`]
         },
         {
-          "queries": [query],
-          "country": country.toUpperCase(),
-          "maxAds": limit
+          "query": query
         },
         {
-          "searchTerm": query,
-          "adActiveStatus": "ALL",
-          "country": country.toUpperCase(),
-          "limit": limit
+          "searchTerm": query
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
