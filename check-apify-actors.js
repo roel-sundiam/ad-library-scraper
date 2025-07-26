@@ -2,11 +2,7 @@ const https = require('https');
 
 // Test which Apify actors actually exist
 const actors = [
-  'apify/facebook-ads-scraper',
-  'curious_coder/facebook-ads-library-scraper',
-  'memo23/facebook-ads-library-scraper-cheerio',
-  'igolaizola/facebook-ad-library-scraper', 
-  'ibraheemalani2/my-fb-ads-scraper'
+  'jj5sAMeSoXotatkss' // User-provided actor ID
 ];
 
 async function checkActor(actorName) {
