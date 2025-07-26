@@ -8,12 +8,13 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Start with our custom actor, then try popular ones as fallback
+    // Try more recent/working actors first, then fallbacks
     this.scrapers = [
-      'simplengtaolang2004/facebook-ad-library-scraper', // Our custom stealth actor
-      'dtrungtin/facebook-ads-scraper', // Most popular, likely working
-      'misceres/facebook-ad-library-scraper', // Recently updated
-      'lhotanok/facebook-ad-library-scraper' // Known to work
+      'apify/facebook-ad-library-scraper', // Official Apify actor (most reliable)
+      'dtrungtin/facebook-ads-scraper', // Most popular
+      'misceres/facebook-ad-library-scraper', // Recently updated  
+      'lhotanok/facebook-ad-library-scraper', // Backup
+      'simplengtaolang2004/facebook-ad-library-scraper' // Custom actor last
     ];
   }
 
@@ -65,7 +66,19 @@ class ApifyScraper {
    * Run specific Apify scraper
    */
   async runApifyScraper(scraperName, query, country, limit) {
-    logger.info(`Testing ${scraperName} with simple query: "${query}"`);
+    logger.info(`Testing ${scraperName} with query: "${query}"`);
+    
+    // Check if actor exists first
+    try {
+      const actorExists = await this.checkActorExists(scraperName);
+      if (!actorExists) {
+        logger.warn(`Apify actor ${scraperName} does not exist or is not accessible`);
+        throw new Error(`Actor ${scraperName} not found`);
+      }
+    } catch (error) {
+      logger.warn(`Could not verify actor ${scraperName}:`, error.message);
+      // Continue anyway in case it's a permission issue
+    }
     
     // Start with the simplest format that should work
     const inputVariations = [
@@ -353,6 +366,30 @@ class ApifyScraper {
           raw_fields: Object.keys(ad) // Include field names for debugging
         }
       }
+    });
+  }
+
+  /**
+   * Check if Apify actor exists and is accessible
+   */
+  async checkActorExists(scraperName) {
+    const url = `${this.baseUrl}/acts/${scraperName}`;
+    
+    return new Promise((resolve) => {
+      const options = {
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`
+        },
+        timeout: 5000
+      };
+
+      https.get(url, options, (response) => {
+        resolve(response.statusCode === 200);
+      }).on('error', () => {
+        resolve(false);
+      }).on('timeout', () => {
+        resolve(false);
+      });
     });
   }
 
