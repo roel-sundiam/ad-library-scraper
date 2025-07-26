@@ -124,25 +124,25 @@ class ApifyScraper {
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
-      // premium actor expects "Meta Ad Library URL" format
-      const adLibraryUrl = `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=keyword_unordered&media_type=all`;
+      // premium actor expects proper keyword search URL format
+      const keywordSearchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
       
       inputVariations = [
-        // Format 1: Meta Ad Library URL (what the actor expects)
+        // Format 1: Proper keyword search URL
         {
-          "metaAdLibraryUrl": adLibraryUrl
+          "metaAdLibraryUrl": keywordSearchUrl
         },
-        // Format 2: Alternative URL field names
+        // Format 2: Alternative field name
         {
-          "url": adLibraryUrl
+          "url": keywordSearchUrl
         },
-        // Format 3: URLs array
+        // Format 3: Simplified URL
         {
-          "urls": [adLibraryUrl]
+          "metaAdLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&country=US&q=${encodeURIComponent(query)}&search_type=keyword_unordered`
         },
-        // Format 4: startUrls format
+        // Format 4: Basic keyword search
         {
-          "startUrls": [adLibraryUrl]
+          "metaAdLibraryUrl": `https://www.facebook.com/ads/library/?q=${encodeURIComponent(query)}&search_type=keyword_unordered`
         }
       ];
     } else {
