@@ -260,8 +260,8 @@ class ApifyScraper {
    * Wait for Apify run to complete and get results
    */
   async waitForRunCompletion(runId) {
-    const maxWaitTime = 300000; // 5 minutes
-    const pollInterval = 5000;   // 5 seconds
+    const maxWaitTime = 600000; // 10 minutes for premium actors
+    const pollInterval = 10000;  // 10 seconds (less frequent polling)
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitTime) {
@@ -271,7 +271,9 @@ class ApifyScraper {
         
         if (status === 'SUCCEEDED') {
           // Get dataset items
-          return await this.getRunResults(runId);
+          const results = await this.getRunResults(runId);
+          logger.info(`Run ${runId} SUCCEEDED - got ${results ? results.length : 'null'} items`);
+          return results;
         } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
           logger.warn(`Apify run ${runId} ${status} - trying next scraper`);
           throw new Error(`Apify run ${status.toLowerCase()}`);
