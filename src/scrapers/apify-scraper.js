@@ -166,7 +166,7 @@ class ApifyScraper {
       ];
     }
     
-    // Try each input format
+    // Try each input format sequentially
     for (const [index, inputData] of inputVariations.entries()) {
       try {
         logger.info(`Trying ${scraperName} with input format ${index + 1}:`, JSON.stringify(inputData));
@@ -176,7 +176,10 @@ class ApifyScraper {
           const runId = runResponse.id;
           logger.info(`Apify run started: ${runId} with format ${index + 1}`);
           
+          // Wait for this run to complete before trying next format
+          logger.info(`⏳ Waiting for run ${runId} to complete before trying next format...`);
           const results = await this.waitForRunCompletion(runId);
+          logger.info(`✅ Run ${runId} completed, processing results...`);
           logger.info(`Raw Apify response for ${scraperName}:`, JSON.stringify(results, null, 2).substring(0, 1000));
           
           // Debug: Check if results is array and has data
