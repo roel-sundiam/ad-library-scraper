@@ -27,6 +27,19 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Debug endpoint to check environment variables
+router.get('/debug/env', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      apify_token_configured: !!process.env.APIFY_API_TOKEN,
+      apify_token_prefix: process.env.APIFY_API_TOKEN ? process.env.APIFY_API_TOKEN.substring(0, 20) + '...' : 'not_configured',
+      node_env: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
 // Update Facebook access token endpoint
 router.post('/config/facebook-token', async (req, res) => {
   try {
