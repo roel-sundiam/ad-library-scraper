@@ -71,6 +71,78 @@
       </mat-card-content>
     </mat-card>
 
+    <!-- Facebook Token Configuration -->
+    <mat-card class="token-config-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>vpn_key</mat-icon>
+          Facebook API Configuration
+        </mat-card-title>
+        <mat-card-subtitle>Configure your Facebook access token for real ads data</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="token-status" *ngIf="tokenStatus">
+          <div class="status-indicator" [class]="tokenStatus.hasToken ? 'status-active' : 'status-missing'">
+            <mat-icon>{{ tokenStatus.hasToken ? 'check_circle' : 'error' }}</mat-icon>
+            <span>{{ tokenStatus.hasToken ? 'Token Active' : 'Token Missing' }}</span>
+          </div>
+          <div *ngIf="tokenStatus.hasToken" class="token-info">
+            <small>{{ tokenStatus.tokenPreview }} ({{ tokenStatus.tokenLength }} chars)</small>
+          </div>
+        </div>
+
+        <div class="token-actions">
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="showTokenForm = !showTokenForm"
+                  [disabled]="isUpdatingToken">
+            <mat-icon>{{ showTokenForm ? 'close' : 'edit' }}</mat-icon>
+            {{ showTokenForm ? 'Cancel' : 'Update Token' }}
+          </button>
+          
+          <button mat-stroked-button 
+                  (click)="openFacebookConsole()"
+                  title="Get a new Facebook access token">
+            <mat-icon>open_in_new</mat-icon>
+            Get Token
+          </button>
+        </div>
+
+        <!-- Token Update Form -->
+        <div *ngIf="showTokenForm" class="token-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Facebook Access Token</mat-label>
+            <textarea matInput 
+                      [(ngModel)]="newToken"
+                      placeholder="EAA..."
+                      rows="3"
+                      (keyup.enter)="updateFacebookToken()"></textarea>
+            <mat-hint>Paste your Facebook access token here</mat-hint>
+          </mat-form-field>
+          
+          <div class="form-actions">
+            <button mat-raised-button 
+                    color="primary" 
+                    (click)="updateFacebookToken()"
+                    [disabled]="!newToken || isUpdatingToken">
+              <mat-spinner *ngIf="isUpdatingToken" diameter="20"></mat-spinner>
+              <mat-icon *ngIf="!isUpdatingToken">save</mat-icon>
+              {{ isUpdatingToken ? 'Updating...' : 'Save Token' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div *ngIf="tokenMessage" class="token-message" [class]="tokenMessage.type">
+          <mat-icon>{{ 
+            tokenMessage.type === 'success' ? 'check_circle' : 
+            tokenMessage.type === 'warning' ? 'warning' : 'error' 
+          }}</mat-icon>
+          <span>{{ tokenMessage.text }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     <!-- Quick Actions -->
     <div class="quick-actions">
       <h3>Quick Actions</h3>

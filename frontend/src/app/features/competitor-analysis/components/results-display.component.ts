@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { FacebookAnalysisResults } from '../../../shared/models/facebook-ads.interface';
 
+// Legacy interface for backwards compatibility
 interface AnalysisResults {
   workflow_id: string;
   analysis: {
@@ -37,10 +39,12 @@ interface AnalysisResults {
   styleUrls: ['./results-display.component.scss']
 })
 export class ResultsDisplayComponent implements OnInit {
-  workflowId: string = '';
+  runId: string = '';
   results: AnalysisResults | null = null;
+  facebookResults: FacebookAnalysisResults | null = null;
   isLoading = true;
   errorMessage = '';
+  isNewApi = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -49,29 +53,59 @@ export class ResultsDisplayComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.workflowId = this.route.snapshot.params['workflowId'];
-    if (this.workflowId) {
+    // Get ID from route parameters (supports both workflowId and runId)
+    this.runId = this.route.snapshot.params['workflowId'] || this.route.snapshot.params['runId'];
+    if (this.runId) {
       this.loadResults();
     } else {
-      this.errorMessage = 'Invalid workflow ID';
+      this.errorMessage = 'Invalid analysis ID';
       this.isLoading = false;
     }
   }
 
   private loadResults(): void {
-    this.apiService.getWorkflowResults(this.workflowId).subscribe({
+    // First try the new Facebook Analysis API
+    this.apiService.getAnalysisResults(this.runId).subscribe({
+      next: (response: FacebookAnalysisResults) => {
+        this.isLoading = false;
+        if (response.success) {
+          this.facebookResults = response;
+          this.isNewApi = true;
+          console.log('Loaded Facebook Analysis results:', response);
+        } else {
+          this.tryLegacyApi();
+        }
+      },
+      error: (error) => {
+        console.log('New API failed, trying legacy API:', error);
+        this.tryLegacyApi();
+      }
+    });
+  }
+
+  private tryLegacyApi(): void {
+    // Fallback to old workflow API
+    this.apiService.getWorkflowResults(this.runId).subscribe({
       next: (response) => {
         this.isLoading = false;
         if (response.success) {
           this.results = response.data;
+          this.isNewApi = false;
         } else {
-          this.errorMessage = 'Failed to load results';
+          this.errorMessage = 'Failed to load results from both APIs';
         }
       },
       error: (error) => {
-        console.error('Error loading results:', error);
-        this.errorMessage = error.error?.error?.message || 'An error occurred while loading results';
+        console.error('Both APIs failed:', error);
+        this.errorMessage = 'Analysis results not found. The analysis may still be in progress or may have expired.';
         this.isLoading = false;
+        
+        // Suggest checking progress
+        setTimeout(() => {
+          if (confirm('Would you like to check the analysis progress instead?')) {
+            this.router.navigate(['/competitor-analysis/progress', this.runId]);
+          }
+        }, 2000);
       }
     });
   }
@@ -85,7 +119,7 @@ export class ResultsDisplayComponent implements OnInit {
       const dataStr = JSON.stringify(this.results, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
       
-      const exportFileDefaultName = `competitor-analysis-${this.workflowId}.json`;
+      const exportFileDefaultName = `competitor-analysis-${this.runId}.json`;
       
       const linkElement = document.createElement('a');
       linkElement.setAttribute('href', dataUri);

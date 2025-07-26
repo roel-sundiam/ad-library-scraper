@@ -63,7 +63,29 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/export`, { params });
   }
 
-  // Competitor Analysis Workflow endpoints
+  // Facebook Ads Analysis endpoints (NEW - Live System)
+  startFacebookAnalysis(request: { pageUrls: string[] }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/start-analysis`, request);
+  }
+
+  getAnalysisStatus(runId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/status/${runId}`);
+  }
+
+  getAnalysisResults(runId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/results/${runId}`);
+  }
+
+  // Scraper status endpoints
+  getApifyStatus(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/apify/status`);
+  }
+
+  getFacebookApiStatus(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/facebook/status`);
+  }
+
+  // Legacy Competitor Analysis Workflow endpoints (DEPRECATED)
   startCompetitorAnalysis(request: { yourPageUrl: string; competitor1Url: string; competitor2Url: string }): Observable<any> {
     return this.http.post(`${this.baseUrl}/workflow/competitor-analysis`, request);
   }
@@ -74,6 +96,15 @@ export class ApiService {
 
   getWorkflowResults(workflowId: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/workflow/${workflowId}/results`);
+  }
+
+  // Facebook Configuration endpoints
+  updateFacebookToken(accessToken: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/config/facebook-token`, { accessToken });
+  }
+
+  getFacebookTokenStatus(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/config/facebook-status`);
   }
 
   cancelWorkflow(workflowId: string): Observable<any> {

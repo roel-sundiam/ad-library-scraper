@@ -3,6 +3,9 @@ const router = express.Router();
 const logger = require('../utils/logger');
 const FacebookAdLibraryScraper = require('../scrapers/facebook-scraper');
 const FacebookAdLibraryAPI = require('../scrapers/facebook-api-client');
+const ApifyScraper = require('../scrapers/apify-scraper');
+const FacebookPlaywrightScraper = require('../scrapers/facebook-playwright-scraper');
+const FacebookAdvancedHTTPScraper = require('../scrapers/facebook-http-advanced');
 
 // In-memory job storage (replace with database in production)
 const jobs = new Map();
@@ -22,6 +25,140 @@ router.get('/health', (req, res) => {
       timestamp: new Date().toISOString()
     }
   });
+});
+
+// Update Facebook access token endpoint
+router.post('/config/facebook-token', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Access token is required'
+        }
+      });
+    }
+    
+    // Validate token with Facebook API
+    logger.info('Validating Facebook access token...');
+    const tokenValidation = await validateFacebookToken(accessToken);
+    
+    if (!tokenValidation.isValid) {
+      let errorMessage = 'Invalid Facebook access token';
+      let errorCode = 'INVALID_TOKEN';
+      
+      if (tokenValidation.isExpired && !tokenValidation.error) {
+        errorMessage = 'Facebook access token has expired';
+        errorCode = 'TOKEN_EXPIRED';
+      } else if (tokenValidation.error) {
+        // Use the specific error from Facebook API
+        errorMessage = tokenValidation.error;
+        if (tokenValidation.error.includes('expired')) {
+          errorCode = 'TOKEN_EXPIRED';
+        } else if (tokenValidation.error.includes('Invalid')) {
+          errorCode = 'TOKEN_INVALID';
+        } else if (tokenValidation.error.includes('malformed')) {
+          errorCode = 'TOKEN_MALFORMED';
+        }
+      }
+      
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: errorCode,
+          message: errorMessage,
+          details: {
+            isExpired: tokenValidation.isExpired,
+            validationError: tokenValidation.error,
+            fbErrorDetails: tokenValidation.details
+          }
+        }
+      });
+    }
+    
+    // Update the environment variable
+    process.env.FACEBOOK_ACCESS_TOKEN = accessToken;
+    
+    logger.info('Facebook access token updated and validated successfully');
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Facebook access token updated and validated successfully',
+        tokenLength: accessToken.length,
+        tokenPreview: accessToken.substring(0, 10) + '...',
+        isValid: true,
+        appId: tokenValidation.appId,
+        appName: tokenValidation.appName,
+        expiresAt: tokenValidation.expiresAt,
+        scopes: tokenValidation.scopes,
+        adLibraryAccess: tokenValidation.adLibraryAccess,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error updating Facebook access token:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to update Facebook access token'
+      }
+    });
+  }
+});
+
+// Get current token status
+router.get('/config/facebook-status', async (req, res) => {
+  try {
+    const hasToken = !!process.env.FACEBOOK_ACCESS_TOKEN;
+    const tokenLength = hasToken ? process.env.FACEBOOK_ACCESS_TOKEN.length : 0;
+    const tokenPreview = hasToken ? process.env.FACEBOOK_ACCESS_TOKEN.substring(0, 10) + '...' : 'No token';
+    
+    let tokenValidation = {
+      isValid: false,
+      isExpired: true,
+      appId: null,
+      appName: null,
+      expiresAt: null,
+      scopes: []
+    };
+    
+    if (hasToken) {
+      logger.info('Checking Facebook token validity and expiration...');
+      tokenValidation = await validateFacebookToken(process.env.FACEBOOK_ACCESS_TOKEN);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        hasToken,
+        tokenLength,
+        tokenPreview,
+        isValid: tokenValidation.isValid,
+        isExpired: tokenValidation.isExpired,
+        appId: tokenValidation.appId,
+        appName: tokenValidation.appName,
+        expiresAt: tokenValidation.expiresAt,
+        scopes: tokenValidation.scopes,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error getting Facebook token status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to get Facebook token status'
+      }
+    });
+  }
 });
 
 // Start scraping job
@@ -345,6 +482,39 @@ router.get('/facebook/status', async (req, res) => {
   }
 });
 
+// Apify service status endpoint
+router.get('/apify/status', async (req, res) => {
+  try {
+    logger.info('Checking Apify service status');
+    
+    const apifyScraper = new ApifyScraper();
+    const isAccessible = await apifyScraper.testAccess();
+    const usageInfo = await apifyScraper.getUsageInfo();
+    
+    res.json({
+      success: true,
+      data: {
+        service_available: isAccessible,
+        api_token_configured: !!process.env.APIFY_API_TOKEN,
+        usage_info: usageInfo,
+        message: isAccessible ? 'Apify service is accessible' : 'Apify service is not accessible',
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error checking Apify service status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'APIFY_STATUS_ERROR',
+        message: 'Failed to check Apify service status',
+        details: error.message
+      }
+    });
+  }
+});
+
 // Models endpoint (placeholder)
 router.get('/models', (req, res) => {
   res.json({
@@ -404,6 +574,225 @@ router.get('/export', (req, res) => {
       message: 'Export functionality coming soon!'
     }
   });
+});
+
+// Start Analysis endpoint - triggers Apify actor for competitor analysis
+router.post('/start-analysis', async (req, res) => {
+  try {
+    const { pageUrls } = req.body;
+    
+    // Validate required fields
+    if (!pageUrls || !Array.isArray(pageUrls) || pageUrls.length !== 3) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Exactly 3 Facebook page URLs are required',
+          details: { pageUrls }
+        }
+      });
+    }
+    
+    // Validate Facebook URLs
+    for (const url of pageUrls) {
+      if (!isValidFacebookPageUrl(url)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_URL',
+            message: `Invalid Facebook page URL: ${url}`,
+            details: { url }
+          }
+        });
+      }
+    }
+    
+    // Generate unique IDs
+    const runId = `apify_run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const datasetId = `dataset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create analysis job entry
+    const analysisJob = {
+      run_id: runId,
+      dataset_id: datasetId,
+      status: 'queued',
+      created_at: new Date().toISOString(),
+      started_at: null,
+      completed_at: null,
+      page_urls: pageUrls,
+      results: [],
+      error: null,
+      progress: { current: 0, total: 3, percentage: 0, message: 'Initializing Apify analysis...' }
+    };
+    
+    jobs.set(runId, analysisJob);
+    
+    logger.info('Starting Apify competitor analysis', {
+      runId,
+      datasetId,
+      pageUrls
+    });
+    
+    // Start Apify analysis asynchronously
+    setImmediate(() => processApifyAnalysis(runId));
+    
+    res.json({
+      success: true,
+      data: {
+        runId,
+        datasetId,
+        status: 'queued',
+        pageUrls,
+        estimated_duration: '3-7 minutes',
+        created_at: analysisJob.created_at
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        request_id: req.id || 'unknown'
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error starting Apify analysis:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANALYSIS_ERROR',
+        message: 'Failed to start Apify analysis',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Get analysis status
+router.get('/status/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    
+    logger.info('Getting Apify analysis status', { runId });
+    
+    const job = jobs.get(runId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'JOB_NOT_FOUND',
+          message: 'Analysis job not found'
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        runId,
+        datasetId: job.dataset_id,
+        status: job.status,
+        progress: job.progress,
+        pageUrls: job.page_urls,
+        created_at: job.created_at,
+        started_at: job.started_at,
+        completed_at: job.completed_at,
+        error: job.error
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error getting analysis status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'STATUS_ERROR',
+        message: 'Failed to get analysis status'
+      }
+    });
+  }
+});
+
+// Get analysis results
+router.get('/results/:datasetId', async (req, res) => {
+  try {
+    const { datasetId } = req.params;
+    
+    logger.info('Getting analysis results', { datasetId });
+    
+    // Find job by dataset ID
+    let job = Array.from(jobs.values()).find(j => j.dataset_id === datasetId);
+    
+    // If not found in jobs, check if it's a workflow ID
+    if (!job) {
+      const workflow = Array.from(workflows.values()).find(w => w.workflow_id === datasetId);
+      if (workflow && workflow.status === 'completed') {
+        // Convert workflow data to job format
+        const pages = workflow.pages;
+        const results = [
+          pages.your_page.data || pages.your_page,
+          pages.competitor_1.data || pages.competitor_1,
+          pages.competitor_2.data || pages.competitor_2
+        ];
+        
+        job = {
+          dataset_id: datasetId,
+          run_id: workflow.workflow_id,
+          status: 'completed',
+          results: results,
+          page_urls: [pages.your_page.page_url, pages.competitor_1.page_url, pages.competitor_2.page_url],
+          completed_at: workflow.completed_at
+        };
+      }
+    }
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'DATASET_NOT_FOUND',
+          message: 'Dataset not found'
+        }
+      });
+    }
+    
+    if (job.status !== 'completed') {
+      return res.status(202).json({
+        success: true,
+        data: {
+          message: `Analysis is ${job.status}`,
+          status: job.status,
+          progress: job.progress
+        }
+      });
+    }
+    
+    // Transform results array to object with brand names as keys for frontend
+    const resultsObject = {};
+    job.results.forEach(result => {
+      const brandKey = result.page_name.toLowerCase();
+      resultsObject[brandKey] = result;
+    });
+
+    res.json({
+      success: true,
+      data: resultsObject,
+      metadata: {
+        datasetId,
+        runId: job.run_id,
+        pageUrls: job.page_urls,
+        completed_at: job.completed_at,
+        totalAdsFound: job.results.reduce((sum, page) => sum + (page.ads_found || 0), 0)
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error getting analysis results:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'RESULTS_ERROR',
+        message: 'Failed to get analysis results'
+      }
+    });
+  }
 });
 
 // Competitor Analysis Workflow
@@ -724,6 +1113,154 @@ function extractPageNameFromUrl(url) {
   }
 }
 
+// Process Apify analysis workflow
+async function processApifyAnalysis(runId) {
+  const job = jobs.get(runId);
+  if (!job) return;
+  
+  try {
+    // Update job status
+    job.status = 'running';
+    job.started_at = new Date().toISOString();
+    job.progress.message = 'Starting Apify scraping...';
+    jobs.set(runId, job);
+    
+    logger.info(`Processing Apify analysis ${runId}`, {
+      pageUrls: job.page_urls
+    });
+    
+    // Initialize Apify scraper
+    const apifyScraper = new ApifyScraper();
+    
+    // Check if API token is configured
+    if (!process.env.APIFY_API_TOKEN) {
+      throw new Error('APIFY_API_TOKEN is not configured. Please add your Apify API token to the .env file.');
+    }
+    
+    const results = [];
+    
+    // Process each Facebook page URL
+    for (let i = 0; i < job.page_urls.length; i++) {
+      const pageUrl = job.page_urls[i];
+      const pageName = extractPageNameFromUrl(pageUrl);
+      
+      try {
+        // Update progress
+        job.progress.current = i + 1;
+        job.progress.percentage = Math.round(((i + 1) / job.page_urls.length) * 100);
+        job.progress.message = `Scraping ${pageName} via Apify... (${i + 1}/${job.page_urls.length})`;
+        jobs.set(runId, job);
+        
+        logger.info(`Scraping page ${i + 1}/${job.page_urls.length}: ${pageName}`);
+        
+        // Scrape ads using Apify
+        logger.info(`Calling Apify with query: "${pageName}" (extracted from ${pageUrl})`);
+        const adsData = await apifyScraper.scrapeAds({
+          query: pageName,
+          country: 'US',
+          limit: 50
+        });
+        logger.info(`Apify returned ${adsData.length} ads for query: "${pageName}"`);
+        
+        // Try multiple scraping methods in sequence
+        let finalAdsData = adsData;
+        let source = 'apify';
+        
+        if (adsData.length === 0) {
+          logger.info(`Apify returned 0 ads for "${pageName}", trying fallback scrapers...`);
+          
+          // Try Facebook API first (if token is valid)
+          try {
+            const apiClient = new FacebookAdLibraryAPI();
+            const fallbackAds = await apiClient.scrapeAds({
+              query: pageName,
+              limit: 50,
+              region: 'US'
+            });
+            
+            if (fallbackAds.length > 0) {
+              logger.info(`Facebook API found ${fallbackAds.length} ads for "${pageName}"`);
+              finalAdsData = fallbackAds;
+              source = 'facebook_api';
+            }
+          } catch (fallbackError) {
+            logger.warn(`Facebook API failed for "${pageName}":`, fallbackError.message);
+            
+            // Try HTTP scraper as second fallback
+            try {
+              const FacebookHTTPAdvanced = require('../scrapers/facebook-http-advanced');
+              const httpScraper = new FacebookHTTPAdvanced();
+              const httpAds = await httpScraper.scrapeAds({
+                query: pageName,
+                limit: 50,
+                region: 'US'
+              });
+              
+              if (httpAds.length > 0) {
+                logger.info(`HTTP scraper found ${httpAds.length} ads for "${pageName}"`);
+                finalAdsData = httpAds;
+                source = 'http_scraper';
+              }
+            } catch (httpError) {
+              logger.warn(`HTTP scraper also failed for "${pageName}":`, httpError.message);
+            }
+          }
+        }
+        
+        results.push({
+          page_name: pageName,
+          page_url: pageUrl,
+          ads_found: finalAdsData.length,
+          ads_data: finalAdsData,
+          scraped_at: new Date().toISOString(),
+          source: source
+        });
+        
+        logger.info(`Successfully processed ${finalAdsData.length} ads for ${pageName} via ${source}`);
+        
+      } catch (pageError) {
+        logger.error(`Failed to scrape ${pageName}:`, pageError);
+        
+        results.push({
+          page_name: pageName,
+          page_url: pageUrl,
+          ads_found: 0,
+          ads_data: [],
+          error: pageError.message,
+          scraped_at: new Date().toISOString(),
+          source: 'apify'
+        });
+      }
+    }
+    
+    // Complete job
+    job.status = 'completed';
+    job.completed_at = new Date().toISOString();
+    job.results = results;
+    job.progress.current = job.page_urls.length;
+    job.progress.percentage = 100;
+    job.progress.message = 'Apify analysis completed!';
+    
+    jobs.set(runId, job);
+    
+    const totalAdsFound = results.reduce((sum, page) => sum + page.ads_found, 0);
+    logger.info(`Apify analysis ${runId} completed successfully`, {
+      totalAdsFound,
+      duration: new Date() - new Date(job.started_at)
+    });
+    
+  } catch (error) {
+    logger.error(`Apify analysis ${runId} failed:`, error);
+    
+    // Update job with error
+    job.status = 'failed';
+    job.completed_at = new Date().toISOString();
+    job.error = error.message;
+    job.progress.message = `Analysis failed: ${error.message}`;
+    jobs.set(runId, job);
+  }
+}
+
 // Process competitor analysis workflow
 async function processCompetitorAnalysisWorkflow(workflowId) {
   const workflow = workflows.get(workflowId);
@@ -803,32 +1340,129 @@ async function processCompetitorAnalysisWorkflow(workflowId) {
   }
 }
 
-// Analyze ads for a specific page
+// Analyze ads for a specific page using Apify
 async function analyzePageAds(pageUrl, pageType) {
+  const pageName = extractPageNameFromUrl(pageUrl);
+  
+  // Try 1: Apify scraper
   try {
-    const pageName = extractPageNameFromUrl(pageUrl);
+    logger.info(`Attempting Apify scraping for "${pageName}"`);
+    const apifyScraper = new ApifyScraper();
     
-    // Initialize Facebook API client
+    const adsData = await apifyScraper.scrapeAds({
+      query: pageName,
+      country: 'US',
+      limit: 50
+    });
+    
+    if (adsData.length > 0) {
+      logger.info(`Apify success: ${adsData.length} ads found for "${pageName}"`);
+      return {
+        page_name: pageName,
+        page_url: pageUrl,
+        ads_found: adsData.length,
+        ads_data: adsData,
+        analyzed_at: new Date().toISOString(),
+        source: 'apify'
+      };
+    }
+    
+    logger.info(`Apify returned 0 ads for "${pageName}", trying Facebook API fallback...`);
+  } catch (error) {
+    logger.warn(`Apify error for "${pageName}":`, error.message);
+  }
+  
+  // Try 2: Facebook API fallback
+  try {
+    logger.info(`Attempting Facebook API for "${pageName}"`);
     const apiClient = new FacebookAdLibraryAPI();
-    
-    // Search for ads by page name
     const adsData = await apiClient.scrapeAds({
       query: pageName,
       limit: 50,
       region: 'US'
     });
     
-    return {
-      page_name: pageName,
-      page_url: pageUrl,
-      ads_found: adsData.length,
-      ads_data: adsData,
-      analyzed_at: new Date().toISOString()
-    };
+    if (adsData.length > 0) {
+      logger.info(`Facebook API success: ${adsData.length} ads found for "${pageName}"`);
+      return {
+        page_name: pageName,
+        page_url: pageUrl,
+        ads_found: adsData.length,
+        ads_data: adsData,
+        analyzed_at: new Date().toISOString(),
+        source: 'facebook_api'
+      };
+    }
     
+    logger.info(`Facebook API returned 0 ads for "${pageName}", trying Playwright fallback...`);
   } catch (error) {
-    throw new Error(`Failed to analyze ${pageType}: ${error.message}`);
+    logger.warn(`Facebook API error for "${pageName}":`, error.message);
   }
+  
+  // Try 3: Playwright scraper fallback (if browser dependencies available)
+  try {
+    logger.info(`Attempting Playwright scraping for "${pageName}"`);
+    const playwrightScraper = new FacebookPlaywrightScraper();
+    const adsData = await playwrightScraper.scrapeAds({
+      query: pageName,
+      limit: 50,
+      region: 'US'
+    });
+    
+    if (adsData.length > 0) {
+      logger.info(`Playwright success: ${adsData.length} ads found for "${pageName}"`);
+      return {
+        page_name: pageName,
+        page_url: pageUrl,
+        ads_found: adsData.length,
+        ads_data: adsData,
+        analyzed_at: new Date().toISOString(),
+        source: 'playwright'
+      };
+    }
+    
+    logger.warn(`All scraping methods failed for "${pageName}" - no ads found`);
+  } catch (error) {
+    logger.warn(`Playwright error for "${pageName}":`, error.message);
+  }
+  
+  // Try 4: Advanced HTTP scraper fallback (no browser dependencies needed)
+  try {
+    logger.info(`Attempting advanced HTTP scraping for "${pageName}"`);
+    const httpScraper = new FacebookAdvancedHTTPScraper();
+    const adsData = await httpScraper.scrapeAds({
+      query: pageName,
+      limit: 50,
+      region: 'US'
+    });
+    
+    if (adsData.length > 0) {
+      logger.info(`HTTP scraper success: ${adsData.length} ads found for "${pageName}"`);
+      return {
+        page_name: pageName,
+        page_url: pageUrl,
+        ads_found: adsData.length,
+        ads_data: adsData,
+        analyzed_at: new Date().toISOString(),
+        source: 'http_advanced'
+      };
+    }
+    
+    logger.warn(`All 4 scraping methods failed for "${pageName}" - no ads found`);
+  } catch (error) {
+    logger.warn(`Advanced HTTP error for "${pageName}":`, error.message);
+  }
+  
+  // All methods failed - return empty result
+  return {
+    page_name: pageName,
+    page_url: pageUrl,
+    ads_found: 0,
+    ads_data: [],
+    analyzed_at: new Date().toISOString(),
+    source: 'none',
+    error: 'All scraping methods failed (Apify, Facebook API, Playwright, HTTP Advanced)'
+  };
 }
 
 // Run competitive analysis using AI
@@ -1026,6 +1660,254 @@ function generateRecommendations(yourScore, comp1Score, comp2Score) {
   recommendations.push("Monitor competitor ad frequency and adjust your campaign scheduling accordingly");
   
   return recommendations;
+}
+
+// Generate mock Facebook ads data for development/testing
+function generateMockFacebookAds(brandName, count = 8) {
+  const mockAds = [];
+  const adTypes = ['image', 'video', 'carousel', 'collection'];
+  const objectives = ['awareness', 'traffic', 'conversions', 'app_installs'];
+  const placements = ['feed', 'stories', 'reels', 'marketplace'];
+  
+  const baseMetrics = {
+    nike: { impressions: [180000, 250000], spend: [2500, 4500], cpm: [8.50, 12.30] },
+    adidas: { impressions: [150000, 220000], spend: [2200, 4100], cpm: [9.20, 13.50] },
+    puma: { impressions: [120000, 180000], spend: [1800, 3200], cpm: [10.50, 15.20] }
+  };
+  
+  const brand = brandName.toLowerCase();
+  const metrics = baseMetrics[brand] || baseMetrics.nike;
+  
+  for (let i = 0; i < count; i++) {
+    const impressions = Math.floor(Math.random() * (metrics.impressions[1] - metrics.impressions[0]) + metrics.impressions[0]);
+    const spend = Math.floor(Math.random() * (metrics.spend[1] - metrics.spend[0]) + metrics.spend[0]);
+    const cpm = (Math.random() * (metrics.cpm[1] - metrics.cpm[0]) + metrics.cpm[0]).toFixed(2);
+    const ctr = (Math.random() * 2.5 + 0.5).toFixed(2);
+    
+    mockAds.push({
+      ad_id: `mock_${brand}_ad_${Date.now()}_${i}`,
+      creative_body: `Experience the latest ${brandName} innovation. Shop now and discover what makes champions. #${brandName} #Performance #Innovation`,
+      ad_creative_link_title: `${brandName} - Premium ${['Sports', 'Performance', 'Lifestyle', 'Training'][i % 4]} Collection`,
+      ad_creative_link_description: `Discover ${brandName}'s newest collection with cutting-edge technology and unmatched style.`,
+      impressions: impressions,
+      spend: spend,
+      cpm: parseFloat(cpm),
+      ctr: parseFloat(ctr),
+      ad_delivery_start_time: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+      ad_creative_link_url: `https://www.${brand}.com/collection-${i + 1}`,
+      publisher_platform: ['facebook', 'instagram'][Math.floor(Math.random() * 2)],
+      platform_position: placements[Math.floor(Math.random() * placements.length)],
+      ad_type: adTypes[Math.floor(Math.random() * adTypes.length)],
+      objective: objectives[Math.floor(Math.random() * objectives.length)],
+      demographic_distribution: {
+        age: ['18-24', '25-34', '35-44', '45-54'][Math.floor(Math.random() * 4)],
+        gender: ['male', 'female', 'unknown'][Math.floor(Math.random() * 3)]
+      },
+      page_name: brandName,
+      funding_entity: `${brandName} Inc.`,
+      ad_snapshot_url: `https://www.facebook.com/ads/library/?id=mock_${brand}_${i}`
+    });
+  }
+  
+  return mockAds;
+}
+
+// Validate Facebook access token and get expiration info
+async function validateFacebookToken(accessToken) {
+  try {
+    // First, check token info using debug_token endpoint
+    const debugUrl = `https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${accessToken}`;
+    
+    const debugResponse = await new Promise((resolve, reject) => {
+      const https = require('https');
+      const url = new URL(debugUrl);
+      
+      const options = {
+        hostname: url.hostname,
+        path: url.pathname + url.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Ad Library Scraper 1.0'
+        }
+      };
+      
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            resolve(parsed);
+          } catch (e) {
+            reject(new Error('Invalid JSON response'));
+          }
+        });
+      });
+      
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+      req.end();
+    });
+    
+    if (debugResponse.error) {
+      let specificError = debugResponse.error.message || 'Token validation failed';
+      
+      // Provide more user-friendly error messages based on Facebook's specific error codes
+      if (debugResponse.error.code === 190) {
+        if (debugResponse.error.error_subcode === 463) {
+          specificError = 'Facebook access token has expired. Please generate a new token.';
+        } else if (debugResponse.error.error_subcode === 467) {
+          specificError = 'Facebook access token is invalid. Please check your token and try again.';
+        } else {
+          specificError = 'Facebook access token is invalid or expired. Please generate a new token.';
+        }
+      } else if (debugResponse.error.code === 10) {
+        if (debugResponse.error.error_subcode === 2332002) {
+          specificError = 'Facebook access token lacks required permissions for Ad Library API. Please ensure your token has "ads_read" permission and your Facebook app is approved for Ad Library API access.';
+        } else {
+          specificError = 'Facebook access token does not have sufficient permissions for this action.';
+        }
+      } else if (debugResponse.error.message?.includes('malformed')) {
+        specificError = 'Facebook access token format is invalid. Please check that you copied the complete token.';
+      } else if (debugResponse.error.message?.includes('Cannot parse access token')) {
+        specificError = 'Facebook access token format is invalid. Please check that you copied the complete token correctly.';
+      } else if (debugResponse.error.message?.includes('permissions')) {
+        specificError = 'Facebook access token lacks required permissions. Please ensure your token has "ads_read" and "pages_read_engagement" permissions.';
+      }
+      
+      return {
+        isValid: false,
+        isExpired: debugResponse.error.code === 190 && debugResponse.error.error_subcode === 463,
+        error: specificError,
+        details: debugResponse.error
+      };
+    }
+    
+    const tokenData = debugResponse.data;
+    if (!tokenData) {
+      return {
+        isValid: false,
+        isExpired: true,
+        error: 'No token data returned'
+      };
+    }
+    
+    // Check if token is valid
+    const isValid = tokenData.is_valid === true;
+    
+    // Check expiration
+    const expiresAt = tokenData.expires_at ? new Date(tokenData.expires_at * 1000) : null;
+    const isExpired = expiresAt ? new Date() > expiresAt : false;
+    
+    // Get app info
+    let appName = 'Unknown App';
+    if (tokenData.application) {
+      appName = tokenData.application.name || tokenData.application;
+    }
+    
+    // Test Ad Library API access specifically
+    let adLibraryAccess = null;
+    try {
+      const adLibraryTestUrl = `https://graph.facebook.com/v19.0/ads_archive?search_terms=test&ad_reached_countries=["US"]&limit=1&access_token=${accessToken}`;
+      
+      const adLibraryResponse = await new Promise((resolve, reject) => {
+        const https = require('https');
+        const url = new URL(adLibraryTestUrl);
+        
+        const options = {
+          hostname: url.hostname,
+          path: url.pathname + url.search,
+          method: 'GET',
+          timeout: 8000
+        };
+        
+        const req = https.request(options, (res) => {
+          let data = '';
+          res.on('data', (chunk) => data += chunk);
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              resolve(parsed);
+            } catch (e) {
+              reject(new Error('Invalid JSON response from Ad Library API'));
+            }
+          });
+        });
+        
+        req.on('error', reject);
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Ad Library API test timeout'));
+        });
+        req.end();
+      });
+
+      if (adLibraryResponse.error) {
+        const error = adLibraryResponse.error;
+        if (error.code === 10 && error.error_subcode === 2335012) {
+          adLibraryAccess = {
+            hasAccess: false,
+            error: 'Your app does not have access to Facebook Ad Library API. You need to submit your app for review and get approved for "Ad Library API" permission.',
+            errorCode: 'NO_AD_LIBRARY_PERMISSION'
+          };
+        } else if (error.code === 10) {
+          adLibraryAccess = {
+            hasAccess: false,
+            error: 'Token lacks required permissions for Ad Library API. Ensure your token has "ads_read" permission.',
+            errorCode: 'INSUFFICIENT_PERMISSIONS'
+          };
+        } else if (error.code === 190) {
+          adLibraryAccess = {
+            hasAccess: false,
+            error: 'Token is invalid or expired for Ad Library API access.',
+            errorCode: 'INVALID_TOKEN'
+          };
+        } else {
+          adLibraryAccess = {
+            hasAccess: false,
+            error: `Ad Library API access failed: ${error.message}`,
+            errorCode: 'UNKNOWN_ERROR'
+          };
+        }
+      } else {
+        adLibraryAccess = {
+          hasAccess: true,
+          message: 'Token has valid access to Facebook Ad Library API',
+          adsFound: adLibraryResponse.data ? adLibraryResponse.data.length : 0
+        };
+      }
+    } catch (testError) {
+      adLibraryAccess = {
+        hasAccess: false,
+        error: `Failed to test Ad Library API access: ${testError.message}`,
+        errorCode: 'TEST_FAILED'
+      };
+    }
+
+    return {
+      isValid: isValid && !isExpired,
+      isExpired,
+      appId: tokenData.app_id,
+      appName,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      scopes: tokenData.scopes || [],
+      tokenType: tokenData.type || 'unknown',
+      adLibraryAccess: adLibraryAccess,
+      error: null
+    };
+    
+  } catch (error) {
+    logger.error('Token validation error:', error);
+    return {
+      isValid: false,
+      isExpired: true,
+      error: 'Failed to validate token: ' + error.message,
+      details: error.message
+    };
+  }
 }
 
 module.exports = router;

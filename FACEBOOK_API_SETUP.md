@@ -1,6 +1,6 @@
 # Facebook Ad Library API Setup Guide
 
-This guide will help you set up the Facebook Ad Library API to replace web scraping with official API access.
+This guide will help you set up the Facebook Ad Library API for real competitor analysis data collection.
 
 ## Prerequisites
 

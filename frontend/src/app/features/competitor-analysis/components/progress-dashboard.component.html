@@ -1,13 +1,13 @@
 <div class="progress-dashboard-container">
   <div class="page-header">
-    <h1>Analysis in Progress</h1>
-    <p>Your competitor analysis is being processed. This typically takes 5-10 minutes.</p>
+    <h1>Facebook Ads Analysis in Progress</h1>
+    <p>Your competitor analysis is being processed. This typically takes 30-90 seconds with our 4-tier system.</p>
   </div>
 
   <!-- Loading State -->
   <div *ngIf="isLoading" class="loading-container">
     <mat-spinner diameter="60"></mat-spinner>
-    <p>Connecting to analysis service...</p>
+    <p>Connecting to Facebook ads analysis service...</p>
   </div>
 
   <!-- Error State -->
@@ -29,15 +29,15 @@
   </div>
 
   <!-- Progress Dashboard -->
-  <div *ngIf="workflowStatus && !isLoading" class="progress-content">
+  <div *ngIf="analysisStatus && !isLoading" class="progress-content">
     <!-- Progress Card -->
     <mat-card class="progress-card">
       <mat-card-header>
         <mat-card-title>
           <mat-icon class="header-icon">trending_up</mat-icon>
-          Analysis Progress
+          Facebook Ads Analysis Progress
         </mat-card-title>
-        <mat-card-subtitle>{{ workflowStatus.progress.message }}</mat-card-subtitle>
+        <mat-card-subtitle>{{ analysisStatus.progress.message }}</mat-card-subtitle>
       </mat-card-header>
       
       <mat-card-content>
@@ -45,13 +45,13 @@
         <div class="progress-section">
           <div class="progress-info">
             <span class="progress-text">
-              Step {{ workflowStatus.progress.current_step }} of {{ workflowStatus.progress.total_steps }}
+              Step {{ analysisStatus.progress.current }} of {{ analysisStatus.progress.total }}
             </span>
-            <span class="progress-percentage">{{ workflowStatus.progress.percentage }}%</span>
+            <span class="progress-percentage">{{ analysisStatus.progress.percentage }}%</span>
           </div>
           <mat-progress-bar 
             mode="determinate" 
-            [value]="workflowStatus.progress.percentage"
+            [value]="analysisStatus.progress.percentage"
             class="progress-bar">
           </mat-progress-bar>
         </div>
@@ -60,25 +60,29 @@
         <div class="status-info">
           <div class="status-item">
             <mat-icon>schedule</mat-icon>
-            <span>Started: {{ formatTime(workflowStatus.started_at || workflowStatus.created_at) }}</span>
+            <span>Started: {{ formatTime(analysisStatus.started_at || analysisStatus.created_at) }}</span>
           </div>
           <div class="status-item">
-            <mat-icon>attach_money</mat-icon>
-            <span>Credits: {{ workflowStatus.credits_used }}</span>
+            <mat-icon>fingerprint</mat-icon>
+            <span>Run ID: {{ analysisStatus.runId.substring(0, 12) }}...</span>
+          </div>
+          <div class="status-item">
+            <mat-icon>layers</mat-icon>
+            <span>Status: {{ analysisStatus.status }}</span>
           </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="action-buttons">
-          <button mat-button (click)="viewFlowRun()">
+          <button mat-button (click)="viewRunDetails()">
             <mat-icon>visibility</mat-icon>
             View Details
           </button>
           <button 
             mat-button 
             color="warn"
-            *ngIf="workflowStatus.status !== 'completed' && workflowStatus.status !== 'failed'"
-            (click)="cancelWorkflow()">
+            *ngIf="analysisStatus.status !== 'completed' && analysisStatus.status !== 'failed'"
+            (click)="cancelAnalysis()">
             <mat-icon>cancel</mat-icon>
             Cancel Analysis
           </button>
@@ -88,96 +92,80 @@
 
     <!-- Pages Status -->
     <div class="pages-grid">
-      <!-- Your Page -->
-      <mat-card class="page-status-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="page-icon">home</mat-icon>
-            Your Page
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="page-url">{{ workflowStatus.pages.your_page.url }}</div>
-          <div class="status-chip">
-            <span 
-              class="chip"
-              [class]="'status-' + workflowStatus.pages.your_page.status">
-              {{ workflowStatus.pages.your_page.status }}
-            </span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Competitor 1 -->
-      <mat-card class="page-status-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="page-icon">business</mat-icon>
-            Competitor 1
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="page-url">{{ workflowStatus.pages.competitor_1.url }}</div>
-          <div class="status-chip">
-            <span 
-              class="chip"
-              [class]="'status-' + workflowStatus.pages.competitor_1.status">
-              {{ workflowStatus.pages.competitor_1.status }}
-            </span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Competitor 2 -->
-      <mat-card class="page-status-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="page-icon">business</mat-icon>
-            Competitor 2
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="page-url">{{ workflowStatus.pages.competitor_2.url }}</div>
-          <div class="status-chip">
-            <span 
-              class="chip"
-              [class]="'status-' + workflowStatus.pages.competitor_2.status">
-              {{ workflowStatus.pages.competitor_2.status }}
-            </span>
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <div *ngFor="let pageUrl of analysisStatus.pageUrls; let i = index" class="page-status-card">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon class="page-icon">{{ i === 0 ? 'home' : 'business' }}</mat-icon>
+              {{ i === 0 ? 'Your Page' : 'Competitor ' + i }}
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="page-url">{{ pageUrl }}</div>
+            <div class="brand-name">{{ getBrandNames()[i] }}</div>
+            <div class="status-chip">
+              <span 
+                class="chip"
+                [class]="'status-' + (analysisStatus.progress.current > i ? 'completed' : analysisStatus.progress.current === i ? 'running' : 'pending')">
+                {{ analysisStatus.progress.current > i ? 'completed' : analysisStatus.progress.current === i ? 'processing' : 'pending' }}
+              </span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
     </div>
 
-    <!-- AI Analysis Status -->
+    <!-- Facebook Ads Scraping Status -->
     <mat-card class="analysis-card">
       <mat-card-header>
         <mat-card-title>
-          <mat-icon class="header-icon">psychology</mat-icon>
-          AI Analysis
+          <mat-icon class="header-icon">cloud_download</mat-icon>
+          Facebook Ads Scraping
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <div class="analysis-status">
-          <div class="status-chip">
-            <span 
-              class="chip"
-              [class]="'status-' + workflowStatus.analysis.status">
-              {{ workflowStatus.analysis.status }}
-            </span>
+          <div class="scraper-info">
+            <div class="scraper-status">
+              <span class="scraper-label">4-Tier System:</span>
+              <span class="scraper-methods">Apify → Facebook API → Playwright → HTTP</span>
+            </div>
+            <div class="status-chip">
+              <span 
+                class="chip"
+                [class]="'status-' + analysisStatus.status">
+                {{ analysisStatus.status }}
+              </span>
+            </div>
           </div>
         </div>
       </mat-card-content>
     </mat-card>
 
     <!-- Completion Message -->
-    <mat-card *ngIf="workflowStatus.status === 'completed'" class="completion-card">
+    <mat-card *ngIf="analysisStatus.status === 'completed'" class="completion-card">
       <mat-card-content>
         <div class="completion-content">
           <mat-icon class="success-icon">check_circle</mat-icon>
           <div>
-            <h3>Analysis Complete!</h3>
-            <p>Redirecting to results...</p>
+            <h3>Facebook Ads Analysis Complete!</h3>
+            <p>Found live Facebook ads data. Redirecting to dashboard...</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Error Message -->
+    <mat-card *ngIf="analysisStatus.status === 'failed'" class="error-card">
+      <mat-card-content>
+        <div class="error-content">
+          <mat-icon class="error-icon">error</mat-icon>
+          <div>
+            <h3>Analysis Failed</h3>
+            <p>{{ analysisStatus.error || 'Unknown error occurred' }}</p>
+            <button mat-raised-button color="primary" (click)="startNewAnalysis()">
+              Try Again
+            </button>
           </div>
         </div>
       </mat-card-content>

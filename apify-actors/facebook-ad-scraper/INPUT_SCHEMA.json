@@ -1,0 +1,43 @@
+{
+    "title": "Facebook Ad Library Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "query": {
+            "title": "Search Query",
+            "type": "string",
+            "description": "Search term for Facebook ads (brand name, keyword, or advertiser)",
+            "example": "nike"
+        },
+        "limit": {
+            "title": "Maximum Ads",
+            "type": "integer",
+            "description": "Maximum number of ads to scrape",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+        },
+        "country": {
+            "title": "Country",
+            "type": "string",
+            "description": "Country code for ad filtering",
+            "enum": ["US", "GB", "CA", "AU", "DE", "FR", "IT", "ES"],
+            "default": "US"
+        },
+        "adType": {
+            "title": "Ad Type",
+            "type": "string",
+            "description": "Type of ads to search for",
+            "enum": ["all", "political_and_issue_ads", "housing_employment_credit_ads"],
+            "default": "all"
+        },
+        "searchType": {
+            "title": "Search Type",
+            "type": "string",
+            "description": "How to interpret the search query",
+            "enum": ["advertiser", "keyword"],
+            "default": "advertiser"
+        }
+    },
+    "required": ["query"]
+}

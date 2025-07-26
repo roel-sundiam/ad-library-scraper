@@ -1,0 +1,129 @@
+<mat-card class="token-config-card">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon>vpn_key</mat-icon>
+      Facebook API Configuration
+    </mat-card-title>
+    <mat-card-subtitle>
+      Configure your Facebook access token to get real ads data
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- Current Token Status -->
+    <div class="status-section" *ngIf="tokenStatus">
+      <h3>Current Token Status</h3>
+      <div class="status-grid">
+        <div class="status-item">
+          <mat-icon [class]="tokenStatus.hasToken ? 'status-success' : 'status-error'">
+            {{ tokenStatus.hasToken ? 'check_circle' : 'error' }}
+          </mat-icon>
+          <span>Token Status: {{ tokenStatus.hasToken ? 'Active' : 'Missing' }}</span>
+        </div>
+        
+        <div class="status-item" *ngIf="tokenStatus.hasToken">
+          <mat-icon>info</mat-icon>
+          <span>Token Preview: {{ tokenStatus.tokenPreview }}</span>
+        </div>
+        
+        <div class="status-item" *ngIf="tokenStatus.hasToken">
+          <mat-icon>straighten</mat-icon>
+          <span>Token Length: {{ tokenStatus.tokenLength }} characters</span>
+        </div>
+      </div>
+    </div>
+
+    <mat-divider class="section-divider"></mat-divider>
+
+    <!-- Instructions -->
+    <div class="instructions-section">
+      <h3>How to Get a Facebook Access Token</h3>
+      <ol class="instruction-list">
+        <li>Click the button below to open Facebook Graph API Explorer</li>
+        <li>Select your app or create a new one</li>
+        <li>Add these permissions: <code>ads_read</code>, <code>pages_read_engagement</code></li>
+        <li>Click "Generate Access Token"</li>
+        <li>Copy the token and paste it in the form below</li>
+      </ol>
+
+      <button mat-raised-button color="primary" 
+              (click)="openFacebookDeveloperConsole()"
+              class="open-console-btn">
+        <mat-icon>open_in_new</mat-icon>
+        Open Facebook Graph API Explorer
+      </button>
+    </div>
+
+    <mat-divider class="section-divider"></mat-divider>
+
+    <!-- Token Update Form -->
+    <div class="form-section">
+      <h3>Update Access Token</h3>
+      
+      <form [formGroup]="tokenForm" (ngSubmit)="updateToken()">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Facebook Access Token</mat-label>
+          <textarea matInput 
+                    formControlName="accessToken"
+                    placeholder="EAA..."
+                    rows="3"
+                    (focus)="clearMessages()"></textarea>
+          <mat-icon matSuffix>vpn_key</mat-icon>
+          <mat-hint>Paste your Facebook access token here</mat-hint>
+          <mat-error *ngIf="tokenForm.get('accessToken')?.hasError('required')">
+            Access token is required
+          </mat-error>
+          <mat-error *ngIf="tokenForm.get('accessToken')?.hasError('minlength')">
+            Access token must be at least 50 characters long
+          </mat-error>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button mat-raised-button 
+                  color="primary" 
+                  type="submit"
+                  [disabled]="tokenForm.invalid || isUpdating">
+            <mat-icon *ngIf="!isUpdating">save</mat-icon>
+            <mat-spinner *ngIf="isUpdating" diameter="20"></mat-spinner>
+            {{ isUpdating ? 'Updating...' : 'Update Token' }}
+          </button>
+
+          <button mat-button 
+                  type="button"
+                  (click)="loadTokenStatus()"
+                  [disabled]="isLoading">
+            <mat-icon>refresh</mat-icon>
+            Refresh Status
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div class="messages-section">
+      <mat-card class="success-message" *ngIf="successMessage">
+        <mat-card-content>
+          <div class="message-content">
+            <mat-icon class="success-icon">check_circle</mat-icon>
+            <span>{{ successMessage }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="error-message" *ngIf="errorMessage">
+        <mat-card-content>
+          <div class="message-content">
+            <mat-icon class="error-icon">error</mat-icon>
+            <span>{{ errorMessage }}</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Usage Note -->
+    <div class="usage-note">
+      <mat-icon>info</mat-icon>
+      <p><strong>Note:</strong> Once you update the token, you can immediately start Facebook ads analysis without restarting the application. The token will be used for all subsequent requests.</p>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -30,6 +30,28 @@
 .form-section {
   .analysis-form-card {
     mat-card-header {
+      .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+        
+        .title-section {
+          flex: 1;
+        }
+        
+        .config-section {
+          margin-left: 20px;
+          
+          button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+          }
+        }
+      }
+      
       .header-icon {
         margin-right: 0.5rem;
         color: #3f51b5;

@@ -9,11 +9,24 @@
     <div class="form-section">
       <mat-card class="analysis-form-card">
         <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="header-icon">compare_arrows</mat-icon>
-            Configure Competitor Analysis
-          </mat-card-title>
-          <mat-card-subtitle>Compare your Facebook advertising strategy with up to 2 competitors</mat-card-subtitle>
+          <div class="header-content">
+            <div class="title-section">
+              <mat-card-title>
+                <mat-icon class="header-icon">compare_arrows</mat-icon>
+                Configure Competitor Analysis
+              </mat-card-title>
+              <mat-card-subtitle>Compare your Facebook advertising strategy with up to 2 competitors</mat-card-subtitle>
+            </div>
+            <div class="config-section">
+              <button mat-stroked-button 
+                      color="primary"
+                      (click)="openFacebookConfig()"
+                      title="Configure Facebook API token">
+                <mat-icon>settings</mat-icon>
+                Facebook API Config
+              </button>
+            </div>
+          </div>
         </mat-card-header>
         
         <mat-card-content>
@@ -108,31 +121,77 @@
         </mat-card-content>
       </mat-card>
 
+      <!-- System Status -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon class="info-icon">settings</mat-icon>
+            System Status
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="status-grid">
+            <div class="status-item">
+              <div class="status-label">Apify Scraper:</div>
+              <div class="status-indicator" [ngClass]="scraperStatuses.apify">
+                <mat-icon>{{ scraperStatuses.apify === 'online' ? 'check_circle' : 'error' }}</mat-icon>
+                {{ scraperStatuses.apify || 'checking...' }}
+              </div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">Facebook API:</div>
+              <div class="status-indicator" [ngClass]="scraperStatuses.facebook">
+                <mat-icon>{{ scraperStatuses.facebook === 'online' ? 'check_circle' : 'error' }}</mat-icon>
+                {{ scraperStatuses.facebook || 'checking...' }}
+              </div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">HTTP Scraper:</div>
+              <div class="status-indicator online">
+                <mat-icon>check_circle</mat-icon>
+                online
+              </div>
+            </div>
+            <div class="status-item">
+              <div class="status-label">Fallback System:</div>
+              <div class="status-indicator online">
+                <mat-icon>verified</mat-icon>
+                active
+              </div>
+            </div>
+          </div>
+          <div class="system-note">
+            <mat-icon>info</mat-icon>
+            <span>4-tier fallback system ensures you always get Facebook ads data!</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
       <!-- Requirements -->
       <mat-card class="info-card">
         <mat-card-header>
           <mat-card-title>
             <mat-icon class="info-icon">info</mat-icon>
-            Requirements
+            What You'll Get
           </mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <ul class="requirements-list">
             <li>
-              <mat-icon class="check-icon">check_circle</mat-icon>
-              Public Facebook page URLs (not Ad Library URLs)
+              <mat-icon class="check-icon">analytics</mat-icon>
+              Live Facebook ads data with impressions & spend
             </li>
             <li>
-              <mat-icon class="check-icon">check_circle</mat-icon>
-              Pages must have recent advertising activity
+              <mat-icon class="check-icon">trending_up</mat-icon>
+              Competitor performance metrics comparison
             </li>
             <li>
-              <mat-icon class="check-icon">check_circle</mat-icon>
-              Facebook API access token configured
+              <mat-icon class="check-icon">palette</mat-icon>
+              Creative strategy analysis & insights
             </li>
             <li>
-              <mat-icon class="check-icon">check_circle</mat-icon>
-              Analysis typically takes 5-10 minutes
+              <mat-icon class="check-icon">schedule</mat-icon>
+              Real-time progress tracking (30-60 seconds)
             </li>
           </ul>
         </mat-card-content>

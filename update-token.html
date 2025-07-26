@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Token Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #1877F2;
+        }
+        .status {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        button {
+            background: #1877F2;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #166fe5;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #dc3545;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 4px solid #ffc107;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 Facebook API Token Configuration</h1>
+            <p>Update your Facebook access token to get real ads data</p>
+        </div>
+
+        <div class="status" id="status">
+            <strong>Loading token status...</strong>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 How to Get a Facebook Access Token:</h3>
+            <ol>
+                <li>Click the link below to open Facebook Graph API Explorer</li>
+                <li>Select your app or create a new one</li>
+                <li>Add these permissions: <code>ads_read</code>, <code>pages_read_engagement</code></li>
+                <li>Click "Generate Access Token"</li>
+                <li>Copy the token and paste it below</li>
+            </ol>
+            <p>
+                <button onclick="window.open('https://developers.facebook.com/tools/explorer/', '_blank')">
+                    🔗 Open Facebook Graph API Explorer
+                </button>
+            </p>
+        </div>
+
+        <form id="tokenForm">
+            <div class="form-group">
+                <label for="accessToken">Facebook Access Token:</label>
+                <textarea id="accessToken" 
+                         placeholder="EAA... (paste your Facebook access token here)"
+                         required></textarea>
+            </div>
+            
+            <button type="submit" id="updateBtn">💾 Update Token</button>
+            <button type="button" onclick="loadStatus()">🔄 Refresh Status</button>
+        </form>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        async function loadStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/config/facebook-status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const status = data.data;
+                    document.getElementById('status').innerHTML = `
+                        <strong>Token Status:</strong> ${status.hasToken ? '✅ Active' : '❌ Missing'}<br>
+                        ${status.hasToken ? `
+                            <strong>Token Preview:</strong> ${status.tokenPreview}<br>
+                            <strong>Token Length:</strong> ${status.tokenLength} characters<br>
+                            <strong>Last Updated:</strong> ${new Date(status.lastUpdated).toLocaleString()}
+                        ` : 'No token configured'}
+                    `;
+                } else {
+                    document.getElementById('status').innerHTML = '❌ Failed to load token status';
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = '❌ Error connecting to backend';
+                console.error('Error loading status:', error);
+            }
+        }
+
+        async function updateToken(token) {
+            const updateBtn = document.getElementById('updateBtn');
+            const messageDiv = document.getElementById('message');
+            
+            updateBtn.disabled = true;
+            updateBtn.textContent = '⏳ Updating...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/config/facebook-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ accessToken: token })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>Success!</strong> Facebook access token updated successfully!<br>
+                            Token length: ${data.data.tokenLength} characters<br>
+                            You can now start Facebook ads analysis immediately.
+                        </div>
+                    `;
+                    document.getElementById('accessToken').value = '';
+                    loadStatus();
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>Error:</strong> ${data.error?.message || 'Failed to update token'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                messageDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>Error:</strong> Failed to connect to backend. Make sure the backend is running on port 3000.
+                    </div>
+                `;
+                console.error('Error updating token:', error);
+            }
+            
+            updateBtn.disabled = false;
+            updateBtn.textContent = '💾 Update Token';
+        }
+
+        document.getElementById('tokenForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const token = document.getElementById('accessToken').value.trim();
+            
+            if (!token) {
+                document.getElementById('message').innerHTML = `
+                    <div class="error">❌ Please enter a Facebook access token</div>
+                `;
+                return;
+            }
+            
+            if (token.length < 50) {
+                document.getElementById('message').innerHTML = `
+                    <div class="error">❌ Access token seems too short. Please make sure you copied the complete token.</div>
+                `;
+                return;
+            }
+            
+            updateToken(token);
+        });
+
+        // Load status on page load
+        loadStatus();
+    </script>
+</body>
+</html>

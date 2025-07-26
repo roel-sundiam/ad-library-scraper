@@ -3,28 +3,23 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
 import { ApiService } from '../../../core/services/api.service';
+import { FacebookAnalysisStatus } from '../../../shared/models/facebook-ads.interface';
 
-interface WorkflowStatus {
-  workflow_id: string;
-  status: string;
+interface FacebookAnalysisStatusData {
+  runId: string;
+  datasetId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
   progress: {
-    current_step: number;
-    total_steps: number;
+    current: number;
+    total: number;
     percentage: number;
     message: string;
   };
-  pages: {
-    your_page: { url: string; status: string };
-    competitor_1: { url: string; status: string };
-    competitor_2: { url: string; status: string };
-  };
-  analysis: {
-    status: string;
-  };
+  pageUrls: string[];
   created_at: string;
-  started_at: string;
+  started_at?: string;
   completed_at?: string;
-  credits_used: number;
+  error?: string;
 }
 
 @Component({
@@ -33,8 +28,8 @@ interface WorkflowStatus {
   styleUrls: ['./progress-dashboard.component.scss']
 })
 export class ProgressDashboardComponent implements OnInit, OnDestroy {
-  workflowId: string = '';
-  workflowStatus: WorkflowStatus | null = null;
+  runId: string = '';
+  analysisStatus: FacebookAnalysisStatusData | null = null;
   isLoading = true;
   errorMessage = '';
   
@@ -47,11 +42,12 @@ export class ProgressDashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.workflowId = this.route.snapshot.params['workflowId'];
-    if (this.workflowId) {
+    // Get runId from route parameters (could be workflowId for backwards compatibility)
+    this.runId = this.route.snapshot.params['workflowId'] || this.route.snapshot.params['runId'];
+    if (this.runId) {
       this.startStatusPolling();
     } else {
-      this.errorMessage = 'Invalid workflow ID';
+      this.errorMessage = 'Invalid analysis ID';
       this.isLoading = false;
     }
   }
@@ -61,35 +57,37 @@ export class ProgressDashboardComponent implements OnInit, OnDestroy {
   }
 
   private startStatusPolling(): void {
-    // Poll status every 2 seconds
-    this.statusSubscription = interval(2000)
+    // Poll status every 3 seconds (Facebook analysis is faster than legacy workflow)
+    this.statusSubscription = interval(3000)
       .pipe(
-        switchMap(() => this.apiService.getWorkflowStatus(this.workflowId)),
+        switchMap(() => this.apiService.getAnalysisStatus(this.runId)),
         takeWhile(response => {
-          // Continue polling while workflow is running
+          // Continue polling while analysis is running
           return response.success && 
                  ['queued', 'running'].includes(response.data.status);
         }, true) // Include the final emit
       )
       .subscribe({
-        next: (response) => {
+        next: (response: FacebookAnalysisStatus) => {
           this.isLoading = false;
           if (response.success) {
-            this.workflowStatus = response.data;
+            this.analysisStatus = response.data;
             
-            // If completed, navigate to results after a short delay
+            // If completed, navigate to Facebook Ads dashboard after a short delay
             if (response.data.status === 'completed') {
               setTimeout(() => {
-                this.router.navigate(['/competitor-analysis/results', this.workflowId]);
+                // Use datasetId for results (backend expects datasetId for /results endpoint)
+                const datasetId = response.data.datasetId || this.runId;
+                this.router.navigate(['/competitor-analysis/facebook-dashboard', datasetId]);
               }, 2000);
             }
           } else {
-            this.errorMessage = 'Failed to get workflow status';
+            this.errorMessage = 'Failed to get analysis status';
           }
         },
         error: (error) => {
-          console.error('Error getting workflow status:', error);
-          this.errorMessage = error.error?.error?.message || 'An error occurred';
+          console.error('Error getting analysis status:', error);
+          this.errorMessage = error.error?.error?.message || 'An error occurred while checking status';
           this.isLoading = false;
         }
       });
@@ -101,32 +99,31 @@ export class ProgressDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  cancelWorkflow(): void {
-    if (this.workflowId) {
-      this.apiService.cancelWorkflow(this.workflowId).subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.router.navigate(['/competitor-analysis']);
-          } else {
-            this.errorMessage = 'Failed to cancel workflow';
-          }
-        },
-        error: (error) => {
-          console.error('Error cancelling workflow:', error);
-          this.errorMessage = error.error?.error?.message || 'Failed to cancel workflow';
-        }
-      });
-    }
+  cancelAnalysis(): void {
+    // Facebook analysis is fast, but we can still navigate back
+    this.router.navigate(['/competitor-analysis']);
   }
 
-  viewFlowRun(): void {
-    // This could open a detailed view or modal
-    // For now, just show an alert
-    alert('Detailed flow run view coming soon!');
+  viewRunDetails(): void {
+    // Could show detailed logs or metrics
+    const message = this.analysisStatus ? 
+      `Analysis ID: ${this.analysisStatus.runId}\nStatus: ${this.analysisStatus.status}\nProgress: ${this.analysisStatus.progress.current}/${this.analysisStatus.progress.total}` :
+      'No analysis details available';
+    alert(message);
   }
 
   getProgressBarWidth(): string {
-    return this.workflowStatus ? `${this.workflowStatus.progress.percentage}%` : '0%';
+    return this.analysisStatus ? `${this.analysisStatus.progress.percentage}%` : '0%';
+  }
+
+  getBrandNames(): string[] {
+    if (!this.analysisStatus?.pageUrls) return [];
+    
+    return this.analysisStatus.pageUrls.map(url => {
+      // Extract brand name from Facebook URL
+      const match = url.match(/facebook\.com\/([^\/\?]+)/);
+      return match ? match[1] : 'Unknown Brand';
+    });
   }
 
   getStatusColor(status: string): string {

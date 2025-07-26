@@ -8,6 +8,8 @@ import { CompetitorAnalysisComponent } from './components/competitor-analysis.co
 import { ProgressDashboardComponent } from './components/progress-dashboard.component';
 import { ResultsDisplayComponent } from './components/results-display.component';
 import { AiChatComponent } from './components/ai-chat.component';
+import { FacebookAdsDashboardComponent } from './components/facebook-ads-dashboard.component';
+import { FacebookTokenConfigComponent } from './components/facebook-token-config.component';
 
 const routes: Routes = [
   {
@@ -21,6 +23,16 @@ const routes: Routes = [
   {
     path: 'results/:workflowId',
     component: ResultsDisplayComponent
+  },
+  {
+    path: 'facebook-dashboard/:datasetId',
+    component: FacebookAdsDashboardComponent,
+    data: { title: 'Facebook Ads Analysis Results' }
+  },
+  {
+    path: 'facebook-config',
+    component: FacebookTokenConfigComponent,
+    data: { title: 'Facebook API Configuration' }
   }
 ];
 
@@ -29,7 +41,9 @@ const routes: Routes = [
     CompetitorAnalysisComponent,
     ProgressDashboardComponent,
     ResultsDisplayComponent,
-    AiChatComponent
+    AiChatComponent,
+    FacebookAdsDashboardComponent,
+    FacebookTokenConfigComponent
   ],
   imports: [
     CommonModule,

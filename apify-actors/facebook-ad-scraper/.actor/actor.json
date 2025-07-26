@@ -1,0 +1,7 @@
+{
+    "actorSpecification": 1,
+    "name": "facebook-ad-library-scraper",
+    "version": "1.0",
+    "buildTag": "latest",
+    "dockerfile": "./Dockerfile"
+}

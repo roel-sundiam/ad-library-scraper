@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Facebook Token Configuration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #1877F2;
+            margin-bottom: 8px;
+        }
+        
+        .card-subtitle {
+            color: #666;
+            font-size: 0.875rem;
+        }
+        
+        .card-content {
+            padding: 24px;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-missing {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-expired {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-invalid {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .token-info {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            color: #555;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+        
+        .token-info div {
+            margin-bottom: 4px;
+        }
+        
+        .token-info div:last-child {
+            margin-bottom: 0;
+        }
+        
+        .token-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #1877F2;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #166fe5;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #1877F2;
+            border: 1px solid #1877F2;
+        }
+        
+        .btn-secondary:hover {
+            background: #f0f8ff;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        .token-form {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-control {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #1877F2;
+        }
+        
+        .form-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .material-icons {
+            font-size: 20px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #ffeaa7;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #856404;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            color: #856404;
+        }
+        
+        code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Dashboard</h1>
+            <p>Monitor your ad scraping and analysis activities</p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 How to Get a Facebook Access Token:</h3>
+            <ol>
+                <li>Click "Get Token" button below to open Facebook Graph API Explorer</li>
+                <li>Select your app or create a new one</li>
+                <li>Add these permissions: <code>ads_read</code>, <code>pages_read_engagement</code></li>
+                <li>Click "Generate Access Token"</li>
+                <li>Copy the token and paste it in the form below</li>
+            </ol>
+        </div>
+
+        <!-- Facebook Token Configuration Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons">vpn_key</span>
+                    Facebook API Configuration
+                </div>
+                <div class="card-subtitle">Configure your Facebook access token for real ads data</div>
+            </div>
+            <div class="card-content">
+                <!-- Token Status -->
+                <div id="tokenStatus">
+                    <div class="status-indicator status-missing">
+                        <span class="material-icons">error</span>
+                        <span>Loading token status...</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="token-actions">
+                    <button class="btn btn-primary" onclick="toggleForm()" id="toggleBtn">
+                        <span class="material-icons">edit</span>
+                        Update Token
+                    </button>
+                    
+                    <button class="btn btn-secondary" onclick="openFacebookConsole()">
+                        <span class="material-icons">open_in_new</span>
+                        Get Token
+                    </button>
+                </div>
+
+                <!-- Token Form -->
+                <div id="tokenForm" class="token-form hidden">
+                    <div class="form-group">
+                        <label class="form-label" for="accessToken">Facebook Access Token:</label>
+                        <textarea id="accessToken" 
+                                 class="form-control"
+                                 placeholder="EAA... (paste your Facebook access token here)"
+                                 rows="4"></textarea>
+                        <div class="form-hint">Paste your Facebook access token here</div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="updateToken()" id="saveBtn">
+                        <span class="material-icons">save</span>
+                        Save Token
+                    </button>
+                </div>
+
+                <!-- Messages -->
+                <div id="message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let showForm = false;
+
+        function formatExpirationDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = date - now;
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+            
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            if (diffMs < 0) {
+                return `${formattedDate} (expired ${Math.abs(diffDays)} days ago)`;
+            } else if (diffDays === 0) {
+                return `${formattedDate} (expires today!)`;
+            } else if (diffDays === 1) {
+                return `${formattedDate} (expires tomorrow)`;
+            } else if (diffDays <= 7) {
+                return `${formattedDate} (expires in ${diffDays} days)`;
+            } else {
+                return `${formattedDate} (expires in ${diffDays} days)`;
+            }
+        }
+
+        async function loadTokenStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/config/facebook-status`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('tokenStatus');
+                
+                if (data.success) {
+                    const status = data.data;
+                    let statusClass, icon, text;
+                    
+                    if (!status.hasToken) {
+                        statusClass = 'status-missing';
+                        icon = 'error';
+                        text = 'Token Missing';
+                    } else if (status.isExpired) {
+                        statusClass = 'status-expired';
+                        icon = 'schedule';
+                        text = 'Token Expired';
+                    } else if (!status.isValid) {
+                        statusClass = 'status-invalid';
+                        icon = 'warning';
+                        text = 'Token Invalid';
+                    } else {
+                        statusClass = 'status-active';
+                        icon = 'check_circle';
+                        text = 'Token Valid';
+                    }
+                    
+                    let tokenDetails = '';
+                    if (status.hasToken) {
+                        tokenDetails = `<div class="token-info">
+                            <div><strong>Preview:</strong> ${status.tokenPreview} (${status.tokenLength} chars)</div>
+                            ${status.appName ? `<div><strong>App:</strong> ${status.appName} (${status.appId})</div>` : ''}
+                            ${status.expiresAt ? `<div><strong>Expires:</strong> ${formatExpirationDate(status.expiresAt)}</div>` : ''}
+                            ${status.scopes && status.scopes.length > 0 ? `<div><strong>Permissions:</strong> ${status.scopes.join(', ')}</div>` : ''}
+                        </div>`;
+                    }
+                    
+                    statusDiv.innerHTML = `
+                        <div class="status-indicator ${statusClass}">
+                            <span class="material-icons">${icon}</span>
+                            <span>${text}</span>
+                        </div>
+                        ${tokenDetails}
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="status-indicator status-missing">
+                            <span class="material-icons">error</span>
+                            <span>Failed to load token status</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading status:', error);
+                document.getElementById('tokenStatus').innerHTML = `
+                    <div class="status-indicator status-missing">
+                        <span class="material-icons">error</span>
+                        <span>Error connecting to backend</span>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleForm() {
+            showForm = !showForm;
+            const form = document.getElementById('tokenForm');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            if (showForm) {
+                form.classList.remove('hidden');
+                toggleBtn.innerHTML = '<span class="material-icons">close</span> Cancel';
+            } else {
+                form.classList.add('hidden');
+                toggleBtn.innerHTML = '<span class="material-icons">edit</span> Update Token';
+            }
+        }
+
+        async function updateToken() {
+            const token = document.getElementById('accessToken').value.trim();
+            const saveBtn = document.getElementById('saveBtn');
+            const messageDiv = document.getElementById('message');
+            
+            if (!token) {
+                showMessage('Please enter a Facebook access token', 'error');
+                return;
+            }
+            
+            if (token.length < 50) {
+                showMessage('Access token seems too short. Please make sure you copied the complete token.', 'error');
+                return;
+            }
+            
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Validating...';
+            
+            // Show loading message
+            showMessage('Validating Facebook access token...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/config/facebook-token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ accessToken: token })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const tokenInfo = data.data;
+                    let successMessage = 'Facebook access token updated and validated successfully!';
+                    
+                    if (tokenInfo.expiresAt) {
+                        const expirationDate = formatExpirationDate(tokenInfo.expiresAt);
+                        successMessage += ` Token expires: ${expirationDate}`;
+                    }
+                    
+                    if (tokenInfo.appName) {
+                        successMessage += ` App: ${tokenInfo.appName}`;
+                    }
+                    
+                    showMessage(successMessage, 'success');
+                    document.getElementById('accessToken').value = '';
+                    toggleForm();
+                    loadTokenStatus();
+                } else {
+                    // Show specific error message
+                    let errorMessage = data.error?.message || 'Failed to update token';
+                    
+                    // Add helpful context based on error code
+                    if (data.error?.code === 'TOKEN_EXPIRED') {
+                        errorMessage += ' 🔄 Click "Get Token" button to generate a new one.';
+                    } else if (data.error?.code === 'TOKEN_INVALID') {
+                        errorMessage += ' ❓ Make sure you copied the complete token from Facebook Graph API Explorer.';
+                    } else if (data.error?.code === 'TOKEN_MALFORMED') {
+                        errorMessage += ' 📋 Please copy the entire token without any extra spaces or characters.';
+                    }
+                    
+                    showMessage(errorMessage, 'error');
+                }
+            } catch (error) {
+                showMessage('Failed to connect to backend. Make sure the backend is running on port 3000.', 'error');
+                console.error('Error updating token:', error);
+            }
+            
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<span class="material-icons">save</span> Save Token';
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            let icon;
+            
+            switch(type) {
+                case 'success':
+                    icon = 'check_circle';
+                    break;
+                case 'info':
+                    icon = 'info';
+                    break;
+                case 'error':
+                default:
+                    icon = 'error';
+                    break;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message ${type}">
+                    <span class="material-icons">${icon}</span>
+                    <span>${text}</span>
+                </div>
+            `;
+            
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, type === 'info' ? 3000 : 5000);
+            }
+        }
+
+        function openFacebookConsole() {
+            window.open('https://developers.facebook.com/tools/explorer/', '_blank');
+        }
+
+        // Load status on page load
+        loadTokenStatus();
+    </script>
+</body>
+</html>

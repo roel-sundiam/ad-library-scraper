@@ -11,6 +11,11 @@ export class ErrorInterceptor implements HttpInterceptor {
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
+        // Don't log Facebook token validation errors - let components handle them
+        if (request.url.includes('/api/config/facebook-token')) {
+          return throwError(() => error);
+        }
+        
         let errorMessage = 'An unknown error occurred';
         
         if (error.error instanceof ErrorEvent) {

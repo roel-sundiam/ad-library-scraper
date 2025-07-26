@@ -1,0 +1,328 @@
+<div class="facebook-ads-dashboard">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading Facebook Ads Analysis Results...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage" class="error-container">
+    <mat-icon class="error-icon">error</mat-icon>
+    <h3>Analysis Results Not Available</h3>
+    <p>{{ errorMessage }}</p>
+    <button mat-raised-button color="primary" routerLink="/competitor-analysis">
+      Start New Analysis
+    </button>
+  </div>
+
+  <!-- Results Dashboard -->
+  <div *ngIf="!isLoading && !errorMessage && analysisResults" class="dashboard-content">
+    
+    <!-- Header Section -->
+    <div class="dashboard-header">
+      <div class="header-content">
+        <h1>
+          <mat-icon>analytics</mat-icon>
+          Facebook Ads Competitive Analysis
+        </h1>
+        <p>Live analysis of {{ brandComparisons.length }} brands with {{ totalAds }} total ads</p>
+      </div>
+      <div class="header-actions">
+        <button mat-stroked-button (click)="exportData()">
+          <mat-icon>download</mat-icon>
+          Export Data
+        </button>
+        <button mat-raised-button color="primary" routerLink="/competitor-analysis">
+          <mat-icon>add</mat-icon>
+          New Analysis
+        </button>
+      </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="metrics-grid">
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon impressions">visibility</mat-icon>
+            <span class="metric-label">Total Impressions</span>
+          </div>
+          <div class="metric-value">{{ formatNumber(totalImpressions) }}</div>
+          <div class="metric-subtitle">Across all brands</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon spend">attach_money</mat-icon>
+            <span class="metric-label">Total Ad Spend</span>
+          </div>
+          <div class="metric-value">{{ formatCurrency(totalSpend) }}</div>
+          <div class="metric-subtitle">Estimated minimum spend</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon cpm">trending_up</mat-icon>
+            <span class="metric-label">Average CPM</span>
+          </div>
+          <div class="metric-value">${{ averageCPM.toFixed(2) }}</div>
+          <div class="metric-subtitle">Cost per thousand impressions</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon ads">campaign</mat-icon>
+            <span class="metric-label">Total Ads</span>
+          </div>
+          <div class="metric-value">{{ totalAds }}</div>
+          <div class="metric-subtitle">Active advertising campaigns</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Brand Comparison Section -->
+    <div class="section-container">
+      <mat-card class="comparison-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>compare</mat-icon>
+            Brand Performance Comparison
+          </mat-card-title>
+          <mat-card-subtitle>Compare advertising metrics across competitors</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <!-- Metric Selector -->
+          <div class="metric-selector">
+            <mat-button-toggle-group [(value)]="selectedMetric" (change)="onMetricChange($event.value)">
+              <mat-button-toggle value="impressions">Impressions</mat-button-toggle>
+              <mat-button-toggle value="spend">Ad Spend</mat-button-toggle>
+              <mat-button-toggle value="cpm">CPM</mat-button-toggle>
+              <mat-button-toggle value="ctr">CTR</mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+
+          <!-- Brand Comparison Bars -->
+          <div class="comparison-bars">
+            <div *ngFor="let brand of brandComparisons; let i = index" class="brand-bar">
+              <div class="brand-info">
+                <div class="brand-name">{{ brand.brand }}</div>
+                <div class="brand-stats">
+                  <span class="ads-count">{{ brand.ad_frequency }} ads</span>
+                  <span class="market-share">{{ formatPercentage(brand.market_share) }} share</span>
+                </div>
+              </div>
+              
+              <div class="progress-container">
+                <div class="progress-bar" 
+                     [style.width.%]="(getMetricValue(brand, selectedMetric) / getMetricValue(brandComparisons[0], selectedMetric)) * 100"
+                     [style.background-color]="getBrandColor(i)">
+                </div>
+                <span class="metric-value-text">
+                  <span *ngIf="selectedMetric === 'impressions'">{{ formatNumber(brand.metrics.total_impressions) }}</span>
+                  <span *ngIf="selectedMetric === 'spend'">{{ formatCurrency(brand.metrics.total_spend) }}</span>
+                  <span *ngIf="selectedMetric === 'cpm'">${{ brand.metrics.average_cpm.toFixed(2) }}</span>
+                  <span *ngIf="selectedMetric === 'ctr'">{{ formatPercentage(brand.metrics.average_ctr) }}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Top Performing Ads Section -->
+    <div class="section-container">
+      <mat-card class="top-ads-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>star</mat-icon>
+            Top Performing Ads
+          </mat-card-title>
+          <mat-card-subtitle>Highest impression ads across all brands</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="ads-grid">
+            <div *ngFor="let ad of topPerformingAds; let i = index" 
+                 class="ad-card" 
+                 (click)="openAdDetails(ad)">
+              
+              <div class="ad-header">
+                <div class="advertiser-info">
+                  <span class="advertiser-name">{{ ad.advertiser.name }}</span>
+                  <mat-icon *ngIf="ad.advertiser.verified" class="verified-badge" title="Verified">verified</mat-icon>
+                </div>
+                <div class="ad-rank">#{{ i + 1 }}</div>
+              </div>
+
+              <div class="ad-content">
+                <div class="ad-text">{{ getAdPreviewText(ad) }}</div>
+                <div *ngIf="ad.creative.images.length > 0" class="ad-media">
+                  <mat-icon>image</mat-icon>
+                  <span>{{ ad.creative.images.length }} image(s)</span>
+                </div>
+                <div *ngIf="ad.creative.has_video" class="ad-media">
+                  <mat-icon>play_circle</mat-icon>
+                  <span>Video content</span>
+                </div>
+              </div>
+
+              <div class="ad-metrics">
+                <div class="metric-item">
+                  <span class="metric-label">Impressions</span>
+                  <span class="metric-value">{{ formatNumber(ad.metrics.impressions_min) }}+</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Spend</span>
+                  <span class="metric-value">{{ formatCurrency(ad.metrics.spend_min) }}+</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">CPM</span>
+                  <span class="metric-value">${{ ad.metrics.cpm }}</span>
+                </div>
+              </div>
+
+              <div class="ad-footer">
+                <div class="ad-source">
+                  <mat-icon>source</mat-icon>
+                  <span>{{ ad.metadata.source }}</span>
+                </div>
+                <div class="ad-date">
+                  {{ ad.dates.start_date | date:'MMM d, y' }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="topPerformingAds.length === 0" class="no-ads-message">
+            <mat-icon>info</mat-icon>
+            <p>No ad performance data available</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Detailed Brand Analysis -->
+    <div class="section-container" *ngFor="let brand of brandComparisons; let i = index">
+      <mat-card class="brand-detail-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="brand-header">
+              <div class="brand-indicator" [style.background-color]="getBrandColor(i)"></div>
+              {{ brand.brand }} Analysis
+            </div>
+          </mat-card-title>
+          <mat-card-subtitle>{{ brand.ad_frequency }} ads found • {{ formatPercentage(brand.market_share) }} market share</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="brand-metrics-grid">
+            <div class="brand-metric">
+              <div class="metric-icon-container impressions">
+                <mat-icon>visibility</mat-icon>
+              </div>
+              <div class="metric-details">
+                <div class="metric-value">{{ formatNumber(brand.metrics.total_impressions) }}</div>
+                <div class="metric-label">Total Impressions</div>
+              </div>
+            </div>
+
+            <div class="brand-metric">
+              <div class="metric-icon-container spend">
+                <mat-icon>attach_money</mat-icon>
+              </div>
+              <div class="metric-details">
+                <div class="metric-value">{{ formatCurrency(brand.metrics.total_spend) }}</div>
+                <div class="metric-label">Est. Ad Spend</div>
+              </div>
+            </div>
+
+            <div class="brand-metric">
+              <div class="metric-icon-container cpm">
+                <mat-icon>trending_up</mat-icon>
+              </div>
+              <div class="metric-details">
+                <div class="metric-value">${{ brand.metrics.average_cpm.toFixed(2) }}</div>
+                <div class="metric-label">Average CPM</div>
+              </div>
+            </div>
+
+            <div class="brand-metric">
+              <div class="metric-icon-container ctr">
+                <mat-icon>mouse</mat-icon>
+              </div>
+              <div class="metric-details">
+                <div class="metric-value">{{ formatPercentage(brand.metrics.average_ctr) }}</div>
+                <div class="metric-label">Average CTR</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Creative Types Distribution -->
+          <div class="creative-types">
+            <h4>Creative Types</h4>
+            <div class="creative-distribution">
+              <div class="creative-type">
+                <mat-icon>image</mat-icon>
+                <span>{{ brand.creative_types.image }} Images</span>
+              </div>
+              <div class="creative-type">
+                <mat-icon>play_circle</mat-icon>
+                <span>{{ brand.creative_types.video }} Videos</span>
+              </div>
+              <div class="creative-type">
+                <mat-icon>view_carousel</mat-icon>
+                <span>{{ brand.creative_types.carousel }} Carousels</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Analysis Meta Information -->
+    <div class="section-container">
+      <mat-card class="meta-info-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>info</mat-icon>
+            Analysis Information
+          </mat-card-title>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Analysis ID:</span>
+              <span class="meta-value">{{ datasetId }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Total Brands:</span>
+              <span class="meta-value">{{ brandComparisons.length }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Total Ads Found:</span>
+              <span class="meta-value">{{ totalAds }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Data Sources:</span>
+              <span class="meta-value">{{ analysisResults.meta?.data_sources?.join(', ') || 'Multiple' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Analysis Duration:</span>
+              <span class="meta-value">{{ analysisResults.meta?.analysis_duration || 'N/A' }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+  </div>
+</div>

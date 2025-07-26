@@ -77,6 +77,7 @@ Angular 17 SPA with feature modules:
 - Backend uses CommonJS modules (require/module.exports)
 - Frontend uses TypeScript with Angular 17
 - Database auto-creates tables on first run
-- All API endpoints return mock data currently - real implementations pending
+- **CRITICAL: NO MOCK DATA ALLOWED** - User requires real Facebook ads data only
 - Facebook scraper handles rate limiting and pagination automatically
 - Proxy configuration in `frontend/proxy.conf.json` routes /api to backend
+- Apify integration must return actual Facebook Ad Library data

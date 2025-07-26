@@ -286,3 +286,53 @@
     }
   }
 }
+
+// Additional styles for new elements
+.brand-name {
+  font-weight: 600;
+  color: #1976d2;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.scraper-info {
+  .scraper-status {
+    margin-bottom: 12px;
+    
+    .scraper-label {
+      font-weight: 600;
+      color: #333;
+      margin-right: 8px;
+    }
+    
+    .scraper-methods {
+      color: #666;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+  }
+}
+
+// Update existing pages grid styling
+.pages-grid {
+  .page-status-card {
+    mat-card {
+      height: 100%;
+    }
+    
+    .page-url {
+      word-break: break-all;
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+  }
+}
+
+// Status chip colors for processing state
+.chip {
+  &.status-processing {
+    background: #e3f2fd;
+    color: #1976d2;
+  }
+}

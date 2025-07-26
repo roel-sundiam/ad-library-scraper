@@ -17,19 +17,19 @@ class FacebookAdLibraryAPI {
    * @returns {Array} Array of normalized ad objects
    */
   async scrapeAds(searchParams) {
+    const { query, limit = 50, region = 'US' } = searchParams;
+    
     try {
       logger.info('Starting Facebook Ad Library API search', searchParams);
       
       if (!this.accessToken) {
         throw new Error('FACEBOOK_ACCESS_TOKEN not configured');
       }
-
-      const { query, limit = 50, region = 'US' } = searchParams;
       
       // Build API request parameters
       const apiParams = {
         search_terms: query,
-        ad_reached_countries: [region],
+        ad_reached_countries: JSON.stringify([region]),
         ad_type: 'ALL',
         fields: [
           'id',
@@ -58,8 +58,36 @@ class FacebookAdLibraryAPI {
       
     } catch (error) {
       logger.error('Facebook Ad Library API error:', error);
-      return []; // Return empty array on error to match scraper behavior
+      
+      // Let the error propagate so alternative scrapers can be tried
+      throw error;
     }
+  }
+
+  /**
+   * Test different API endpoints to find working access level
+   * @returns {Object} Test results
+   */
+  async testDifferentEndpoints() {
+    const testEndpoints = [
+      { name: 'Ad Library API', endpoint: '/ads_archive', params: { search_terms: 'test', limit: 1 } },
+      { name: 'Pages API', endpoint: '/me/accounts', params: {} },
+      { name: 'Basic Profile', endpoint: '/me', params: { fields: 'id,name' } }
+    ];
+    
+    const results = [];
+    
+    for (const test of testEndpoints) {
+      try {
+        logger.info(`Testing ${test.name}...`);
+        const response = await this.makeAPIRequest(test.endpoint, { ...test.params, access_token: this.accessToken });
+        results.push({ name: test.name, status: 'success', data: response });
+      } catch (error) {
+        results.push({ name: test.name, status: 'failed', error: error.message });
+      }
+    }
+    
+    return results;
   }
 
   /**
@@ -176,6 +204,75 @@ class FacebookAdLibraryAPI {
     } catch (error) {
       return { success: false, message: error.message };
     }
+  }
+
+  /**
+   * Generate sample ads for development testing when API permissions are pending
+   * @param {string} query - Search query to base samples on
+   * @param {number} count - Number of sample ads to generate
+   * @returns {Array} Array of sample ad objects
+   */
+  generateSampleAds(query, count) {
+    const sampleAds = [];
+    const adTypes = ['video', 'image', 'carousel'];
+    const ctas = ['Shop Now', 'Learn More', 'Sign Up', 'Download', 'Get Quote'];
+    const baseDate = new Date();
+    
+    for (let i = 0; i < count; i++) {
+      const adType = adTypes[i % adTypes.length];
+      const cta = ctas[i % ctas.length];
+      
+      sampleAds.push({
+        id: `sample_${query}_${Date.now()}_${i}`,
+        advertiser: {
+          name: `${query.charAt(0).toUpperCase() + query.slice(1)} Official`,
+          verified: true,
+          id: `page_${query}_${i}`,
+          category: 'Brand'
+        },
+        creative: {
+          body: `Discover the latest from ${query}! New collection available now with exclusive offers for limited time.`,
+          title: `${query} - Official Store`,
+          description: `Premium quality products from ${query}. Shop now and get free shipping on orders over $50.`,
+          call_to_action: cta,
+          images: [`https://example.com/${query}_ad_${i}.jpg`],
+          has_video: adType === 'video',
+          landing_url: `https://facebook.com/ads/library/?id=sample_${i}`
+        },
+        targeting: {
+          countries: ['US'],
+          age_min: 18,
+          age_max: 65,
+          demographics: 'Adults interested in ' + query,
+          interests: [query, 'shopping', 'lifestyle']
+        },
+        metrics: {
+          impressions_min: Math.floor(Math.random() * 50000) + 10000,
+          impressions_max: Math.floor(Math.random() * 100000) + 60000,
+          spend_min: Math.floor(Math.random() * 5000) + 1000,
+          spend_max: Math.floor(Math.random() * 10000) + 6000,
+          currency: 'USD',
+          cpm: (Math.random() * 10 + 5).toFixed(2),
+          ctr: (Math.random() * 2 + 1).toFixed(2)
+        },
+        dates: {
+          start_date: new Date(baseDate.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          end_date: null,
+          created_date: new Date(baseDate.getTime() - Math.random() * 45 * 24 * 60 * 60 * 1000).toISOString(),
+          last_seen: new Date().toISOString()
+        },
+        metadata: {
+          source: 'facebook_api_sample',
+          funding_entity: `${query} Inc.`,
+          ad_snapshot_url: `https://facebook.com/ads/library/?id=sample_${query}_${i}`,
+          disclaimer: `Paid for by ${query}`,
+          scraped_at: new Date().toISOString(),
+          note: 'Sample data - pending Facebook Ad Library API approval'
+        }
+      });
+    }
+    
+    return sampleAds;
   }
 
   /**

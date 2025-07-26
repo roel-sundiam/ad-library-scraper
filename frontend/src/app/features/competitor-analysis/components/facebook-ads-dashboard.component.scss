@@ -1,0 +1,551 @@
+.facebook-ads-dashboard {
+  padding: 24px;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+
+  .loading-container, .error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    text-align: center;
+
+    mat-spinner {
+      margin-bottom: 16px;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: #f44336;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+
+    p {
+      color: #666;
+      margin-bottom: 24px;
+    }
+  }
+
+  .dashboard-content {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    background: white;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    .header-content {
+      h1 {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 8px 0;
+        font-size: 28px;
+        font-weight: 600;
+        color: #333;
+
+        mat-icon {
+          color: #1976d2;
+        }
+      }
+
+      p {
+        margin: 0;
+        color: #666;
+        font-size: 16px;
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+
+      button {
+        min-width: 120px;
+      }
+    }
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+
+    .metric-card {
+      .metric-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+
+        .metric-icon {
+          &.impressions { color: #2196f3; }
+          &.spend { color: #4caf50; }
+          &.cpm { color: #ff9800; }
+          &.ads { color: #9c27b0; }
+        }
+
+        .metric-label {
+          font-weight: 500;
+          color: #666;
+        }
+      }
+
+      .metric-value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #333;
+        line-height: 1.2;
+        margin-bottom: 4px;
+      }
+
+      .metric-subtitle {
+        color: #888;
+        font-size: 14px;
+      }
+    }
+  }
+
+  .section-container {
+    margin-bottom: 32px;
+  }
+
+  .comparison-card {
+    .metric-selector {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .comparison-bars {
+      .brand-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        background-color: #fafafa;
+
+        .brand-info {
+          width: 200px;
+          flex-shrink: 0;
+
+          .brand-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+          }
+
+          .brand-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #666;
+          }
+        }
+
+        .progress-container {
+          flex-grow: 1;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            min-width: 4px;
+            transition: width 0.3s ease;
+          }
+
+          .metric-value-text {
+            font-weight: 600;
+            color: #333;
+            min-width: 80px;
+            text-align: right;
+          }
+        }
+      }
+    }
+  }
+
+  .top-ads-card {
+    .ads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 16px;
+
+      .ad-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: white;
+
+        &:hover {
+          border-color: #1976d2;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+          transform: translateY(-2px);
+        }
+
+        .ad-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+
+          .advertiser-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .advertiser-name {
+              font-weight: 600;
+              color: #333;
+            }
+
+            .verified-badge {
+              color: #1976d2;
+              font-size: 18px;
+            }
+          }
+
+          .ad-rank {
+            background: #1976d2;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+        }
+
+        .ad-content {
+          margin-bottom: 12px;
+
+          .ad-text {
+            color: #444;
+            line-height: 1.4;
+            margin-bottom: 8px;
+          }
+
+          .ad-media {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #666;
+            font-size: 14px;
+
+            mat-icon {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+            }
+          }
+        }
+
+        .ad-metrics {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 12px;
+          padding: 12px;
+          background: #f8f9fa;
+          border-radius: 6px;
+
+          .metric-item {
+            text-align: center;
+
+            .metric-label {
+              display: block;
+              font-size: 12px;
+              color: #666;
+              margin-bottom: 2px;
+            }
+
+            .metric-value {
+              font-weight: 600;
+              color: #333;
+              font-size: 14px;
+            }
+          }
+        }
+
+        .ad-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 12px;
+          color: #888;
+
+          .ad-source {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+
+            mat-icon {
+              font-size: 14px;
+              width: 14px;
+              height: 14px;
+            }
+          }
+        }
+      }
+    }
+
+    .no-ads-message {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 16px;
+        color: #ccc;
+      }
+    }
+  }
+
+  .brand-detail-card {
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .brand-indicator {
+        width: 4px;
+        height: 24px;
+        border-radius: 2px;
+      }
+    }
+
+    .brand-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+
+      .brand-metric {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 8px;
+
+        .metric-icon-container {
+          width: 48px;
+          height: 48px;
+          border-radius: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          &.impressions { background: #e3f2fd; color: #1976d2; }
+          &.spend { background: #e8f5e8; color: #388e3c; }
+          &.cpm { background: #fff3e0; color: #f57c00; }
+          &.ctr { background: #f3e5f5; color: #7b1fa2; }
+
+          mat-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
+        }
+
+        .metric-details {
+          .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1.2;
+          }
+
+          .metric-label {
+            color: #666;
+            font-size: 14px;
+          }
+        }
+      }
+    }
+
+    .creative-types {
+      h4 {
+        margin: 0 0 16px 0;
+        color: #333;
+      }
+
+      .creative-distribution {
+        display: flex;
+        gap: 24px;
+
+        .creative-type {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: #f0f0f0;
+          border-radius: 20px;
+          color: #666;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+      }
+    }
+  }
+
+  .meta-info-card {
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+
+      .meta-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+
+        .meta-label {
+          color: #666;
+          font-weight: 500;
+        }
+
+        .meta-value {
+          color: #333;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  // Status indicators
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+
+      .status-label {
+        font-weight: 500;
+        color: #333;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+
+        &.online {
+          color: #4caf50;
+        }
+
+        &.offline {
+          color: #f44336;
+        }
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  }
+
+  .system-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    color: #1976d2;
+    font-size: 14px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .facebook-ads-dashboard {
+    padding: 16px;
+
+    .dashboard-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: stretch;
+
+      .header-actions {
+        justify-content: center;
+      }
+    }
+
+    .metrics-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .ads-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .brand-metrics-grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .comparison-bars .brand-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+
+      .brand-info {
+        width: 100%;
+      }
+
+      .progress-container {
+        .metric-value-text {
+          text-align: left;
+        }
+      }
+    }
+  }
+}

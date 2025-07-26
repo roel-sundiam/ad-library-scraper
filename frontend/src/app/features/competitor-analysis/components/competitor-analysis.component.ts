@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { FacebookAnalysisResponse } from '../../../shared/models/facebook-ads.interface';
 
 @Component({
   selector: 'app-competitor-analysis',
@@ -12,6 +13,7 @@ export class CompetitorAnalysisComponent implements OnInit {
   analysisForm: FormGroup;
   isSubmitting = false;
   errorMessage = '';
+  scraperStatuses: any = {};
 
   constructor(
     private fb: FormBuilder,
@@ -25,7 +27,35 @@ export class CompetitorAnalysisComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.checkScraperStatuses();
+  }
+
+  openFacebookConfig(): void {
+    this.router.navigate(['/competitor-analysis/facebook-config']);
+  }
+
+  checkScraperStatuses(): void {
+    // Check Apify status
+    this.apiService.getApifyStatus().subscribe({
+      next: (response) => {
+        this.scraperStatuses.apify = response.success ? 'online' : 'offline';
+      },
+      error: () => {
+        this.scraperStatuses.apify = 'offline';
+      }
+    });
+
+    // Check Facebook API status
+    this.apiService.getFacebookApiStatus().subscribe({
+      next: (response) => {
+        this.scraperStatuses.facebook = response.success ? 'online' : 'offline';
+      },
+      error: () => {
+        this.scraperStatuses.facebook = 'offline';
+      }
+    });
+  }
 
   onSubmit(): void {
     if (this.analysisForm.valid && !this.isSubmitting) {
@@ -33,19 +63,26 @@ export class CompetitorAnalysisComponent implements OnInit {
       this.errorMessage = '';
 
       const formData = this.analysisForm.value;
+      
+      // Convert form data to pageUrls array for new API
+      const pageUrls = [
+        formData.yourPageUrl,
+        formData.competitor1Url,
+        formData.competitor2Url
+      ];
 
-      this.apiService.startCompetitorAnalysis(formData).subscribe({
-        next: (response) => {
-          if (response.success && response.data.workflow_id) {
-            // Navigate to progress dashboard
-            this.router.navigate(['/competitor-analysis/progress', response.data.workflow_id]);
+      this.apiService.startFacebookAnalysis({ pageUrls }).subscribe({
+        next: (response: FacebookAnalysisResponse) => {
+          if (response.success && response.data.runId) {
+            // Navigate to progress dashboard with new runId
+            this.router.navigate(['/competitor-analysis/progress', response.data.runId]);
           } else {
             this.errorMessage = 'Failed to start analysis. Please try again.';
             this.isSubmitting = false;
           }
         },
         error: (error) => {
-          console.error('Error starting competitor analysis:', error);
+          console.error('Error starting Facebook analysis:', error);
           this.errorMessage = error.error?.error?.message || 'An error occurred. Please try again.';
           this.isSubmitting = false;
         }
