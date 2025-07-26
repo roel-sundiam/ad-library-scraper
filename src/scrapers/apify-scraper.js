@@ -173,7 +173,7 @@ class ApifyScraper {
     if (inputVariations.length > 0) {
       const inputData = inputVariations[0];
       try {
-        logger.info(`DEBUGGING: Trying ONLY format 1:`, JSON.stringify(inputData));
+        logger.info(`DEBUGGING: Trying ONLY format 1 with input:`, JSON.stringify(inputData, null, 2));
         const runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
@@ -182,6 +182,16 @@ class ApifyScraper {
           
           // Wait for this specific run to complete
           logger.info(`⏳ Waiting for run ${runId} to complete...`);
+          
+          // Check run status immediately to catch quick failures
+          try {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            const quickStatus = await this.getRunStatus(runId);
+            logger.info(`Quick status check: Run ${runId} is ${quickStatus}`);
+          } catch (statusError) {
+            logger.warn(`Could not get quick status:`, statusError.message);
+          }
+          
           const results = await this.waitForRunCompletion(runId);
           logger.info(`✅ Run ${runId} completed, processing results...`);
           logger.info(`Raw Apify response for ${scraperName}:`, JSON.stringify(results, null, 2).substring(0, 1000));
