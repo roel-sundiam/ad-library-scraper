@@ -97,7 +97,17 @@ class ApifyScraper {
           logger.info(`Apify run started: ${runId} with format ${index + 1}`);
           
           const results = await this.waitForRunCompletion(runId);
-          logger.info(`Raw Apify response for ${scraperName}:`, JSON.stringify(results).substring(0, 500));
+          logger.info(`Raw Apify response for ${scraperName}:`, JSON.stringify(results, null, 2).substring(0, 1000));
+          
+          // Debug: Check if results is array and has data
+          if (results && Array.isArray(results)) {
+            logger.info(`Apify returned array with ${results.length} items`);
+            if (results.length > 0) {
+              logger.info(`First item structure:`, JSON.stringify(results[0], null, 2).substring(0, 500));
+            }
+          } else {
+            logger.warn(`Apify returned non-array result:`, typeof results, JSON.stringify(results).substring(0, 200));
+          }
           
           const normalizedResults = this.normalizeApifyData(results, scraperName);
           logger.info(`Normalized ${normalizedResults.length} results from ${scraperName}`);
@@ -150,7 +160,9 @@ class ApifyScraper {
             if (response.statusCode >= 200 && response.statusCode < 300) {
               resolve(result.data);
             } else {
-              reject(new Error(`Apify API error: ${result.error?.message || data}`));
+              const errorMessage = result.error?.message || result.message || data;
+              logger.warn(`Apify API error (${response.statusCode}):`, errorMessage);
+              reject(new Error(`Apify API error: ${errorMessage}`));
             }
           } catch (parseError) {
             reject(new Error(`Failed to parse Apify response: ${parseError.message}`));
@@ -183,6 +195,7 @@ class ApifyScraper {
           // Get dataset items
           return await this.getRunResults(runId);
         } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+          logger.warn(`Apify run ${runId} ${status} - trying next scraper`);
           throw new Error(`Apify run ${status.toLowerCase()}`);
         }
         
@@ -268,56 +281,79 @@ class ApifyScraper {
    * Normalize Apify data to our format
    */
   normalizeApifyData(data, scraperName) {
-    if (!Array.isArray(data)) return [];
+    if (!data) {
+      logger.warn('Apify data is null/undefined');
+      return [];
+    }
+    
+    if (!Array.isArray(data)) {
+      logger.warn('Apify data is not an array:', typeof data);
+      return [];
+    }
+    
+    if (data.length === 0) {
+      logger.warn('Apify returned empty array');
+      return [];
+    }
 
-    return data.map((ad, index) => ({
-      id: `apify_${Date.now()}_${index}`,
-      advertiser: {
-        name: ad.pageName || ad.advertiserName || ad.fundingEntity || 'Unknown',
-        verified: ad.isVerified || false,
-        id: ad.pageId || ad.advertiserId,
-        category: ad.pageCategory || 'Business'
-      },
-      creative: {
-        body: ad.adCreativeBody || ad.text || ad.content || '',
-        title: ad.adCreativeLinkTitle || ad.headline || ad.title || '',
-        description: ad.adCreativeLinkDescription || ad.description || '',
-        call_to_action: ad.adCreativeLinkCaption || ad.callToAction || 'Learn More',
-        images: ad.images || ad.adCreativeImages || [],
-        has_video: ad.hasVideo || false,
-        landing_url: ad.adSnapshotUrl || ad.landingPageUrl || ''
-      },
-      targeting: {
-        countries: ad.targetCountries || [ad.country] || ['US'],
-        age_min: ad.targetAges?.min || 18,
-        age_max: ad.targetAges?.max || 65,
-        demographics: ad.targetAudience || ad.demographics || 'General audience',
-        interests: ad.targetInterests || []
-      },
-      metrics: {
-        impressions_min: ad.impressions?.lowerBound || ad.impressionsMin || 0,
-        impressions_max: ad.impressions?.upperBound || ad.impressionsMax || 0,
-        spend_min: ad.spend?.lowerBound || ad.spendMin || 0,
-        spend_max: ad.spend?.upperBound || ad.spendMax || 0,
-        currency: ad.currency || 'USD',
-        cpm: ad.cpm,
-        ctr: ad.ctr
-      },
-      dates: {
-        start_date: ad.adDeliveryStartTime || ad.startDate,
-        end_date: ad.adDeliveryStopTime || ad.endDate,
-        created_date: ad.adCreationTime,
-        last_seen: ad.lastSeen
-      },
-      metadata: {
-        source: `apify_${scraperName.replace('/', '_')}`,
-        funding_entity: ad.fundingEntity,
-        ad_snapshot_url: ad.adSnapshotUrl,
-        disclaimer: ad.disclaimer,
-        scraped_at: new Date().toISOString(),
-        apify_run_id: ad._runId || 'unknown'
+    logger.info(`Normalizing ${data.length} Apify items from ${scraperName}`);
+    
+    return data.filter(ad => ad && typeof ad === 'object').map((ad, index) => {
+      // Log the structure of each ad for debugging
+      if (index === 0) {
+        logger.info(`Sample ad fields:`, Object.keys(ad));
       }
-    }));
+      
+      return {
+        id: ad.id || ad.archiveId || ad.archive_id || `apify_${Date.now()}_${index}`,
+        advertiser: {
+          name: ad.pageName || ad.advertiserName || ad.page_name || ad.funding_entity || ad.fundingEntity || 'Unknown',
+          verified: ad.isVerified || ad.is_verified || ad.pageVerified || false,
+          id: ad.pageId || ad.page_id || ad.advertiserId || ad.advertiser_id || `page_${index}`,
+          category: ad.pageCategory || ad.page_category || 'Business'
+        },
+        creative: {
+          body: ad.adCreativeBody || ad.ad_creative_body || ad.text || ad.content || ad.body || '',
+          title: ad.adCreativeLinkTitle || ad.ad_creative_link_title || ad.headline || ad.title || '',
+          description: ad.adCreativeLinkDescription || ad.ad_creative_link_description || ad.description || '',
+          call_to_action: ad.adCreativeLinkCaption || ad.ad_creative_link_caption || ad.callToAction || ad.call_to_action || 'Learn More',
+          images: ad.images || ad.adCreativeImages || ad.ad_creative_images || ad.media || [],
+          has_video: ad.hasVideo || ad.has_video || ad.adCreativeVideoPresent || false,
+          landing_url: ad.adSnapshotUrl || ad.ad_snapshot_url || ad.landingPageUrl || ad.landing_page_url || ''
+        },
+        targeting: {
+          countries: ad.targetCountries || ad.target_countries || [ad.country] || ['US'],
+          age_min: ad.targetAges?.min || ad.target_ages?.min || ad.ageRanges?.[0]?.min || 18,
+          age_max: ad.targetAges?.max || ad.target_ages?.max || ad.ageRanges?.[0]?.max || 65,
+          demographics: ad.targetAudience || ad.target_audience || ad.demographics || 'General audience',
+          interests: ad.targetInterests || ad.target_interests || []
+        },
+        metrics: {
+          impressions_min: ad.impressions?.lowerBound || ad.impressions?.lower_bound || ad.impressionsMin || ad.impressions_min || 0,
+          impressions_max: ad.impressions?.upperBound || ad.impressions?.upper_bound || ad.impressionsMax || ad.impressions_max || 0,
+          spend_min: ad.spend?.lowerBound || ad.spend?.lower_bound || ad.spendMin || ad.spend_min || 0,
+          spend_max: ad.spend?.upperBound || ad.spend?.upper_bound || ad.spendMax || ad.spend_max || 0,
+          currency: ad.currency || 'USD',
+          cpm: ad.cpm || ad.costPerMille,
+          ctr: ad.ctr || ad.clickThroughRate
+        },
+        dates: {
+          start_date: ad.adDeliveryStartTime || ad.ad_delivery_start_time || ad.startDate || ad.start_date,
+          end_date: ad.adDeliveryStopTime || ad.ad_delivery_stop_time || ad.endDate || ad.end_date,
+          created_date: ad.adCreationTime || ad.ad_creation_time || ad.createdDate || ad.created_date,
+          last_seen: ad.lastSeen || ad.last_seen || new Date().toISOString()
+        },
+        metadata: {
+          source: `apify_${scraperName.replace('/', '_')}`,
+          funding_entity: ad.fundingEntity || ad.funding_entity,
+          ad_snapshot_url: ad.adSnapshotUrl || ad.ad_snapshot_url,
+          disclaimer: ad.disclaimer,
+          scraped_at: new Date().toISOString(),
+          apify_run_id: ad._runId || ad.runId || 'unknown',
+          raw_fields: Object.keys(ad) // Include field names for debugging
+        }
+      }
+    });
   }
 
   /**
