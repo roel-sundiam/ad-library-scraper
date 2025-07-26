@@ -2,7 +2,8 @@ const https = require('https');
 
 // Test which Apify actors actually exist
 const actors = [
-  'jj5sAMeSoXotatkss' // User-provided actor ID
+  'XtaWFhbtfxyzqrFmd', // curious_coder actor ID
+  'jj5sAMeSoXotatkss' // premium actor
 ];
 
 async function checkActor(actorName) {

@@ -8,14 +8,10 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Working actors from Apify Store (verified Jan 2025)
+    // Working actors from Apify Store (verified actual IDs)
     this.scrapers = [
-      'jj5sAMeSoXotatkss', // User-provided working actor ID
-      'apify/facebook-ads-scraper', // Official Apify actor - $5 per 1000 ads
-      'curious_coder/facebook-ads-library-scraper', // $0.2 per 1000 ads
-      'memo23/facebook-ads-library-scraper-cheerio', // Recently updated May 2025
-      'igolaizola/facebook-ad-library-scraper', // Created March 2025
-      'ibraheemalani2/my-fb-ads-scraper' // Alternative option
+      'XtaWFhbtfxyzqrFmd', // curious_coder/facebook-ads-library-scraper - $0.75 per 1000 ads
+      'jj5sAMeSoXotatkss' // meta-facebook-ad-scrapper-using-ad-library-url-premium (premium)
     ];
   }
 
