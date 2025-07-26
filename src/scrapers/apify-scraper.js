@@ -172,9 +172,12 @@ class ApifyScraper {
     // DEBUGGING: Only try first format to get detailed error info
     if (inputVariations.length > 0) {
       const inputData = inputVariations[0];
+      let runResponse = null;
       try {
-        logger.info(`DEBUGGING: Trying ONLY format 1 with input:`, JSON.stringify(inputData, null, 2));
-        const runResponse = await this.startApifyRun(scraperName, inputData);
+        const inputStr = JSON.stringify(inputData, null, 2);
+        logger.info(`DEBUGGING: Trying format 1 with input:`);
+        logger.info(`INPUT JSON: ${inputStr}`);
+        runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
           const runId = runResponse.id;
@@ -219,6 +222,18 @@ class ApifyScraper {
         }
       } catch (error) {
         logger.error(`DEBUGGING: Format 1 failed for ${scraperName}:`, error.message);
+        logger.error(`DEBUGGING: Full error:`, error);
+        
+        // Try to get run details if we have a run ID
+        if (runResponse && runResponse.id) {
+          try {
+            const runDetails = await this.getRunDetails(runResponse.id);
+            logger.error(`DEBUGGING: Run details:`, JSON.stringify(runDetails, null, 2));
+          } catch (detailsError) {
+            logger.error(`Could not get run details:`, detailsError.message);
+          }
+        }
+        
         throw error;
       }
     }
