@@ -77,6 +77,9 @@ class ApifyScraper {
       // Continue anyway in case it's a permission issue
     }
     
+    // For debugging: Only try the first format to avoid overwhelming the system
+    logger.info(`DEBUGGING: Only trying first input format for ${scraperName}`);
+    
     // Different input formats for different actors
     let inputVariations = [];
     
@@ -166,18 +169,19 @@ class ApifyScraper {
       ];
     }
     
-    // Try each input format sequentially
-    for (const [index, inputData] of inputVariations.entries()) {
+    // DEBUGGING: Only try first format to get detailed error info
+    if (inputVariations.length > 0) {
+      const inputData = inputVariations[0];
       try {
-        logger.info(`Trying ${scraperName} with input format ${index + 1}:`, JSON.stringify(inputData));
+        logger.info(`DEBUGGING: Trying ONLY format 1:`, JSON.stringify(inputData));
         const runResponse = await this.startApifyRun(scraperName, inputData);
         
         if (runResponse && runResponse.id) {
           const runId = runResponse.id;
-          logger.info(`Apify run started: ${runId} with format ${index + 1}`);
+          logger.info(`Apify run started: ${runId} with format 1`);
           
-          // Wait for this run to complete before trying next format
-          logger.info(`⏳ Waiting for run ${runId} to complete before trying next format...`);
+          // Wait for this specific run to complete
+          logger.info(`⏳ Waiting for run ${runId} to complete...`);
           const results = await this.waitForRunCompletion(runId);
           logger.info(`✅ Run ${runId} completed, processing results...`);
           logger.info(`Raw Apify response for ${scraperName}:`, JSON.stringify(results, null, 2).substring(0, 1000));
@@ -196,20 +200,20 @@ class ApifyScraper {
           logger.info(`Normalized ${normalizedResults.length} results from ${scraperName}`);
           
           if (normalizedResults && normalizedResults.length > 0) {
-            logger.info(`🎉 SUCCESS! Actor ${scraperName} format ${index + 1} returned ${normalizedResults.length} ads`);
+            logger.info(`🎉 SUCCESS! Actor ${scraperName} format 1 returned ${normalizedResults.length} ads`);
             logger.info(`Working input format:`, JSON.stringify(inputData));
             return normalizedResults;
           } else {
-            logger.warn(`Format ${index + 1} returned 0 ads despite raw data:`, results ? results.length : 'null');
+            logger.warn(`Format 1 returned 0 ads despite raw data:`, results ? results.length : 'null');
           }
         }
       } catch (error) {
-        logger.debug(`Format ${index + 1} failed for ${scraperName}:`, error.message);
-        continue;
+        logger.error(`DEBUGGING: Format 1 failed for ${scraperName}:`, error.message);
+        throw error;
       }
     }
     
-    throw new Error(`All input formats failed for ${scraperName}`);
+    throw new Error(`Input format 1 failed for ${scraperName}`);
   }
 
   /**
