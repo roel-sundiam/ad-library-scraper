@@ -273,21 +273,24 @@ class ApifyScraper {
       try {
         // Check run status
         const status = await this.getRunStatus(runId);
+        logger.info(`Run ${runId} status: ${status} (waited ${Math.round((Date.now() - startTime) / 1000)}s)`);
         
         if (status === 'SUCCEEDED') {
           // Get dataset items
           const results = await this.getRunResults(runId);
-          logger.info(`Run ${runId} SUCCEEDED - got ${results ? results.length : 'null'} items`);
+          logger.info(`🎉 Run ${runId} SUCCEEDED - got ${results ? results.length : 'null'} items`);
+          if (results && results.length > 0) {
+            logger.info(`Sample result:`, JSON.stringify(results[0], null, 2).substring(0, 500));
+          }
           return results;
         } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
           // Get more details about the failure
           try {
             const runDetails = await this.getRunDetails(runId);
-            logger.error(`Apify run ${runId} ${status}:`, runDetails.error || runDetails);
+            logger.error(`❌ Run ${runId} ${status} details:`, JSON.stringify(runDetails, null, 2).substring(0, 1000));
           } catch (detailsError) {
             logger.error(`Could not get run details for ${runId}:`, detailsError.message);
           }
-          logger.warn(`Apify run ${runId} ${status} - trying next scraper`);
           throw new Error(`Apify run ${status.toLowerCase()}`);
         }
         
