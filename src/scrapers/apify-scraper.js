@@ -81,16 +81,46 @@ class ApifyScraper {
     let inputVariations = [];
     
     if (scraperName === 'XtaWFhbtfxyzqrFmd') {
-      // curious_coder/facebook-ads-library-scraper format - try very basic formats
+      // curious_coder/facebook-ads-library-scraper format - comprehensive variations
       inputVariations = [
+        // Format 1: Empty object (some actors work with no params)
+        {},
+        
+        // Format 2: Basic search term
         {
-          "startUrls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=keyword_unordered&media_type=all`]
+          "searchTerm": query
         },
+        
+        // Format 3: Query field
         {
           "query": query
         },
+        
+        // Format 4: Keywords array
         {
-          "searchTerm": query
+          "keywords": [query]
+        },
+        
+        // Format 5: Search parameters object
+        {
+          "search": {
+            "query": query,
+            "country": "US"
+          }
+        },
+        
+        // Format 6: Direct URL approach
+        {
+          "startUrls": [`https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=${encodeURIComponent(query)}&sort_data[direction]=desc&sort_data[mode]=relevancy_monthly_grouped&search_type=keyword_unordered&media_type=all`]
+        },
+        
+        // Format 7: Comprehensive parameters
+        {
+          "searchTerm": query,
+          "country": "US",
+          "adType": "ALL",
+          "activeStatus": "ALL",
+          "maxAds": limit
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
@@ -160,7 +190,8 @@ class ApifyScraper {
           logger.info(`Normalized ${normalizedResults.length} results from ${scraperName}`);
           
           if (normalizedResults && normalizedResults.length > 0) {
-            logger.info(`Success! Format ${index + 1} returned ${normalizedResults.length} ads`);
+            logger.info(`🎉 SUCCESS! Actor ${scraperName} format ${index + 1} returned ${normalizedResults.length} ads`);
+            logger.info(`Working input format:`, JSON.stringify(inputData));
             return normalizedResults;
           } else {
             logger.warn(`Format ${index + 1} returned 0 ads despite raw data:`, results ? results.length : 'null');
