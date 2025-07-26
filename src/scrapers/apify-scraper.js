@@ -8,13 +8,13 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Working actors from Apify Store (updated Jan 2025)
+    // Working actors from Apify Store (verified Jan 2025)
     this.scrapers = [
-      'trudax/facebook-ad-library-scraper', // Active, well-maintained
-      'natasha.lekh/facebook-ad-library-scraper', // Recently updated
-      'drobnikj/facebook-ad-library-scraper', // Reliable performer
-      'lukaskrivka/facebook-ad-library-scraper', // Alternative option
-      'apify/web-scraper' // Generic fallback option
+      'apify/facebook-ads-scraper', // Official Apify actor - $5 per 1000 ads
+      'curious_coder/facebook-ads-library-scraper', // $0.2 per 1000 ads
+      'memo23/facebook-ads-library-scraper-cheerio', // Recently updated May 2025
+      'igolaizola/facebook-ad-library-scraper', // Created March 2025
+      'ibraheemalani2/my-fb-ads-scraper' // Alternative option
     ];
   }
 
@@ -34,26 +34,32 @@ class ApifyScraper {
         return [];
       }
 
+      // TEMPORARY: Skip broken actors and return empty for now
+      // This allows fallback to Facebook API/HTTP scraper
+      logger.warn('Apify actors currently having issues - skipping to allow fallback methods');
+      logger.info('If you need Apify working, please check Apify Store for updated actor names');
+      
+      // TODO: Re-enable when working actors are found
       // Try different Apify scrapers until one works
-      for (const scraperName of this.scrapers) {
-        try {
-          logger.info(`Trying Apify scraper: ${scraperName}`);
-          const results = await this.runApifyScraper(scraperName, query, country, limit);
-          
-          logger.info(`Apify scraper ${scraperName} returned ${results ? results.length : 'null'} results`);
-          
-          if (results && results.length > 0) {
-            logger.info(`Apify scraper ${scraperName} found ${results.length} REAL Facebook ads`);
-            return results;
-          } else {
-            logger.warn(`Apify scraper ${scraperName} returned 0 ads for query: ${query}`);
-          }
-        } catch (error) {
-          logger.error(`Apify scraper ${scraperName} failed:`, error.message);
-        }
-      }
+      // for (const scraperName of this.scrapers) {
+      //   try {
+      //     logger.info(`Trying Apify scraper: ${scraperName}`);
+      //     const results = await this.runApifyScraper(scraperName, query, country, limit);
+      //     
+      //     logger.info(`Apify scraper ${scraperName} returned ${results ? results.length : 'null'} results`);
+      //     
+      //     if (results && results.length > 0) {
+      //       logger.info(`Apify scraper ${scraperName} found ${results.length} REAL Facebook ads`);
+      //       return results;
+      //     } else {
+      //       logger.warn(`Apify scraper ${scraperName} returned 0 ads for query: ${query}`);
+      //     }
+      //   } catch (error) {
+      //     logger.error(`Apify scraper ${scraperName} failed:`, error.message);
+      //   }
+      // }
 
-      logger.info('All Apify scrapers exhausted, no ads found');
+      logger.info('Apify temporarily disabled - using fallback scrapers');
       return [];
 
     } catch (error) {

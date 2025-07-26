@@ -2,17 +2,19 @@ const https = require('https');
 
 // Test which Apify actors actually exist
 const actors = [
-  'trudax/facebook-ad-library-scraper',
-  'natasha.lekh/facebook-ad-library-scraper',
-  'drobnikj/facebook-ad-library-scraper', 
-  'lukaskrivka/facebook-ad-library-scraper',
-  'apify/web-scraper'
+  'apify/facebook-ads-scraper',
+  'curious_coder/facebook-ads-library-scraper',
+  'memo23/facebook-ads-library-scraper-cheerio',
+  'igolaizola/facebook-ad-library-scraper', 
+  'ibraheemalani2/my-fb-ads-scraper'
 ];
 
 async function checkActor(actorName) {
   return new Promise((resolve) => {
+    // Try both URL formats since actor naming might be different in API vs Store
     const url = `https://api.apify.com/v2/acts/${actorName}`;
     
+    console.log(`  Checking: ${url}`);
     https.get(url, (response) => {
       let data = '';
       response.on('data', (chunk) => data += chunk);
