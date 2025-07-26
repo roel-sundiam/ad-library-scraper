@@ -73,8 +73,9 @@ class FacebookAdvancedHTTPScraper {
     } catch (error) {
       logger.error('HTTP Facebook scraping failed:', error);
       
-      // Return realistic sample data as ultimate fallback
-      return this.generateRealisticSamples(query, Math.min(limit, 5));
+      // NO MOCK DATA - Return empty results as per user requirements
+      logger.warn(`HTTP scraping failed for "${query}" - returning no results (no mock data per requirements)`);
+      return [];
     }
   }
 
@@ -233,20 +234,20 @@ class FacebookAdvancedHTTPScraper {
             resolve(ads);
             
           } catch (parseError) {
-            logger.warn('Could not parse API response, generating samples');
-            resolve(this.generateRealisticSamples(query, Math.min(limit, 3)));
+            logger.warn('Could not parse API response - returning empty results (no mock data)');
+            resolve([]);
           }
         });
       });
       
       req.on('error', (error) => {
         logger.warn('Search request failed:', error.message);
-        resolve(this.generateRealisticSamples(query, Math.min(limit, 3)));
+        resolve([]);
       });
       
       req.on('timeout', () => {
         req.destroy();
-        resolve(this.generateRealisticSamples(query, Math.min(limit, 3)));
+        resolve([]);
       });
       
       req.write(postData);
@@ -338,74 +339,6 @@ class FacebookAdvancedHTTPScraper {
     ];
   }
 
-  /**
-   * Generate realistic sample data when all else fails
-   * @param {string} query - Search query
-   * @param {number} count - Number of samples
-   * @returns {Array} Sample ads
-   */
-  generateRealisticSamples(query, count) {
-    logger.info(`Generating ${count} realistic samples for "${query}" - HTTP scraping fallback`);
-    
-    const samples = [];
-    const adTypes = ['product', 'service', 'event', 'app', 'brand'];
-    const ctas = ['Shop Now', 'Learn More', 'Sign Up', 'Download', 'Get Quote', 'Book Now'];
-    
-    for (let i = 0; i < count; i++) {
-      const adType = adTypes[i % adTypes.length];
-      const cta = ctas[i % ctas.length];
-      
-      samples.push({
-        id: `http_live_${query}_${Date.now()}_${i}`,
-        advertiser: {
-          name: `${query.charAt(0).toUpperCase() + query.slice(1)} ${['Inc', 'LLC', 'Corp', 'Ltd'][i % 4]}`,
-          verified: Math.random() > 0.3,
-          id: `http_page_${query}_${i}`,
-          category: 'Business'
-        },
-        creative: {
-          body: `🔥 ${query} ${['Sale', 'Offer', 'Deal', 'Special'][i % 4]}! Limited time only. ${['Save up to 50%', 'Free shipping', 'Buy 1 Get 1', 'Exclusive access'][i % 4]} on premium ${query} products.`,
-          title: `Best ${query} - Official Store`,
-          description: `Premium ${query} products with fast delivery and customer satisfaction guarantee.`,
-          call_to_action: cta,
-          images: [`https://cdn.example.com/${query.replace(' ', '-')}-ad-${i + 1}.jpg`],
-          has_video: i % 3 === 0,
-          landing_url: `https://facebook.com/ads/library/?id=http_sample_${i}`
-        },
-        targeting: {
-          countries: ['US', 'CA', 'GB'][i % 3] ? [['US', 'CA', 'GB'][i % 3]] : ['US'],
-          age_min: [18, 21, 25][i % 3],
-          age_max: [45, 55, 65][i % 3],
-          demographics: `Adults interested in ${query}`,
-          interests: [query, 'shopping', 'lifestyle', 'technology'][Math.floor(Math.random() * 4)]
-        },
-        metrics: {
-          impressions_min: Math.floor(Math.random() * 100000) + 50000,
-          impressions_max: Math.floor(Math.random() * 500000) + 200000,
-          spend_min: Math.floor(Math.random() * 10000) + 5000,
-          spend_max: Math.floor(Math.random() * 50000) + 25000,
-          currency: 'USD',
-          cpm: (Math.random() * 15 + 8).toFixed(2),
-          ctr: (Math.random() * 3 + 1.5).toFixed(2)
-        },
-        dates: {
-          start_date: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000).toISOString(),
-          end_date: Math.random() > 0.7 ? new Date().toISOString() : null,
-          created_date: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000).toISOString(),
-          last_seen: new Date().toISOString()
-        },
-        metadata: {
-          source: 'facebook_http_advanced_sample',
-          scraped_at: new Date().toISOString(),
-          note: 'High-quality sample data - HTTP scraping active',
-          query_attempted: query,
-          sample_type: 'realistic_live_simulation'
-        }
-      });
-    }
-    
-    return samples;
-  }
 
   /**
    * Test the scraper connection
@@ -422,10 +355,10 @@ class FacebookAdvancedHTTPScraper {
       return {
         success: testResult.length > 0,
         message: testResult.length > 0 ? 
-          'HTTP scraper working - realistic samples generated' : 
-          'HTTP scraper failed',
+          'HTTP scraper successfully scraped real data' : 
+          'HTTP scraper failed - no mock data generated (per requirements)',
         ads_found: testResult.length,
-        data_type: testResult[0]?.metadata?.source || 'unknown'
+        data_type: testResult[0]?.metadata?.source || 'none'
       };
     } catch (error) {
       return {

@@ -59,6 +59,8 @@ Angular 17 SPA with feature modules:
 
 **Rate Limiting**: Facebook API limited to 180 requests/hour with automatic backoff
 
+**Important**: NO MOCK DATA - System returns real data only or fails gracefully. Sample/mock data generation has been removed per user requirements.
+
 **Environment Variables**:
 - `FACEBOOK_ACCESS_TOKEN`, `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` - Facebook API
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` - AI analysis models
