@@ -10,7 +10,7 @@ class ApifyScraper {
     
     // Working actors from Apify Store (verified actual IDs)
     this.scrapers = [
-      'XtaWFhbtfxyzqrFmd', // curious_coder/facebook-ads-library-scraper - $0.75 per 1000 ads
+      // 'XtaWFhbtfxyzqrFmd', // DISABLED - always returns 400 errors
       'jj5sAMeSoXotatkss' // meta-facebook-ad-scrapper-using-ad-library-url-premium (premium)
     ];
   }
@@ -264,8 +264,10 @@ class ApifyScraper {
    */
   async waitForRunCompletion(runId) {
     const maxWaitTime = 600000; // 10 minutes for premium actors
-    const pollInterval = 10000;  // 10 seconds (less frequent polling)
+    const pollInterval = 2000;   // 2 seconds (faster polling to catch quick failures)
     const startTime = Date.now();
+    
+    logger.info(`Waiting for run ${runId} completion...`);
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
