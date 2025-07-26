@@ -10,7 +10,7 @@ class ApifyScraper {
     
     // Working actors from Apify Store (verified actual IDs)
     this.scrapers = [
-      // 'XtaWFhbtfxyzqrFmd', // DISABLED - always returns 400 errors
+      'XtaWFhbtfxyzqrFmd', // Re-enable to test with fixed monitoring
       'jj5sAMeSoXotatkss' // meta-facebook-ad-scrapper-using-ad-library-url-premium (premium)
     ];
   }
@@ -127,26 +127,26 @@ class ApifyScraper {
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
-      // premium actor expects proper keyword search URL format
-      // Based on working screenshot URL
-      const keywordSearchUrl = `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${encodeURIComponent(query)}&search_type=keyword_unordered`;
+      // Try different approaches since all URL formats return 0 results
       
       inputVariations = [
-        // Format 1: Exact format from working screenshot
+        // Format 1: Try the exact URL from the screenshot without encoding
         {
-          "metaAdLibraryUrl": keywordSearchUrl
+          "metaAdLibraryUrl": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=nike&search_type=keyword_unordered"
         },
-        // Format 2: Alternative field name
+        // Format 2: Try simple search parameters instead of full URL
         {
-          "url": keywordSearchUrl
+          "query": query,
+          "country": "US",
+          "activeStatus": "active"
         },
-        // Format 3: Try startUrls array format (common Apify pattern)
+        // Format 3: Try the minimum required fields
         {
-          "startUrls": [keywordSearchUrl]
+          "searchTerm": query
         },
-        // Format 4: Try different field name variations
+        // Format 4: Try page search URL (different search type)
         {
-          "facebookUrl": keywordSearchUrl
+          "metaAdLibraryUrl": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&search_type=page&view_all_page_id=1508702344440303"
         }
       ];
     } else {
