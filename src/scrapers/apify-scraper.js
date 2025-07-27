@@ -8,9 +8,9 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Focus on premium actor with correct input format discovered by user
+    // Focus on proven working actor - delivers reliable Vibriance results
     this.scrapers = [
-      'jj5sAMeSoXotatkss' // Premium actor with working "adLibraryUrl" + "maxResults" format
+      'jj5sAMeSoXotatkss' // Proven working actor: 4 Vibriance ads, 50+ Nike ads, reliable historical data access
     ];
   }
 
@@ -82,32 +82,7 @@ class ApifyScraper {
     // Different input formats for different actors
     let inputVariations = [];
     
-    if (scraperName === 'XtaWFhbtfxyzqrFmd') {
-      // Actor requires valid URLs in input.urls field
-      // Test with simple, known-working URLs first
-      
-      inputVariations = [
-        // Format 1: Basic Facebook Ad Library URL
-        {
-          "urls": ["https://www.facebook.com/ads/library/"]
-        },
-        
-        // Format 2: With basic search parameters
-        {
-          "urls": ["https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US"]
-        },
-        
-        // Format 3: Hardcoded working Nike search URL
-        {
-          "urls": ["https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=nike&search_type=keyword_unordered"]
-        },
-        
-        // Format 4: Simple search format
-        {
-          "urls": [`https://www.facebook.com/ads/library/?q=${query}&search_type=keyword_unordered`]
-        }
-      ];
-    } else if (scraperName === 'jj5sAMeSoXotatkss') {
+    if (scraperName === 'jj5sAMeSoXotatkss') {
       // Premium actor - using exact format from successful Apify Console test
       inputVariations = [
         // Format 1: Include historical ads (active_status=all) - BREAKTHROUGH for Vibriance!
