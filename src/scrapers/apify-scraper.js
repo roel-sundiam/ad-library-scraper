@@ -176,7 +176,7 @@ class ApifyScraper {
           if (results && Array.isArray(results)) {
             logger.info(`Apify returned array with ${results.length} items`);
             if (results.length > 0) {
-              logger.info(`First item structure:`, JSON.stringify(results[0], null, 2).substring(0, 500));
+              logger.info(`DEBUGGING - Complete first item structure:`, JSON.stringify(results[0], null, 2));
             }
           } else {
             logger.warn(`Apify returned non-array result:`, typeof results, JSON.stringify(results).substring(0, 200));
@@ -446,52 +446,118 @@ class ApifyScraper {
         logger.info(`Sample ad fields:`, Object.keys(ad));
       }
       
+      // Extract data from new Apify structure
+      const metadata = ad.metadata || {};
+      const adContent = ad.ad_content || {};
+      const timing = ad.timing || {};
+      const performance = ad.performance || {};
+      const distribution = ad.distribution || {};
+      const status = ad.status || {};
+      const additionalInfo = ad.additional_info || {};
+      
+      // Use richer data from snapshot if available
+      const snapshot = additionalInfo.raw_data?.snapshot || {};
+      const rawData = additionalInfo.raw_data || {};
+      
+      // Get better advertiser info from snapshot
+      const advertiserName = snapshot.page_name || metadata.page_name || 'Unknown';
+      const advertiserCategory = Array.isArray(snapshot.page_categories) && snapshot.page_categories.length > 0 
+        ? snapshot.page_categories[0] 
+        : (Array.isArray(metadata.page_categories) && metadata.page_categories.length > 0 
+          ? metadata.page_categories[0] 
+          : 'Business');
+      const pageId = snapshot.page_id || metadata.page_id || `page_${index}`;
+      const pageLikes = snapshot.page_like_count || metadata.page_like_count || 0;
+      
+      // Facebook Ad Library data often doesn't include spend/impressions for privacy reasons
+      // This is normal behavior - most ads will show null/empty metrics
+      const impressionsData = rawData.impressions_with_index || {};
+      const impressionsText = impressionsData.impressions_text || null;
+      const impressionsIndex = impressionsData.impressions_index || -1;
+      
+      // Parse impressions range if available (format like "1K-5K" or "10K+")
+      let impressionsMin = 0;
+      let impressionsMax = 0;
+      if (impressionsText && typeof impressionsText === 'string') {
+        const ranges = {
+          '< 1K': [0, 999],
+          '1K-5K': [1000, 5000],
+          '5K-10K': [5000, 10000],
+          '10K-50K': [10000, 50000],
+          '50K-100K': [50000, 100000],
+          '100K-500K': [100000, 500000],
+          '500K-1M': [500000, 1000000],
+          '1M+': [1000000, 10000000]
+        };
+        
+        const range = ranges[impressionsText];
+        if (range) {
+          impressionsMin = range[0];
+          impressionsMax = range[1];
+        }
+      }
+      
       return {
-        id: ad.id || ad.archiveId || ad.archive_id || `apify_${Date.now()}_${index}`,
+        id: metadata.ad_archive_id || metadata.ad_id || `apify_${Date.now()}_${index}`,
         advertiser: {
-          name: ad.pageName || ad.advertiserName || ad.page_name || ad.funding_entity || ad.fundingEntity || 'Unknown',
-          verified: ad.isVerified || ad.is_verified || ad.pageVerified || false,
-          id: ad.pageId || ad.page_id || ad.advertiserId || ad.advertiser_id || `page_${index}`,
-          category: ad.pageCategory || ad.page_category || 'Business'
+          name: advertiserName,
+          verified: snapshot.page_is_verified || metadata.page_is_verified || false,
+          id: pageId,
+          category: advertiserCategory,
+          likes: pageLikes,
+          profile_url: snapshot.page_profile_uri || metadata.page_profile_uri || ''
         },
         creative: {
-          body: ad.adCreativeBody || ad.ad_creative_body || ad.text || ad.content || ad.body || '',
-          title: ad.adCreativeLinkTitle || ad.ad_creative_link_title || ad.headline || ad.title || '',
-          description: ad.adCreativeLinkDescription || ad.ad_creative_link_description || ad.description || '',
-          call_to_action: ad.adCreativeLinkCaption || ad.ad_creative_link_caption || ad.callToAction || ad.call_to_action || 'Learn More',
-          images: ad.images || ad.adCreativeImages || ad.ad_creative_images || ad.media || [],
-          has_video: ad.hasVideo || ad.has_video || ad.adCreativeVideoPresent || false,
-          landing_url: ad.adSnapshotUrl || ad.ad_snapshot_url || ad.landingPageUrl || ad.landing_page_url || ''
+          body: adContent.body || snapshot.body?.text || '',
+          title: adContent.title || snapshot.title || '',
+          description: adContent.link_description || snapshot.link_description || '',
+          call_to_action: adContent.cta_text || snapshot.cta_text || 'Learn More',
+          images: adContent.images || snapshot.images || [],
+          has_video: Array.isArray(adContent.videos) && adContent.videos.length > 0 || 
+                     Array.isArray(snapshot.videos) && snapshot.videos.length > 0,
+          landing_url: adContent.link_url || snapshot.link_url || ''
         },
         targeting: {
-          countries: ad.targetCountries || ad.target_countries || [ad.country] || ['US'],
-          age_min: ad.targetAges?.min || ad.target_ages?.min || ad.ageRanges?.[0]?.min || 18,
-          age_max: ad.targetAges?.max || ad.target_ages?.max || ad.ageRanges?.[0]?.max || 65,
-          demographics: ad.targetAudience || ad.target_audience || ad.demographics || 'General audience',
-          interests: ad.targetInterests || ad.target_interests || []
+          countries: distribution.targeted_or_reached_countries || rawData.targeted_or_reached_countries || ['US'],
+          age_min: 18, // Not available in this actor
+          age_max: 65, // Not available in this actor  
+          demographics: 'General audience',
+          interests: [],
+          platforms: distribution.publisher_platform || rawData.publisher_platform || []
         },
         metrics: {
-          impressions_min: ad.impressions?.lowerBound || ad.impressions?.lower_bound || ad.impressionsMin || ad.impressions_min || 0,
-          impressions_max: ad.impressions?.upperBound || ad.impressions?.upper_bound || ad.impressionsMax || ad.impressions_max || 0,
-          spend_min: ad.spend?.lowerBound || ad.spend?.lower_bound || ad.spendMin || ad.spend_min || 0,
-          spend_max: ad.spend?.upperBound || ad.spend?.upper_bound || ad.spendMax || ad.spend_max || 0,
-          currency: ad.currency || 'USD',
-          cpm: ad.cpm || ad.costPerMille,
-          ctr: ad.ctr || ad.clickThroughRate
+          impressions_min: impressionsMin,
+          impressions_max: impressionsMax,
+          impressions_text: impressionsText || 'Not disclosed',
+          impressions_index: impressionsIndex,
+          spend_min: performance.spend || rawData.spend || 0,
+          spend_max: performance.spend || rawData.spend || 0,
+          currency: performance.currency || rawData.currency || 'USD',
+          reach_estimate: performance.reach_estimate || rawData.reach_estimate || 0,
+          cpm: performance.cpm || null,
+          ctr: performance.ctr || null,
+          // Note: Most Facebook ads don't disclose spend/impressions publicly for privacy
+          has_metrics: !!(impressionsText || performance.spend || rawData.spend)
         },
         dates: {
-          start_date: ad.adDeliveryStartTime || ad.ad_delivery_start_time || ad.startDate || ad.start_date,
-          end_date: ad.adDeliveryStopTime || ad.ad_delivery_stop_time || ad.endDate || ad.end_date,
-          created_date: ad.adCreationTime || ad.ad_creation_time || ad.createdDate || ad.created_date,
-          last_seen: ad.lastSeen || ad.last_seen || new Date().toISOString()
+          start_date: timing.start_date ? new Date(timing.start_date * 1000).toISOString() : 
+                     (rawData.start_date ? new Date(rawData.start_date * 1000).toISOString() : null),
+          end_date: timing.end_date ? new Date(timing.end_date * 1000).toISOString() : 
+                   (rawData.end_date ? new Date(rawData.end_date * 1000).toISOString() : null),
+          created_date: metadata.scraped_at || new Date().toISOString(),
+          last_seen: metadata.scraped_at || new Date().toISOString()
         },
         metadata: {
           source: `apify_${scraperName.replace('/', '_')}`,
-          funding_entity: ad.fundingEntity || ad.funding_entity,
-          ad_snapshot_url: ad.adSnapshotUrl || ad.ad_snapshot_url,
-          disclaimer: ad.disclaimer,
+          funding_entity: rawData.funding_entity || metadata.funding_entity || '',
+          ad_snapshot_url: adContent.link_url || snapshot.link_url || '',
+          disclaimer: snapshot.disclaimer_label || '',
           scraped_at: new Date().toISOString(),
           apify_run_id: ad._runId || ad.runId || 'unknown',
+          is_active: status.is_active || rawData.is_active || false,
+          display_format: additionalInfo.display_format || snapshot.display_format || 'IMAGE',
+          collation_count: additionalInfo.collation_count || 1,
+          gated_type: status.gated_type || rawData.gated_type || 'ELIGIBLE',
           raw_fields: Object.keys(ad) // Include field names for debugging
         }
       }
