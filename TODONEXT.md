@@ -43,10 +43,37 @@
 
 ---
 
-## 🚀 What's Next - Immediate Priorities
+## 🚨 CRITICAL ISSUE - IMMEDIATE PRIORITY
 
-### 1. 🔑 **CRITICAL: Facebook API Setup & Testing**
-**Priority: URGENT** - **⚠️ NEXT IMMEDIATE TASK ⚠️**
+### **🚨 CRITICAL: Apify Integration Completely Broken - URGENT FIX NEEDED**
+**Status:** Both Apify actors failing to return live Facebook ads data despite successful runs
+**Impact:** Core functionality blocked - cannot retrieve real competitor ads through premium service
+**User Investment:** $5/month premium Apify subscription not working
+
+#### Technical Summary
+✅ **API monitoring fixed** - runs complete successfully and are tracked properly  
+✅ **URL formats tested** - using exact format from working browser screenshot  
+✅ **Input validation fixed** - providing required fields per error messages  
+❌ **STILL GETTING 0 RESULTS** - both actors accept inputs but return empty arrays  
+
+#### Current Actor Status
+1. **XtaWFhbtfxyzqrFmd** - "URLs are not valid" errors for basic `https://www.facebook.com/ads/library/`
+2. **jj5sAMeSoXotatkss** (Premium) - Accepts all formats but returns 0 results every time
+
+#### Next Meeting Action Plan
+1. **Test directly in Apify Console** - Verify what inputs actually work in web interface
+2. **Contact Apify Support** - Premium actor may have undocumented requirements  
+3. **Debug URL validation** - Why basic Facebook URLs are considered "invalid"
+4. **Find alternative actors** - Search Apify store for working Facebook scrapers
+
+**🎯 MUST FIX:** User specifically wants Apify working first before Facebook API fallback
+
+---
+
+## 🚀 Secondary Priorities (After Apify Fix)
+
+### 1. 🔑 **Facebook API Setup & Testing**
+**Priority: HIGH** - **Fallback after Apify resolution**
 - [ ] **Create Facebook Developer App** following FACEBOOK_API_SETUP.md guide
 - [ ] **Get access token** via Graph API Explorer  
 - [ ] **Add credentials to .env file** (FACEBOOK_ACCESS_TOKEN)
@@ -54,7 +81,7 @@
 - [ ] **Verify API integration** via `/api/facebook/status` endpoint
 - [ ] **Test live ad search** with real Nike/Adidas queries
 
-**🎯 SUCCESS CRITERIA**: Facebook API returns real ad data instead of empty results
+**🎯 SUCCESS CRITERIA**: Facebook API returns real ad data as Apify fallback
 
 **📋 SETUP CHECKLIST**:
 - [ ] Visit https://developers.facebook.com and create account
@@ -181,16 +208,19 @@
 
 ---
 
-**🏆 Current Status: Facebook API Integration Complete - READY FOR CREDENTIALS SETUP**
+**🚨 Current Status: APIFY INTEGRATION CRITICAL FAILURE - IMMEDIATE ATTENTION REQUIRED**
 
-**⚠️ CRITICAL NEXT TASK: Facebook API Setup & Testing**
+**⚠️ CRITICAL NEXT TASK: Fix Apify Actor Integration**
 
-**🎯 IMMEDIATE ACTION REQUIRED:**
-1. **Follow FACEBOOK_API_SETUP.md** - Complete step-by-step guide available
-2. **Get Facebook access token** - Use Graph API Explorer for quick setup  
-3. **Test integration** - Run `node src/scripts/test-facebook-api.js`
-4. **Verify real data** - Confirm scraper returns actual Facebook ads
+**🎯 IMMEDIATE ACTION REQUIRED NEXT MEETING:**
+1. **Test actors in Apify Console directly** - Verify what inputs actually work in web interface
+2. **Contact Apify Support** - Premium subscription not working despite valid inputs
+3. **Debug URL validation logic** - Basic Facebook URLs being rejected as "invalid"  
+4. **Research alternative actors** - Find working Facebook Ad Library scrapers on Apify
+5. **Document exact working input format** - Get definitive answer on parameter requirements
 
-**📈 EXPECTED OUTCOME**: Transform from 0 ads (blocked scraper) to hundreds of real competitor ads
+**🚨 BLOCKING ISSUE**: User's $5/month premium Apify subscription unusable - both actors fail
 
-**Next Session Goal: Complete Facebook API credentials setup and verify live data retrieval** 🚀
+**📈 EXPECTED OUTCOME**: Get live Facebook ads data from Apify actors (user's preferred method)
+
+**Next Session Goal: RESOLVE APIFY INTEGRATION OR IMPLEMENT FACEBOOK API FALLBACK** 🚨

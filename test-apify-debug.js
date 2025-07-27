@@ -1,11 +1,12 @@
+require('dotenv').config();
 const ApifyScraper = require('./src/scrapers/apify-scraper');
 const logger = require('./src/utils/logger');
 
 async function testApifyDebug() {
   const scraper = new ApifyScraper();
   
-  // Test the exact queries from your pages
-  const testQueries = ['gopureskincare', 'Vibriance', 'PrimePrometics'];
+  // Test skincare/beauty brands with premium account
+  const testQueries = ['Vibriance', 'PrimePrometics', 'gopureskincare'];
   
   for (const query of testQueries) {
     console.log(`\n=== Testing Apify with query: "${query}" ===`);
