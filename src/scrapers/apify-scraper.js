@@ -110,10 +110,15 @@ class ApifyScraper {
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
       // Premium actor - using exact format from successful Apify Console test
       inputVariations = [
-        // Format 1: WORKING format from Apify Console test
+        // Format 1: Include historical ads (active_status=all) - BREAKTHROUGH for Vibriance!
+        {
+          "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
+          "maxResults": limit || 200  // Get all available ads, default 200 if no limit specified
+        },
+        // Format 2: Active ads only (fallback)
         {
           "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
-          "maxResults": limit || 200  // Get all available ads, default 200 if no limit specified
+          "maxResults": limit || 200
         }
       ];
     } else {
