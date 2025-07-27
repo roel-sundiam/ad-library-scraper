@@ -8,10 +8,9 @@ class ApifyScraper {
     this.baseUrl = 'https://api.apify.com/v2';
     this.apiToken = process.env.APIFY_API_TOKEN;
     
-    // Working actors from Apify Store (verified actual IDs)
+    // Focus on premium actor with correct input format discovered by user
     this.scrapers = [
-      'XtaWFhbtfxyzqrFmd', // Re-enable to test with fixed monitoring
-      'jj5sAMeSoXotatkss' // meta-facebook-ad-scrapper-using-ad-library-url-premium (premium)
+      'jj5sAMeSoXotatkss' // Premium actor with working "adLibraryUrl" + "maxResults" format
     ];
   }
 
@@ -109,26 +108,12 @@ class ApifyScraper {
         }
       ];
     } else if (scraperName === 'jj5sAMeSoXotatkss') {
-      // Try different approaches since all URL formats return 0 results
-      
+      // Premium actor - using exact format from successful Apify Console test
       inputVariations = [
-        // Format 1: Try the exact URL from the screenshot without encoding
+        // Format 1: WORKING format from Apify Console test
         {
-          "metaAdLibraryUrl": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=nike&search_type=keyword_unordered"
-        },
-        // Format 2: Try simple search parameters instead of full URL
-        {
-          "query": query,
-          "country": "US",
-          "activeStatus": "active"
-        },
-        // Format 3: Try the minimum required fields
-        {
-          "searchTerm": query
-        },
-        // Format 4: Try page search URL (different search type)
-        {
-          "metaAdLibraryUrl": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&search_type=page&view_all_page_id=1508702344440303"
+          "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
+          "maxResults": Math.max(limit || 50, 50)  // Minimum 50 results for reliable data
         }
       ];
     } else {
@@ -153,7 +138,7 @@ class ApifyScraper {
     }
     
     // DEBUGGING: Try all formats since premium actor keeps returning 0 results
-    for (let i = 0; i < inputVariations.length && i < 4; i++) {
+    for (let i = 0; i < inputVariations.length && i < 8; i++) {
       const inputData = inputVariations[i];
       let runResponse = null;
       try {
