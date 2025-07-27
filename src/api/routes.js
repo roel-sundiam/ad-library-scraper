@@ -274,23 +274,33 @@ async function processScrapeJob(jobId) {
     let scraper;
     switch (job.platform.toLowerCase()) {
       case 'facebook':
-        // Try Facebook API first, fallback to scraper if API not available
+        // Try Apify first (premium service), then Facebook API, then fallbacks
         try {
-          if (process.env.FACEBOOK_ACCESS_TOKEN) {
-            logger.info('Using Facebook Ad Library API');
-            scraper = new FacebookAdLibraryAPI();
+          if (process.env.APIFY_API_TOKEN) {
+            logger.info('Using Apify premium service for Facebook ads');
+            scraper = new ApifyScraper();
           } else {
-            throw new Error('FACEBOOK_ACCESS_TOKEN not configured');
+            throw new Error('APIFY_API_TOKEN not configured');
           }
-        } catch (apiError) {
-          logger.warn('Facebook API not available, falling back to scraper:', apiError.message);
+        } catch (apifyError) {
+          logger.warn('Apify not available, trying Facebook API:', apifyError.message);
           try {
-            logger.info('Using Facebook web scraper with Puppeteer');
-            scraper = new FacebookAdLibraryScraper();
-          } catch (scraperError) {
-            logger.warn('Puppeteer not available, using mock scraper:', scraperError.message);
-            const MockFacebookScraper = require('../scrapers/mock-facebook-scraper');
-            scraper = new MockFacebookScraper();
+            if (process.env.FACEBOOK_ACCESS_TOKEN) {
+              logger.info('Using Facebook Ad Library API');
+              scraper = new FacebookAdLibraryAPI();
+            } else {
+              throw new Error('FACEBOOK_ACCESS_TOKEN not configured');
+            }
+          } catch (apiError) {
+            logger.warn('Facebook API not available, falling back to scraper:', apiError.message);
+            try {
+              logger.info('Using Facebook web scraper with Puppeteer');
+              scraper = new FacebookAdLibraryScraper();
+            } catch (scraperError) {
+              logger.warn('Puppeteer not available, using mock scraper:', scraperError.message);
+              const MockFacebookScraper = require('../scrapers/mock-facebook-scraper');
+              scraper = new MockFacebookScraper();
+            }
           }
         }
         break;
