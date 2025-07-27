@@ -23,9 +23,9 @@ export class FacebookAdsDashboardComponent implements OnInit {
   // Dashboard data
   brandComparisons: CompetitorComparison[] = [];
   totalAds = 0;
-  totalImpressions = 0;
-  totalSpend = 0;
-  averageCPM = 0;
+  totalVideoAds = 0;
+  totalAdvertisers = 0;
+  videoContentRate = 0;
   topPerformingAds: FacebookAd[] = [];
   
   // Display options
@@ -72,8 +72,8 @@ export class FacebookAdsDashboardComponent implements OnInit {
     const brands = Object.keys(this.analysisResults.data);
     this.brandComparisons = [];
     this.totalAds = 0;
-    this.totalImpressions = 0;
-    this.totalSpend = 0;
+    this.totalVideoAds = 0;
+    this.totalAdvertisers = 0;
     this.topPerformingAds = [];
 
     brands.forEach(brandKey => {
@@ -95,47 +95,57 @@ export class FacebookAdsDashboardComponent implements OnInit {
         });
 
         this.totalAds += brandData.ads_found;
-        this.totalImpressions += metrics.total_impressions;
-        this.totalSpend += metrics.total_spend;
+        this.totalVideoAds += brandData.ads_data.filter(ad => ad.creative.has_video).length;
+        this.totalAdvertisers++;
         
-        // Add top performing ads
-        this.topPerformingAds.push(...metrics.top_performers);
+        // Add ads for content analysis (replace top performing logic)
+        this.topPerformingAds.push(...brandData.ads_data);
       }
     });
 
-    // Calculate market share
+    // Calculate video content rate
+    this.videoContentRate = this.totalAds > 0 ? (this.totalVideoAds / this.totalAds) * 100 : 0;
+
+    // Calculate market share by ad volume instead of spend
     this.brandComparisons.forEach(brand => {
-      brand.market_share = this.totalSpend > 0 ? 
-        (brand.metrics.total_spend / this.totalSpend) * 100 : 0;
+      brand.market_share = this.totalAds > 0 ? 
+        (brand.ad_frequency / this.totalAds) * 100 : 0;
     });
 
-    // Calculate average CPM
-    this.averageCPM = this.brandComparisons.length > 0 ?
-      this.brandComparisons.reduce((sum, brand) => sum + brand.metrics.average_cpm, 0) / this.brandComparisons.length : 0;
-
-    // Sort top performing ads
-    this.topPerformingAds.sort((a, b) => b.metrics.impressions_max - a.metrics.impressions_max);
+    // Sort ads by recency instead of impressions
+    this.topPerformingAds.sort((a, b) => {
+      const dateA = new Date(a.dates.start_date || 0);
+      const dateB = new Date(b.dates.start_date || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
     this.topPerformingAds = this.topPerformingAds.slice(0, 5);
   }
 
   calculateBrandMetrics(ads: FacebookAd[]): AdMetricsSummary {
-    const totalImpressions = ads.reduce((sum, ad) => sum + ad.metrics.impressions_min, 0);
-    const totalSpend = ads.reduce((sum, ad) => sum + ad.metrics.spend_min, 0);
-    const avgCPM = ads.reduce((sum, ad) => sum + parseFloat(ad.metrics.cpm), 0) / ads.length;
-    const avgCTR = ads.reduce((sum, ad) => sum + parseFloat(ad.metrics.ctr), 0) / ads.length;
+    // Calculate meaningful metrics instead of unavailable ones
+    const videoAds = ads.filter(ad => ad.creative.has_video).length;
+    const videoRate = ads.length > 0 ? (videoAds / ads.length) * 100 : 0;
     
-    // Get top 3 performing ads for this brand
-    const topPerformers = ads
-      .sort((a, b) => b.metrics.impressions_max - a.metrics.impressions_max)
+    // Calculate average ad text length
+    const avgTextLength = ads.length > 0 ? 
+      ads.reduce((sum, ad) => sum + (ad.creative.body?.length || 0), 0) / ads.length : 0;
+    
+    // Get most recent ads for this brand
+    const recentAds = ads
+      .sort((a, b) => {
+        const dateA = new Date(a.dates.start_date || 0);
+        const dateB = new Date(b.dates.start_date || 0);
+        return dateB.getTime() - dateA.getTime();
+      })
       .slice(0, 3);
 
     return {
-      total_impressions: totalImpressions,
-      total_spend: totalSpend,
-      average_cpm: avgCPM,
-      average_ctr: avgCTR,
+      total_impressions: videoRate, // Repurpose as video content rate
+      total_spend: avgTextLength,   // Repurpose as average text length
+      average_cpm: videoAds,        // Repurpose as video ad count
+      average_ctr: ads.length - videoAds, // Repurpose as image ad count
       ads_count: ads.length,
-      top_performers: topPerformers
+      top_performers: recentAds
     };
   }
 
@@ -180,13 +190,13 @@ export class FacebookAdsDashboardComponent implements OnInit {
     const dataToExport = {
       analysis_summary: {
         total_ads: this.totalAds,
-        total_impressions: this.totalImpressions,
-        total_spend: this.totalSpend,
-        average_cpm: this.averageCPM,
+        total_advertisers: this.totalAdvertisers,
+        total_video_ads: this.totalVideoAds,
+        video_content_rate: this.videoContentRate,
         brands_analyzed: this.brandComparisons.length
       },
       brand_comparisons: this.brandComparisons,
-      top_performing_ads: this.topPerformingAds,
+      recent_ads: this.topPerformingAds,
       raw_data: this.analysisResults.data
     };
 
@@ -228,7 +238,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
     if (ad.metadata.ad_snapshot_url) {
       window.open(ad.metadata.ad_snapshot_url, '_blank');
     } else {
-      alert(`Ad Details:\n\nAdvertiser: ${ad.advertiser.name}\nImpressions: ${this.formatNumber(ad.metrics.impressions_min)}+\nSpend: ${this.formatCurrency(ad.metrics.spend_min)}+\nCPM: $${ad.metrics.cpm}\nSource: ${ad.metadata.source}`);
+      alert(`Ad Details:\n\nAdvertiser: ${ad.advertiser.name}\nFormat: ${ad.creative.has_video ? 'Video' : 'Image'}\nText Length: ${ad.creative.body?.length || 0} characters\nStatus: ${ad.metadata.is_active ? 'Active' : 'Historical'}\nSource: ${ad.metadata.source}`);
     }
   }
 }

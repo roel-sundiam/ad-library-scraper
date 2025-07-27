@@ -44,44 +44,44 @@
       <mat-card class="metric-card">
         <mat-card-content>
           <div class="metric-header">
-            <mat-icon class="metric-icon impressions">visibility</mat-icon>
-            <span class="metric-label">Total Impressions</span>
-          </div>
-          <div class="metric-value">{{ formatNumber(totalImpressions) }}</div>
-          <div class="metric-subtitle">Across all brands</div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon spend">attach_money</mat-icon>
-            <span class="metric-label">Total Ad Spend</span>
-          </div>
-          <div class="metric-value">{{ formatCurrency(totalSpend) }}</div>
-          <div class="metric-subtitle">Estimated minimum spend</div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon cpm">trending_up</mat-icon>
-            <span class="metric-label">Average CPM</span>
-          </div>
-          <div class="metric-value">${{ averageCPM.toFixed(2) }}</div>
-          <div class="metric-subtitle">Cost per thousand impressions</div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
             <mat-icon class="metric-icon ads">campaign</mat-icon>
-            <span class="metric-label">Total Ads</span>
+            <span class="metric-label">Total Ads Found</span>
           </div>
           <div class="metric-value">{{ totalAds }}</div>
-          <div class="metric-subtitle">Active advertising campaigns</div>
+          <div class="metric-subtitle">Facebook Ad Library results</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon">business</mat-icon>
+            <span class="metric-label">Advertisers</span>
+          </div>
+          <div class="metric-value">{{ totalAdvertisers }}</div>
+          <div class="metric-subtitle">Unique brands analyzed</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon">play_circle</mat-icon>
+            <span class="metric-label">Video Content</span>
+          </div>
+          <div class="metric-value">{{ formatPercentage(videoContentRate) }}</div>
+          <div class="metric-subtitle">Ads with video content</div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="metric-card">
+        <mat-card-content>
+          <div class="metric-header">
+            <mat-icon class="metric-icon">movie</mat-icon>
+            <span class="metric-label">Video Ads</span>
+          </div>
+          <div class="metric-value">{{ totalVideoAds }}</div>
+          <div class="metric-subtitle">Total video advertisements</div>
         </mat-card-content>
       </mat-card>
     </div>
@@ -101,10 +101,10 @@
           <!-- Metric Selector -->
           <div class="metric-selector">
             <mat-button-toggle-group [(value)]="selectedMetric" (change)="onMetricChange($event.value)">
-              <mat-button-toggle value="impressions">Impressions</mat-button-toggle>
-              <mat-button-toggle value="spend">Ad Spend</mat-button-toggle>
-              <mat-button-toggle value="cpm">CPM</mat-button-toggle>
-              <mat-button-toggle value="ctr">CTR</mat-button-toggle>
+              <mat-button-toggle value="impressions">Video Rate</mat-button-toggle>
+              <mat-button-toggle value="spend">Avg Text Length</mat-button-toggle>
+              <mat-button-toggle value="cpm">Video Ads</mat-button-toggle>
+              <mat-button-toggle value="ctr">Image Ads</mat-button-toggle>
             </mat-button-toggle-group>
           </div>
 
@@ -125,10 +125,10 @@
                      [style.background-color]="getBrandColor(i)">
                 </div>
                 <span class="metric-value-text">
-                  <span *ngIf="selectedMetric === 'impressions'">{{ formatNumber(brand.metrics.total_impressions) }}</span>
-                  <span *ngIf="selectedMetric === 'spend'">{{ formatCurrency(brand.metrics.total_spend) }}</span>
-                  <span *ngIf="selectedMetric === 'cpm'">${{ brand.metrics.average_cpm.toFixed(2) }}</span>
-                  <span *ngIf="selectedMetric === 'ctr'">{{ formatPercentage(brand.metrics.average_ctr) }}</span>
+                  <span *ngIf="selectedMetric === 'impressions'">{{ formatPercentage(brand.metrics.total_impressions) }}</span>
+                  <span *ngIf="selectedMetric === 'spend'">{{ brand.metrics.total_spend.toFixed(0) }} chars</span>
+                  <span *ngIf="selectedMetric === 'cpm'">{{ brand.metrics.average_cpm }} videos</span>
+                  <span *ngIf="selectedMetric === 'ctr'">{{ brand.metrics.average_ctr }} images</span>
                 </span>
               </div>
             </div>
@@ -142,10 +142,10 @@
       <mat-card class="top-ads-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon>star</mat-icon>
-            Top Performing Ads
+            <mat-icon>schedule</mat-icon>
+            Recent Ads
           </mat-card-title>
-          <mat-card-subtitle>Highest impression ads across all brands</mat-card-subtitle>
+          <mat-card-subtitle>Most recently published ads across all brands</mat-card-subtitle>
         </mat-card-header>
         
         <mat-card-content>
@@ -176,16 +176,16 @@
 
               <div class="ad-metrics">
                 <div class="metric-item">
-                  <span class="metric-label">Impressions</span>
-                  <span class="metric-value">{{ formatNumber(ad.metrics.impressions_min) }}+</span>
+                  <span class="metric-label">Format</span>
+                  <span class="metric-value">{{ ad.creative.has_video ? 'Video' : 'Image' }}</span>
                 </div>
                 <div class="metric-item">
-                  <span class="metric-label">Spend</span>
-                  <span class="metric-value">{{ formatCurrency(ad.metrics.spend_min) }}+</span>
+                  <span class="metric-label">Text Length</span>
+                  <span class="metric-value">{{ ad.creative.body?.length || 0 }} chars</span>
                 </div>
                 <div class="metric-item">
-                  <span class="metric-label">CPM</span>
-                  <span class="metric-value">${{ ad.metrics.cpm }}</span>
+                  <span class="metric-label">Status</span>
+                  <span class="metric-value">{{ ad.metadata.is_active ? 'Active' : 'Historical' }}</span>
                 </div>
               </div>
 
@@ -226,41 +226,41 @@
           <div class="brand-metrics-grid">
             <div class="brand-metric">
               <div class="metric-icon-container impressions">
-                <mat-icon>visibility</mat-icon>
+                <mat-icon>play_circle</mat-icon>
               </div>
               <div class="metric-details">
-                <div class="metric-value">{{ formatNumber(brand.metrics.total_impressions) }}</div>
-                <div class="metric-label">Total Impressions</div>
+                <div class="metric-value">{{ formatPercentage(brand.metrics.total_impressions) }}</div>
+                <div class="metric-label">Video Content Rate</div>
               </div>
             </div>
 
             <div class="brand-metric">
               <div class="metric-icon-container spend">
-                <mat-icon>attach_money</mat-icon>
+                <mat-icon>text_fields</mat-icon>
               </div>
               <div class="metric-details">
-                <div class="metric-value">{{ formatCurrency(brand.metrics.total_spend) }}</div>
-                <div class="metric-label">Est. Ad Spend</div>
+                <div class="metric-value">{{ brand.metrics.total_spend.toFixed(0) }}</div>
+                <div class="metric-label">Avg Text Length</div>
               </div>
             </div>
 
             <div class="brand-metric">
               <div class="metric-icon-container cpm">
-                <mat-icon>trending_up</mat-icon>
+                <mat-icon>movie</mat-icon>
               </div>
               <div class="metric-details">
-                <div class="metric-value">${{ brand.metrics.average_cpm.toFixed(2) }}</div>
-                <div class="metric-label">Average CPM</div>
+                <div class="metric-value">{{ brand.metrics.average_cpm }}</div>
+                <div class="metric-label">Video Ads</div>
               </div>
             </div>
 
             <div class="brand-metric">
               <div class="metric-icon-container ctr">
-                <mat-icon>mouse</mat-icon>
+                <mat-icon>image</mat-icon>
               </div>
               <div class="metric-details">
-                <div class="metric-value">{{ formatPercentage(brand.metrics.average_ctr) }}</div>
-                <div class="metric-label">Average CTR</div>
+                <div class="metric-value">{{ brand.metrics.average_ctr }}</div>
+                <div class="metric-label">Image Ads</div>
               </div>
             </div>
           </div>
