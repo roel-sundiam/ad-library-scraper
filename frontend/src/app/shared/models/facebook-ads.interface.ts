@@ -42,6 +42,13 @@ export interface FacebookAd {
     scraped_at: string;
     funding_entity?: string;
     ad_snapshot_url?: string;
+    disclaimer?: string;
+    apify_run_id?: string;
+    is_active: boolean;
+    display_format?: string;
+    collation_count?: number;
+    gated_type?: string;
+    raw_fields?: string[];
     note?: string;
   };
 }
