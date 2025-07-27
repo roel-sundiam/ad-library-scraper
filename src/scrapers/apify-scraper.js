@@ -113,7 +113,7 @@ class ApifyScraper {
         // Format 1: WORKING format from Apify Console test
         {
           "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
-          "maxResults": Math.max(limit || 50, 50)  // Minimum 50 results for reliable data
+          "maxResults": limit || 200  // Get all available ads, default 200 if no limit specified
         }
       ];
     } else {
