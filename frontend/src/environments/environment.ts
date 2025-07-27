@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
-  apiUrl: '/api', // Uses proxy.conf.json to route to localhost:3000
-  websocketUrl: 'ws://localhost:3000',
+  apiUrl: 'https://ad-library-scraper.onrender.com/api', // Connect directly to Render
+  websocketUrl: 'wss://ad-library-scraper.onrender.com',
   enableDebugTools: true,
   logLevel: 'debug'
 };
