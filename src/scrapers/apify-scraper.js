@@ -10,7 +10,7 @@ class ApifyScraper {
     
     // Focus on proven working actor - delivers reliable Vibriance results
     this.scrapers = [
-      'jj5sAMeSoXotatkss' // Proven working actor: 4 Vibriance ads, 50+ Nike ads, reliable historical data access
+      'XtaWFhbtfxyzqrFmd' // Updated working actor for accurate Facebook ad results
     ];
   }
 
@@ -22,8 +22,11 @@ class ApifyScraper {
   async scrapeAds(params) {
     const { query, country = 'US', limit = 20 } = params;
     
+    // Ensure minimum limit of 10 for actor XtaWFhbtfxyzqrFmd
+    const actualLimit = Math.max(limit, 10);
+    
     try {
-      logger.info('Starting Apify Facebook Ad Library scrape', { query, country, limit });
+      logger.info('Starting Apify Facebook Ad Library scrape', { query, country, limit: actualLimit });
 
       if (!this.apiToken) {
         logger.warn('No APIFY_API_TOKEN found, cannot access Apify service');
@@ -34,7 +37,7 @@ class ApifyScraper {
       for (const scraperName of this.scrapers) {
         try {
           logger.info(`Trying Apify scraper: ${scraperName}`);
-          const results = await this.runApifyScraper(scraperName, query, country, limit);
+          const results = await this.runApifyScraper(scraperName, query, country, actualLimit);
           
           logger.info(`Apify scraper ${scraperName} returned ${results ? results.length : 'null'} results`);
           
@@ -82,18 +85,32 @@ class ApifyScraper {
     // Different input formats for different actors
     let inputVariations = [];
     
-    if (scraperName === 'jj5sAMeSoXotatkss') {
-      // Premium actor - using exact format from successful Apify Console test
+    if (scraperName === 'XtaWFhbtfxyzqrFmd') {
+      // Updated actor - using exact format from Apify testing results
       inputVariations = [
-        // Format 1: Include historical ads (active_status=all) - BREAKTHROUGH for Vibriance!
+        // Format 1: Include historical ads (active_status=all) with full ad details
         {
-          "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
-          "maxResults": limit || 200  // Get all available ads, default 200 if no limit specified
+          "count": limit || 500,
+          "scrapeAdDetails": true,
+          "scrapePageAds.activeStatus": "all",
+          "urls": [
+            {
+              "url": `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
+              "method": "GET"
+            }
+          ]
         },
-        // Format 2: Active ads only (fallback)
+        // Format 2: Active ads only (fallback) with full ad details
         {
-          "adLibraryUrl": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
-          "maxResults": limit || 200
+          "count": limit || 500,
+          "scrapeAdDetails": true,
+          "scrapePageAds.activeStatus": "active",
+          "urls": [
+            {
+              "url": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
+              "method": "GET"
+            }
+          ]
         }
       ];
     } else {
@@ -435,12 +452,12 @@ class ApifyScraper {
       const status = ad.status || {};
       const additionalInfo = ad.additional_info || {};
       
-      // Use richer data from snapshot if available
-      const snapshot = additionalInfo.raw_data?.snapshot || {};
-      const rawData = additionalInfo.raw_data || {};
+      // Use richer data from snapshot if available - now correctly accessing direct snapshot field
+      const snapshot = ad.snapshot || {};
+      const rawData = ad;
       
       // Get better advertiser info from snapshot
-      const advertiserName = snapshot.page_name || metadata.page_name || 'Unknown';
+      const advertiserName = snapshot.page_name || ad.page_name || 'Unknown';
       const advertiserCategory = Array.isArray(snapshot.page_categories) && snapshot.page_categories.length > 0 
         ? snapshot.page_categories[0] 
         : (Array.isArray(metadata.page_categories) && metadata.page_categories.length > 0 
@@ -488,14 +505,15 @@ class ApifyScraper {
           profile_url: snapshot.page_profile_uri || metadata.page_profile_uri || ''
         },
         creative: {
-          body: adContent.body || snapshot.body?.text || '',
-          title: adContent.title || snapshot.title || '',
-          description: adContent.link_description || snapshot.link_description || '',
-          call_to_action: adContent.cta_text || snapshot.cta_text || 'Learn More',
-          images: adContent.images || snapshot.images || [],
+          body: adContent.body || snapshot.body?.text || snapshot.text || '',
+          title: adContent.title || snapshot.title || snapshot.headline || snapshot.link_title || '',
+          description: adContent.link_description || snapshot.link_description || snapshot.description || '',
+          call_to_action: adContent.cta_text || snapshot.cta_text || snapshot.call_to_action || 'Learn More',
+          images: adContent.images || snapshot.images || snapshot.creative_body?.media || [],
           has_video: Array.isArray(adContent.videos) && adContent.videos.length > 0 || 
-                     Array.isArray(snapshot.videos) && snapshot.videos.length > 0,
-          landing_url: adContent.link_url || snapshot.link_url || ''
+                     Array.isArray(snapshot.videos) && snapshot.videos.length > 0 ||
+                     snapshot.creative_body?.video_url || false,
+          landing_url: adContent.link_url || snapshot.link_url || snapshot.creative_body?.link_url || ''
         },
         targeting: {
           countries: distribution.targeted_or_reached_countries || rawData.targeted_or_reached_countries || ['US'],

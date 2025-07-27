@@ -60,7 +60,14 @@ export class ProgressDashboardComponent implements OnInit, OnDestroy {
     // Poll status every 3 seconds (Facebook analysis is faster than legacy workflow)
     this.statusSubscription = interval(3000)
       .pipe(
-        switchMap(() => this.apiService.getAnalysisStatus(this.runId)),
+        switchMap(() => {
+          // Use the correct endpoint based on the ID format
+          if (this.runId.startsWith('workflow_')) {
+            return this.apiService.getWorkflowStatus(this.runId);
+          } else {
+            return this.apiService.getAnalysisStatus(this.runId);
+          }
+        }),
         takeWhile(response => {
           // Continue polling while analysis is running
           return response.success && 
@@ -68,16 +75,37 @@ export class ProgressDashboardComponent implements OnInit, OnDestroy {
         }, true) // Include the final emit
       )
       .subscribe({
-        next: (response: FacebookAnalysisStatus) => {
+        next: (response: any) => {
           this.isLoading = false;
           if (response.success) {
-            this.analysisStatus = response.data;
+            // Handle different response structures for workflow vs analysis endpoints
+            if (this.runId.startsWith('workflow_')) {
+              // Workflow status response structure
+              const workflowData = response.data;
+              this.analysisStatus = {
+                runId: workflowData.workflow_id,
+                datasetId: workflowData.workflow_id,
+                status: workflowData.status,
+                progress: workflowData.progress,
+                pageUrls: workflowData.pages ? [
+                  workflowData.pages.your_page?.url,
+                  workflowData.pages.competitor_1?.url,
+                  workflowData.pages.competitor_2?.url
+                ].filter(Boolean) : [],
+                created_at: workflowData.created_at,
+                started_at: workflowData.started_at,
+                completed_at: workflowData.completed_at
+              };
+            } else {
+              // Analysis status response structure
+              this.analysisStatus = response.data;
+            }
             
             // If completed, navigate to Facebook Ads dashboard after a short delay
-            if (response.data.status === 'completed') {
+            if (this.analysisStatus && this.analysisStatus.status === 'completed') {
               setTimeout(() => {
                 // Use datasetId for results (backend expects datasetId for /results endpoint)
-                const datasetId = response.data.datasetId || this.runId;
+                const datasetId = this.analysisStatus!.datasetId || this.runId;
                 this.router.navigate(['/competitor-analysis/facebook-dashboard', datasetId]);
               }, 2000);
             }
