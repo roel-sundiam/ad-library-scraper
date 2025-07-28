@@ -125,6 +125,117 @@ ${adsText}
 Please provide a comprehensive analysis addressing the specific question asked, using the ad data provided as evidence for your insights.`;
   }
 
+  async analyzeFacebookAds(prompt, videoData = []) {
+    try {
+      logger.info('Starting Claude Facebook video analysis', {
+        prompt: prompt.substring(0, 100) + '...',
+        videoCount: videoData.length
+      });
+
+      // Check if API key is configured
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error('ANTHROPIC_API_KEY not configured');
+      }
+
+      // Prepare the analysis prompt with video context
+      const systemPrompt = this.buildVideoAnalysisSystemPrompt();
+      const userPrompt = this.buildVideoAnalysisUserPrompt(prompt, videoData);
+
+      const response = await this.anthropic.messages.create({
+        model: this.model,
+        max_tokens: this.maxTokens,
+        temperature: 0.3,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ]
+      });
+
+      const analysisResult = {
+        analysis: response.content[0].text,
+        metadata: {
+          model: this.model,
+          tokens_used: response.usage,
+          videos_analyzed: videoData.length,
+          created_at: new Date().toISOString(),
+          ai_provider: 'claude'
+        }
+      };
+
+      logger.info('Claude Facebook video analysis completed', {
+        tokensUsed: response.usage,
+        analysisLength: analysisResult.analysis.length
+      });
+
+      return analysisResult;
+
+    } catch (error) {
+      logger.error('Claude Facebook video analysis failed:', error);
+      throw new Error(`Video analysis failed: ${error.message}`);
+    }
+  }
+
+  buildVideoAnalysisSystemPrompt() {
+    return `You are an expert marketing analyst specializing in video advertising and competitive intelligence. You analyze Facebook video ad data to provide actionable insights for marketing teams.
+
+Your analysis should be:
+- Data-driven and specific to the provided video examples
+- Focused on actionable insights and recommendations
+- Well-structured with clear headings and bullet points
+- Professional yet accessible to marketing teams
+- Include specific examples from the video data when relevant
+
+When analyzing video ads, consider:
+- Video messaging patterns and themes
+- Transcript content and spoken messaging
+- Visual storytelling techniques
+- Call-to-action strategies in video format
+- Target audience indicators from video content
+- Performance patterns (if metrics available)
+- Competitive positioning through video content
+- Seasonal or temporal trends in video advertising
+- Audio messaging effectiveness and transcription quality
+- Consistency between video text overlay, spoken content, and ad copy
+- Video length and pacing strategies
+- Creative formats and production quality
+
+Format your response with clear sections and use markdown formatting for better readability.`;
+  }
+
+  buildVideoAnalysisUserPrompt(userPrompt, videoData) {
+    // Limit data size to prevent token overflow
+    const maxVideos = 50;
+    const limitedVideos = videoData.slice(0, maxVideos);
+
+    const videosText = limitedVideos.map((video, index) => {
+      return `
+**Video ${index + 1}:**
+- Video ID: ${video.video_id || 'Unknown'}
+- Brand: ${video.brand || 'Unknown'}
+- Date: ${video.video_date || 'Unknown'}
+- Ad Text: ${video.video_text || 'No text available'}
+- Facebook URL: ${video.facebook_url || 'N/A'}
+${video.transcript ? `- Video Transcript: "${video.transcript.substring(0, 500)}${video.transcript.length > 500 ? '...' : ''}"` : '- Video Transcript: Not available'}
+${video.confidence ? `- Transcript Confidence: ${Math.round(video.confidence * 100)}%` : ''}
+${video.duration ? `- Video Duration: ${video.duration}s` : ''}
+${video.error ? `- Analysis Note: ${video.error}` : ''}
+${video.note ? `- Note: ${video.note}` : ''}
+`;
+    }).join('\n');
+
+    return `Please analyze the following Facebook video ad data based on this specific question/prompt:
+
+**Analysis Request:** ${userPrompt}
+
+**Video Ad Data (${limitedVideos.length} videos):**
+${videosText}
+
+Please provide a comprehensive analysis addressing the specific question asked, using the video data provided as evidence for your insights. Focus particularly on video-specific elements like transcribed content, visual storytelling, and audio messaging patterns.`;
+  }
+
   async testConnection() {
     try {
       const response = await this.anthropic.messages.create({

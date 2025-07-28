@@ -2,7 +2,37 @@ const OpenAI = require('openai');
 const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegStatic = require('ffmpeg-static');
 const logger = require('../utils/logger');
+
+// Set ffmpeg path
+ffmpeg.setFfmpegPath(ffmpegStatic);
+
+// Open source alternatives
+let whisperCpp;
+let transformers;
+let huggingFaceInference;
+
+// Lazy load optional dependencies
+try {
+  whisperCpp = require('node-whisper');
+} catch (e) {
+  logger.warn('node-whisper not available, falling back to other methods');
+}
+
+try {
+  transformers = require('@xenova/transformers');
+} catch (e) {
+  logger.warn('@xenova/transformers not available, falling back to other methods');
+}
+
+try {
+  const { HfInference } = require('@huggingface/inference');
+  huggingFaceInference = HfInference;
+} catch (e) {
+  logger.warn('@huggingface/inference not available, falling back to other methods');
+}
 
 class VideoTranscriptService {
   constructor() {

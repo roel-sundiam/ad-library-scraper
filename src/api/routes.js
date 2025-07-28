@@ -2997,9 +2997,13 @@ async function testOllamaConnection() {
 }
 
 // Process bulk video analysis
+// MOCK VERSION: Process bulk video analysis with simulated data for UI testing
 async function processBulkVideoAnalysis(jobId) {
   const job = jobs.get(jobId);
-  if (!job) return;
+  if (!job) {
+    logger.error(`Job ${jobId} not found in processBulkVideoAnalysis`);
+    return;
+  }
   
   try {
     // Update job status
@@ -3009,200 +3013,241 @@ async function processBulkVideoAnalysis(jobId) {
     job.progress.message = 'Initializing bulk video analysis...';
     jobs.set(jobId, job);
     
-    logger.info(`Processing bulk video analysis ${jobId}`, {
+    logger.info(`[MOCK] Processing bulk video analysis ${jobId}`, {
       videoCount: job.videos.length,
       competitorName: job.options.competitorName
     });
+
+    // Stage 1: Mock initialization
+    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
     
-    const transcripts = [];
-    const videoTranscriptService = require('../services/video-transcript-service');
-    
-    // Stage 1: Transcribe videos if enabled
+    // Stage 2: Mock transcription phase (if enabled)
     if (job.options.includeTranscripts) {
       job.progress.stage = 'transcribing';
-      job.progress.message = 'Transcribing videos...';
+      job.progress.message = 'Transcribing videos with mock data...';
       jobs.set(jobId, job);
       
+      // Simulate transcription progress
       for (let i = 0; i < job.videos.length; i++) {
-        const video = job.videos[i];
+        job.progress.current = i + 1;
+        job.progress.percentage = Math.round(((i + 1) / job.videos.length) * 50); // First 50% for transcription
+        job.progress.message = `[MOCK] Transcribing video ${i + 1}/${job.videos.length}...`;
+        jobs.set(jobId, job);
         
-        try {
-          // Update progress
-          job.progress.current = i + 1;
-          job.progress.percentage = Math.round(((i + 1) / job.videos.length) * 50); // First 50% for transcription
-          job.progress.message = `Transcribing video ${i + 1}/${job.videos.length}...`;
-          jobs.set(jobId, job);
-          
-          if (video.url) {
-            logger.info(`Transcribing video ${i + 1}/${job.videos.length}: ${video.id}`);
-            
-            const transcriptResult = await videoTranscriptService.transcribeVideo(video.url, {
-              language: 'en',
-              format: 'verbose_json'
-            });
-            
-            transcripts.push({
-              video_id: video.id,
-              video_text: video.text || '',
-              video_date: video.date,
-              facebook_url: video.facebook_url,
-              transcript: transcriptResult.transcript,
-              confidence: transcriptResult.confidence,
-              duration: transcriptResult.duration,
-              brand: video.brand
-            });
-            
-            logger.info(`Video transcription completed for ${video.id}`, {
-              transcript_length: transcriptResult.transcript.length,
-              confidence: transcriptResult.confidence
-            });
-          } else {
-            // No video URL available, use text content only
-            transcripts.push({
-              video_id: video.id,
-              video_text: video.text || 'No text available',
-              video_date: video.date,
-              facebook_url: video.facebook_url,
-              transcript: null,
-              confidence: 0,
-              duration: 0,
-              brand: video.brand,
-              note: 'Video URL not available for transcription'
-            });
-          }
-          
-        } catch (transcriptError) {
-          logger.error(`Video transcription failed for ${video.id}:`, transcriptError);
-          
-          // Continue with text-only analysis
-          transcripts.push({
-            video_id: video.id,
-            video_text: video.text || 'No text available',
-            video_date: video.date,
-            facebook_url: video.facebook_url,
-            transcript: null,
-            confidence: 0,
-            duration: 0,
-            brand: video.brand,
-            error: transcriptError.message
-          });
-        }
+        // Small delay to simulate processing
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-    } else {
-      // Use video text content only
-      job.videos.forEach(video => {
-        transcripts.push({
-          video_id: video.id,
-          video_text: video.text || 'No text available',
-          video_date: video.date,
-          facebook_url: video.facebook_url,
-          transcript: null,
-          confidence: 0,
-          duration: 0,
-          brand: video.brand
-        });
-      });
     }
     
-    // Stage 2: AI Analysis
+    // Stage 3: Mock analysis phase
     job.progress.stage = 'analyzing';
-    job.progress.message = 'Running AI analysis on video content...';
+    job.progress.message = 'Running AI analysis with mock data...';
     job.progress.percentage = 75;
     jobs.set(jobId, job);
     
-    // Prepare video data for AI analysis
-    const videoDataForAnalysis = transcripts.map((item, index) => {
-      let content = `Video ${index + 1} (${item.brand}):\n`;
-      content += `- ID: ${item.video_id}\n`;
-      content += `- Date: ${item.video_date}\n`;
-      content += `- Ad Text: "${item.video_text}"\n`;
-      
-      if (item.transcript) {
-        content += `- Video Transcript: "${item.transcript}"\n`;
-        content += `- Transcript Confidence: ${Math.round(item.confidence * 100)}%\n`;
-        content += `- Video Duration: ${item.duration}s\n`;
-      } else {
-        content += `- Video Transcript: Not available\n`;
-      }
-      
-      content += `- Facebook URL: ${item.facebook_url}\n`;
-      return content;
-    }).join('\n\n');
+    // Simulate analysis delay
+    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
     
-    // Prepare comprehensive analysis prompt
-    const analysisPrompt = `${job.prompt}
-
-COMPETITOR: ${job.options.competitorName}
-TOTAL VIDEOS ANALYZED: ${job.videos.length}
-VIDEOS WITH TRANSCRIPTS: ${transcripts.filter(t => t.transcript).length}
-
-VIDEO DATA:
-${videoDataForAnalysis}
-
-Please provide a comprehensive analysis structured as follows:
-
-**EXECUTIVE SUMMARY:**
-[2-3 sentence overview of key findings]
+    // Generate comprehensive mock analysis results
+    const transcriptNote = job.options.includeTranscripts ? 
+      `Mock transcripts were generated for ${job.videos.length} videos using simulated speech-to-text processing.` :
+      'Video analysis was performed using ad text content only (transcription disabled).';
+    
+    const competitorName = job.options.competitorName || 'Unknown Competitor';
+    const analysisType = job.options.analysisType || 'custom';
+    
+    // Create mock analysis based on template type
+    let mockAnalysis;
+    if (analysisType === 'complete_video_analysis') {
+      mockAnalysis = `**EXECUTIVE SUMMARY:**
+Comprehensive analysis of ${job.videos.length} video advertisements from ${competitorName} reveals a sophisticated content strategy focused on emotional storytelling, product demonstration, and social proof. The brand consistently employs high-production values with professional cinematography and cohesive visual branding across all video content.
 
 **DETAILED ANALYSIS:**
-[Comprehensive analysis based on your prompt requirements]
+
+**1. Messaging & Content Strategy:**
+- Core value propositions center around quality, innovation, and customer satisfaction
+- Emotional triggers include FOMO (fear of missing out), social validation, and aspiration
+- Brand positioning emphasizes premium quality while maintaining accessibility
+- Consistent use of customer testimonials and user-generated content
+
+**2. Visual & Creative Elements:**
+- Cohesive brand color palette with consistent logo placement
+- High production values with professional lighting and cinematography
+- Clean, modern aesthetic with minimalist design approach
+- Strategic use of text overlays for key messaging points
+
+**3. Audio & Transcript Analysis:**
+${transcriptNote}
+- Professional voice-over talent with consistent brand voice
+- Strategic use of background music to enhance emotional appeal
+- Clear call-to-action delivery with urgency-building techniques
+- Conversational tone that builds trust and relatability
+
+**4. Strategic Intelligence:**
+- Target audience appears to be 25-45 demographics with disposable income
+- Content suggests focus on lifestyle enhancement and personal improvement
+- Competitive advantages highlighted: quality, customer service, innovation
+- Market positioning as premium but accessible brand
 
 **STRATEGIC RECOMMENDATIONS:**
-[3-5 actionable recommendations for competitive advantage]
-
-Focus on providing specific, actionable insights that can inform competitive strategy and creative development.`;
-    
-    // Call AI service for analysis
-    let analysisResult;
-    try {
-      // Try Claude first if available
-      const ClaudeService = require('../services/claude-service');
-      const claudeService = new ClaudeService();
-      analysisResult = await claudeService.analyzeFacebookAds(analysisPrompt, transcripts);
-    } catch (claudeError) {
-      logger.warn('Claude analysis failed, trying fallback:', claudeError.message);
-      
-      try {
-        // Fallback to other AI service or mock analysis
-        analysisResult = {
-          analysis: `**EXECUTIVE SUMMARY:**
-Analysis of ${job.videos.length} videos from ${job.options.competitorName} reveals key competitive insights.
+1. **Content Differentiation**: Develop unique storytelling angles that contrast with ${competitorName}'s emotional approach - consider data-driven or educational content strategies
+2. **Production Investment**: Match or exceed production quality standards while finding creative ways to reduce costs through batch filming and template-based approaches
+3. **Voice & Tone Strategy**: Establish a distinctive brand voice that contrasts with their professional-but-accessible tone - consider more authentic/conversational or more authoritative approaches
+4. **Creative Format Innovation**: Explore video formats they're not using - behind-the-scenes content, user-generated campaigns, or interactive video experiences
+5. **Targeting Optimization**: Identify underserved audience segments that ${competitorName} may be overlooking based on their current content strategy`;
+    } else if (analysisType === 'transcript_audio_focus') {
+      mockAnalysis = `**EXECUTIVE SUMMARY:**
+Audio analysis of ${job.videos.length} videos from ${competitorName} reveals sophisticated script structures with strategic persuasion techniques. The brand maintains consistent voice characteristics and music branding while employing varied call-to-action delivery methods.
 
 **DETAILED ANALYSIS:**
-Content analysis based on ${transcripts.filter(t => t.transcript).length} transcribed videos and ${job.videos.length} total video ads shows strategic patterns in messaging, creative approach, and target audience focus.
+
+**1. Spoken Messaging Patterns:**
+${transcriptNote}
+- Consistent use of benefit-focused language over feature descriptions
+- Strategic placement of social proof statements within first 10 seconds
+- Repetition of key brand messages across multiple video touchpoints
+- Problem-solution narrative structure in 80% of analyzed content
+
+**2. Voice & Tone Analysis:**
+- Professional voice talent with warm, trustworthy delivery
+- Consistent pacing and emphasis on value propositions
+- Gender-balanced voice representation across video portfolio
+- Authentic conversational style that avoids overly salesy language
+
+**3. Audio Branding & Design:**
+- Signature musical elements create audio brand recognition
+- Strategic use of silence and pauses for emphasis
+- Sound effects used sparingly but effectively for product demonstrations
+- Consistent audio quality and production values across all content
+
+**4. Call-to-Action Analysis:**
+- Multiple CTA touchpoints per video (average 2.3 CTAs per video)
+- Urgency creation through limited-time offers and scarcity messaging
+- Clear value proposition delivery before CTA presentation
+- Strong emphasis on risk-free trial offers and guarantees
 
 **STRATEGIC RECOMMENDATIONS:**
-1. Monitor competitor video content patterns for strategic positioning opportunities
-2. Analyze transcript data for messaging differentiation
-3. Consider creative format variations based on competitor approaches
-4. Evaluate video content frequency and timing patterns
-5. Develop counter-positioning strategies based on identified gaps
+1. **Audio Brand Development**: Create distinctive audio signature elements that differentiate from ${competitorName}'s established sound branding
+2. **Script Structure Innovation**: Develop alternative narrative frameworks that move beyond their problem-solution approach
+3. **Voice Strategy Differentiation**: Consider unique voice characteristics or multi-voice approaches that contrast with their single professional voice model
+4. **CTA Optimization**: Test alternative urgency-building techniques and offer structures that provide competitive advantages
+5. **Music & Sound Strategy**: Develop audio elements that create emotional associations different from ${competitorName}'s approach`;
+    } else if (analysisType === 'visual_creative_analysis') {
+      mockAnalysis = `**EXECUTIVE SUMMARY:**
+Visual analysis of ${job.videos.length} videos from ${competitorName} demonstrates sophisticated brand consistency with high production values. The creative strategy emphasizes clean aesthetics, professional cinematography, and strategic text overlay usage for maximum impact.
 
-Note: This is a basic analysis. Full AI analysis requires configured Claude or OpenAI API keys.`,
-          metadata: {
-            ai_provider: 'fallback_analysis',
-            videos_analyzed: job.videos.length,
-            transcripts_generated: transcripts.filter(t => t.transcript).length
-          }
-        };
-      } catch (fallbackError) {
-        throw new Error(`Both Claude and fallback analysis failed: ${fallbackError.message}`);
-      }
+**DETAILED ANALYSIS:**
+
+**1. Visual Brand Identity:**
+- Consistent color palette: Primary blues and whites with accent colors
+- Logo placement consistently in bottom-right corner with 85% visibility
+- Strong visual hierarchy with clear focal points and structured layouts
+- Modern, minimalist design philosophy across all video content
+
+**2. Cinematography & Production:**
+- Professional lighting setups with consistent key-to-fill ratios
+- Strategic use of wide, medium, and close-up shots for engagement
+- Smooth camera movements and professional editing transitions
+- High-resolution imagery with excellent color grading consistency
+
+**3. Creative Storytelling:**
+- Visual narrative progression from problem identification to solution
+- Strategic product placement integrated naturally within scenes
+- Effective use of lifestyle imagery to create aspirational associations
+- Visual metaphors used consistently to simplify complex concepts
+
+**4. Text & Graphics:**
+- Sans-serif typography maintaining brand consistency
+- Strategic text overlay timing synchronized with audio messaging
+- Graphic elements enhance rather than compete with main content
+- Consistent animation styles for text entrances and exits
+
+**STRATEGIC RECOMMENDATIONS:**
+1. **Visual Differentiation**: Develop alternative color palettes and visual styles that create distinct brand recognition while maintaining professional quality
+2. **Cinematography Innovation**: Explore unique camera angles, movements, or filming techniques that ${competitorName} isn't utilizing
+3. **Graphic Design Strategy**: Create distinctive text and graphic treatments that stand out in competitive landscape
+4. **Production Efficiency**: Identify ways to achieve similar visual quality with more efficient production processes
+5. **Visual Storytelling Evolution**: Develop narrative techniques that differentiate from ${competitorName}'s established visual storytelling patterns`;
+    } else if (analysisType === 'competitive_intelligence') {
+      mockAnalysis = `**EXECUTIVE SUMMARY:**
+Strategic analysis of ${job.videos.length} videos from ${competitorName} reveals clear market positioning focused on premium quality and customer trust. The competitor emphasizes innovation leadership while maintaining broad market appeal through accessible messaging and competitive pricing strategies.
+
+**DETAILED ANALYSIS:**
+
+**1. Market Positioning Analysis:**
+- ${competitorName} positions itself as the premium-but-accessible market leader
+- Unique selling propositions emphasize quality, innovation, and customer service excellence
+- Messaging targets mainstream consumers with premium aspirations
+- Strong emphasis on brand heritage and industry expertise
+
+**2. Competitive Advantage Assessment:**
+- Key differentiators: Superior product quality, comprehensive customer support, innovative features
+- Strengths showcased: Award-winning products, customer testimonials, industry recognition
+- Technology leadership emphasized through product demonstrations and expert endorsements
+- Market credibility built through years of consistent messaging and delivery
+
+**3. Gap Analysis & Opportunities:**
+- Messaging gaps: Limited focus on environmental sustainability and social responsibility
+- Visual differentiation opportunities in lifestyle positioning and demographic diversity
+- Potential vulnerability in price-sensitive segments due to premium positioning
+- Underutilized user-generated content and community-building approaches
+
+**4. Strategic Intelligence:**
+- Target demographics: Primary 35-55, secondary 25-35 with higher income levels
+- Geographic focus appears concentrated in urban and suburban markets
+- Seasonal content patterns suggest strong Q4 promotional strategies
+- Cross-platform consistency indicates significant marketing budget and coordination
+
+**STRATEGIC RECOMMENDATIONS:**
+1. **Counter-Positioning Strategy**: Focus on value-driven messaging that challenges their premium positioning without sacrificing quality perception
+2. **Differentiation Opportunities**: Emphasize sustainability, social impact, or community aspects they're not addressing
+3. **Market Segment Expansion**: Target demographics or use cases that ${competitorName} appears to be overlooking
+4. **Innovation Positioning**: Develop messaging around next-generation features or approaches that leapfrog their current positioning
+5. **Vulnerability Exploitation**: Create campaigns that address the gaps in their messaging or service offerings`;
+    } else {
+      // Default/custom analysis
+      mockAnalysis = `**EXECUTIVE SUMMARY:**
+Analysis of ${job.videos.length} video advertisements from ${competitorName} reveals strategic patterns in content creation, audience targeting, and creative messaging. ${transcriptNote} The competitor demonstrates consistent brand voice and sophisticated video marketing approach across their advertising portfolio.
+
+**DETAILED ANALYSIS:**
+The video content analysis shows ${competitorName} employs a multi-faceted approach to video advertising with emphasis on:
+
+• **Content Strategy**: Consistent messaging themes around value, quality, and customer satisfaction
+• **Creative Approach**: High production values with professional cinematography and clear brand guidelines
+• **Audience Targeting**: Content suggests focus on demographics aged 25-45 with emphasis on lifestyle enhancement
+• **Performance Indicators**: Strategic use of social proof, testimonials, and urgency-building techniques
+• **Technical Quality**: Professional-grade video production with consistent audio quality and visual branding
+
+Key messaging themes identified:
+- Quality and reliability emphasis
+- Customer-centric value propositions  
+- Innovation and market leadership claims
+- Social proof through customer testimonials
+- Risk-reduction through guarantees and trials
+
+**STRATEGIC RECOMMENDATIONS:**
+1. **Competitive Positioning**: Develop messaging that directly addresses gaps in ${competitorName}'s value proposition
+2. **Creative Differentiation**: Explore video formats and styles that ${competitorName} is not currently utilizing
+3. **Audience Expansion**: Identify demographic or psychographic segments that appear underserved by current competitor content
+4. **Production Optimization**: Analyze production techniques to achieve similar quality standards while optimizing costs
+5. **Testing Strategy**: Implement A/B testing for video elements that directly compete with ${competitorName}'s most effective approaches`;
     }
     
     // Structure the final results
     const finalResults = {
-      summary: analysisResult.analysis.split('**DETAILED ANALYSIS:**')[0].replace('**EXECUTIVE SUMMARY:**', '').trim(),
-      analysis: analysisResult.analysis.split('**DETAILED ANALYSIS:**')[1]?.split('**STRATEGIC RECOMMENDATIONS:**')[0]?.trim() || 'Analysis not available',
-      recommendations: analysisResult.analysis.split('**STRATEGIC RECOMMENDATIONS:**')[1]?.trim() || 'Recommendations not available',
-      video_data: transcripts,
+      summary: mockAnalysis.split('**DETAILED ANALYSIS:**')[0].replace('**EXECUTIVE SUMMARY:**', '').trim(),
+      analysis: mockAnalysis.split('**DETAILED ANALYSIS:**')[1]?.split('**STRATEGIC RECOMMENDATIONS:**')[0]?.trim() || 'Analysis not available',
+      recommendations: mockAnalysis.split('**STRATEGIC RECOMMENDATIONS:**')[1]?.trim() || 'Recommendations not available',
       metadata: {
+        ai_provider: 'mock_analysis_system',
         total_videos: job.videos.length,
-        videos_transcribed: transcripts.filter(t => t.transcript).length,
-        analysis_type: job.options.analysisType || 'custom',
-        competitor_name: job.options.competitorName,
-        ai_provider: analysisResult.metadata?.ai_provider || 'unknown',
-        generated_at: new Date().toISOString()
+        videos_with_transcripts: job.options.includeTranscripts ? job.videos.length : 0,
+        analysis_type: analysisType,
+        competitor_name: competitorName,
+        include_transcripts: job.options.includeTranscripts,
+        prompt_used: job.prompt,
+        generated_at: new Date().toISOString(),
+        note: 'This is mock analysis data for UI testing. Replace with real AI services for production use.'
       }
     };
     
@@ -3211,26 +3256,26 @@ Note: This is a basic analysis. Full AI analysis requires configured Claude or O
     job.completed_at = new Date().toISOString();
     job.results = finalResults;
     job.progress.stage = 'completed';
-    job.progress.message = 'Analysis completed successfully!';
+    job.progress.message = 'Mock analysis completed successfully!';
     job.progress.percentage = 100;
     job.progress.current = job.videos.length;
     jobs.set(jobId, job);
     
-    logger.info(`Bulk video analysis ${jobId} completed successfully`, {
+    logger.info(`[MOCK] Bulk video analysis ${jobId} completed successfully`, {
       videoCount: job.videos.length,
-      transcriptsGenerated: transcripts.filter(t => t.transcript).length,
+      mockTranscripts: job.options.includeTranscripts ? job.videos.length : 0,
       duration: new Date() - new Date(job.started_at)
     });
     
   } catch (error) {
-    logger.error(`Bulk video analysis ${jobId} failed:`, error);
+    logger.error(`[MOCK] Bulk video analysis ${jobId} failed:`, error);
     
     // Update job with error
     job.status = 'failed';
     job.completed_at = new Date().toISOString();
     job.error = error.message;
     job.progress.stage = 'failed';
-    job.progress.message = `Analysis failed: ${error.message}`;
+    job.progress.message = `Mock analysis failed: ${error.message}`;
     jobs.set(jobId, job);
   }
 }
