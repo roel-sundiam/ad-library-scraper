@@ -2417,7 +2417,11 @@ router.post('/videos/bulk-analysis', async (req, res) => {
     });
     
     // Start bulk video analysis asynchronously
-    setImmediate(() => processBulkVideoAnalysis(jobId));
+    logger.info(`[MOCK] About to start processBulkVideoAnalysis for jobId: ${jobId}`);
+    setImmediate(() => {
+      logger.info(`[MOCK] setImmediate callback executing for jobId: ${jobId}`);
+      processBulkVideoAnalysis(jobId);
+    });
     
     res.json({
       success: true,
@@ -2999,11 +3003,20 @@ async function testOllamaConnection() {
 // Process bulk video analysis
 // MOCK VERSION: Process bulk video analysis with simulated data for UI testing
 async function processBulkVideoAnalysis(jobId) {
+  logger.info(`[MOCK] processBulkVideoAnalysis called with jobId: ${jobId}`);
+  
   const job = jobs.get(jobId);
   if (!job) {
-    logger.error(`Job ${jobId} not found in processBulkVideoAnalysis`);
+    logger.error(`[MOCK] Job ${jobId} not found in processBulkVideoAnalysis`);
     return;
   }
+  
+  logger.info(`[MOCK] Job found successfully:`, {
+    jobId: jobId,
+    status: job.status,
+    videoCount: job.videos?.length || 0,
+    hasOptions: !!job.options
+  });
   
   try {
     // Update job status
@@ -3018,8 +3031,14 @@ async function processBulkVideoAnalysis(jobId) {
       competitorName: job.options.competitorName
     });
 
-    // Stage 1: Mock initialization
-    await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+    // Stage 1: Mock initialization - update progress immediately
+    job.progress.current = 1;
+    job.progress.percentage = 5;
+    job.progress.message = 'Mock initialization in progress...';
+    jobs.set(jobId, job);
+    
+    logger.info(`[MOCK] Updated initialization progress for job ${jobId}`);
+    await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
     
     // Stage 2: Mock transcription phase (if enabled)
     if (job.options.includeTranscripts) {
@@ -3269,6 +3288,12 @@ Key messaging themes identified:
     
   } catch (error) {
     logger.error(`[MOCK] Bulk video analysis ${jobId} failed:`, error);
+    logger.error(`[MOCK] Error details:`, {
+      stack: error.stack,
+      message: error.message,
+      jobId: jobId,
+      currentStage: job?.progress?.stage || 'unknown'
+    });
     
     // Update job with error
     job.status = 'failed';
