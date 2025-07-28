@@ -128,7 +128,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
     });
 
     // Sort ads by recency instead of impressions
-    this.topPerformingAds.sort((a, b) => {
+    this.topPerformingAds.sort((a: any, b: any) => {
       const dateA = new Date(a.dates.start_date || 0);
       const dateB = new Date(b.dates.start_date || 0);
       return dateB.getTime() - dateA.getTime();
@@ -147,7 +147,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
     
     // Get most recent ads for this brand
     const recentAds = ads
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         const dateA = new Date(a.dates.start_date || 0);
         const dateB = new Date(b.dates.start_date || 0);
         return dateB.getTime() - dateA.getTime();
@@ -371,7 +371,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
     });
 
     // Sort by date (most recent first)
-    allVideoAds.sort((a, b) => {
+    allVideoAds.sort((a: any, b: any) => {
       const dateA = new Date(a.dates?.start_date || 0);
       const dateB = new Date(b.dates?.start_date || 0);
       return dateB.getTime() - dateA.getTime();
@@ -425,7 +425,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
       }));
 
     // Sort by date (most recent first)
-    brandVideoAds.sort((a, b) => {
+    brandVideoAds.sort((a: any, b: any) => {
       const dateA = new Date(a.dates?.start_date || 0);
       const dateB = new Date(b.dates?.start_date || 0);
       return dateB.getTime() - dateA.getTime();
