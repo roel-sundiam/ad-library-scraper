@@ -1182,7 +1182,7 @@ async function processApifyAnalysis(runId) {
         const adsData = await apifyScraper.scrapeAds({
           query: pageName,
           country: 'US',
-          limit: 50
+          limit: 1000  // Maximum limit for comprehensive competitor analysis
         });
         logger.info(`Apify returned ${adsData.length} ads for query: "${pageName}"`);
         
@@ -1198,7 +1198,7 @@ async function processApifyAnalysis(runId) {
             const apiClient = new FacebookAdLibraryAPI();
             const fallbackAds = await apiClient.scrapeAds({
               query: pageName,
-              limit: 50,
+              limit: 1000,  // Maximum limit for comprehensive competitor analysis
               region: 'US'
             });
             
@@ -1221,7 +1221,7 @@ async function processApifyAnalysis(runId) {
             const httpScraper = new FacebookHTTPAdvanced();
             const httpAds = await httpScraper.scrapeAds({
               query: pageName,
-              limit: 50,
+              limit: 1000,  // Maximum limit for comprehensive competitor analysis
               region: 'US'
             });
             
@@ -1380,7 +1380,7 @@ async function analyzePageAds(pageUrl, pageType) {
     const adsData = await apifyScraper.scrapeAds({
       query: pageName,
       country: 'US',
-      limit: 50
+      limit: 1000  // Maximum limit for comprehensive competitor analysis
     });
     
     if (adsData.length > 0) {
@@ -1406,7 +1406,7 @@ async function analyzePageAds(pageUrl, pageType) {
     const apiClient = new FacebookAdLibraryAPI();
     const adsData = await apiClient.scrapeAds({
       query: pageName,
-      limit: 50,
+      limit: 1000,  // Maximum limit for comprehensive competitor analysis
       region: 'US'
     });
     
@@ -1433,7 +1433,7 @@ async function analyzePageAds(pageUrl, pageType) {
     const playwrightScraper = new FacebookPlaywrightScraper();
     const adsData = await playwrightScraper.scrapeAds({
       query: pageName,
-      limit: 50,
+      limit: 1000,  // Maximum limit for comprehensive competitor analysis
       region: 'US'
     });
     
@@ -1460,7 +1460,7 @@ async function analyzePageAds(pageUrl, pageType) {
     const httpScraper = new FacebookAdvancedHTTPScraper();
     const adsData = await httpScraper.scrapeAds({
       query: pageName,
-      limit: 50,
+      limit: 1000,  // Maximum limit for comprehensive competitor analysis
       region: 'US'
     });
     
