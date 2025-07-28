@@ -833,6 +833,14 @@ Focus on actionable optimization recommendations for video campaigns.`
   }
 
   getFacebookUrl(adId: string): string {
+    // For mock data, create realistic-looking Facebook ad URLs
+    if (adId && (adId.includes('apify_') || adId.includes('mock_'))) {
+      // Extract numeric part and create a realistic Facebook ad ID
+      const numericPart = adId.replace(/\D/g, ''); // Remove all non-digits
+      const mockFacebookId = numericPart.padStart(15, '1'); // Ensure 15 digits like real Facebook ad IDs
+      return `https://www.facebook.com/ads/library/?id=${mockFacebookId}`;
+    }
+    
     return `https://www.facebook.com/ads/library/?id=${adId}`;
   }
 
