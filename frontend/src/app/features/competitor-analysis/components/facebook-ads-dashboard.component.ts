@@ -38,6 +38,16 @@ export class FacebookAdsDashboardComponent implements OnInit {
   isAnalyzing = false;
   showQuickPrompts = false;
   
+  // Bulk Video Analysis properties
+  analysisMode: 'general' | 'video' = 'general';
+  selectedVideoTemplate: string = '';
+  showVideoTemplates = false;
+  isBulkAnalyzing = false;
+  bulkAnalysisProgress: any = null;
+  bulkAnalysisResult: any = null;
+  includeTranscripts = true;
+  includeVisualAnalysis = false; // Requires additional AI vision capabilities
+  
   // Modern Video Modal properties
   showVideoModal = false;
   modalTitle = '';
@@ -49,13 +59,158 @@ export class FacebookAdsDashboardComponent implements OnInit {
   videosPerPage = 10;
   currentVideoPage = 1;
   
+  // General analysis prompts
   quickPrompts = [
-    'Analyze video content strategies across competitors',
-    'What messaging themes are most common in these ads?',
-    'Compare creative formats and their effectiveness',
-    'Identify opportunities to differentiate from competitors',
-    'What call-to-action strategies are being used?',
-    'Analyze seasonal content and timing patterns'
+    'Analyze advertising strategies and messaging themes',
+    'What creative formats are most effective?',
+    'Compare targeting and demographic approaches',
+    'Identify competitive opportunities and gaps',
+    'Analyze call-to-action strategies and conversions',
+    'Review seasonal content and timing patterns'
+  ];
+
+  // Video-specific analysis templates
+  videoAnalysisTemplates = [
+    {
+      id: 'complete_video_analysis',
+      name: 'Complete Video Content Analysis',
+      description: 'Comprehensive analysis of all video elements',
+      prompt: `Analyze ALL competitor videos comprehensively:
+
+1. **Messaging & Content Strategy**:
+   - Core value propositions and messaging themes
+   - Emotional triggers and persuasion techniques
+   - Brand positioning and market differentiation
+
+2. **Visual & Creative Elements**:
+   - Visual styles, color schemes, and branding consistency
+   - Scene composition and cinematography quality
+   - Text overlays, graphics, and visual storytelling
+
+3. **Audio & Transcript Analysis**:
+   - Spoken messaging patterns and script structures
+   - Voice tone, music, and sound design choices
+   - Call-to-action delivery and placement
+
+4. **Strategic Intelligence**:
+   - Target audience indicators and demographics
+   - Competitive advantages highlighted
+   - Market gaps and opportunities for differentiation
+
+Provide actionable insights and strategic recommendations based on the complete video analysis.`
+    },
+    {
+      id: 'transcript_audio_focus',
+      name: 'Transcript & Audio Deep Dive',
+      description: 'Focus on spoken content and audio elements',
+      prompt: `Analyze transcripts and audio elements from all competitor videos:
+
+1. **Spoken Messaging Patterns**:
+   - Key phrases and value proposition delivery
+   - Emotional language and persuasion techniques
+   - Script structures and narrative flows
+
+2. **Voice & Tone Analysis**:
+   - Speaker demographics and voice characteristics
+   - Tone consistency across videos
+   - Professional vs authentic delivery styles
+
+3. **Audio Branding & Design**:
+   - Background music choices and brand alignment
+   - Sound effects and audio transitions
+   - Voice-over vs on-screen talent usage
+
+4. **Call-to-Action Analysis**:
+   - CTA placement and delivery methods
+   - Urgency creation and conversion techniques
+   - Offer positioning and value communication
+
+Focus on audio-specific competitive intelligence and recommendations.`
+    },
+    {
+      id: 'visual_creative_analysis',
+      name: 'Visual & Creative Strategy',
+      description: 'Deep dive into visual elements and design choices',
+      prompt: `Analyze visual elements and creative strategies across all videos:
+
+1. **Visual Brand Identity**:
+   - Color palette consistency and brand alignment
+   - Logo placement and brand visibility
+   - Visual hierarchy and design principles
+
+2. **Cinematography & Production**:
+   - Video quality and production values
+   - Camera angles and shot compositions
+   - Lighting and visual aesthetics
+
+3. **Creative Storytelling**:
+   - Visual narrative techniques
+   - Scene transitions and pacing
+   - Product showcasing methods
+
+4. **Text & Graphics**:
+   - On-screen text usage and typography
+   - Graphic overlays and animations
+   - Visual call-out strategies
+
+Identify visual competitive advantages and creative opportunities.`
+    },
+    {
+      id: 'competitive_intelligence',
+      name: 'Strategic Competitive Intelligence',
+      description: 'Strategic analysis for competitive positioning',
+      prompt: `Generate strategic competitive intelligence from all competitor videos:
+
+1. **Market Positioning Analysis**:
+   - How does the competitor position themselves?
+   - What unique selling propositions are emphasized?
+   - Market segment targeting and messaging alignment
+
+2. **Competitive Advantage Assessment**:
+   - Key differentiators highlighted in videos
+   - Strengths and capabilities showcased
+   - Market positioning vs actual capabilities
+
+3. **Gap Analysis & Opportunities**:
+   - Messaging gaps and unaddressed pain points
+   - Visual and creative differentiation opportunities
+   - Market positioning vulnerabilities
+
+4. **Strategic Recommendations**:
+   - Counter-positioning strategies
+   - Differentiation opportunities
+   - Creative and messaging improvements
+
+Provide actionable competitive intelligence for strategic planning.`
+    },
+    {
+      id: 'performance_optimization',
+      name: 'Performance & Optimization Insights',
+      description: 'Analysis focused on video performance and optimization',
+      prompt: `Analyze video performance patterns and optimization strategies:
+
+1. **Content Performance Patterns**:
+   - Video length and engagement optimization
+   - Hook effectiveness in first 3-5 seconds
+   - Content structure and retention techniques
+
+2. **Platform Optimization**:
+   - Video formatting for social media platforms
+   - Aspect ratios and display optimization
+   - Mobile vs desktop viewing considerations
+
+3. **Conversion Optimization**:
+   - CTA placement and conversion design
+   - Landing page alignment with video content
+   - Purchase journey and funnel optimization
+
+4. **Creative Testing Insights**:
+   - A/B testing indicators and variations
+   - Creative refresh patterns and timing
+   - Performance-driven creative decisions
+
+Focus on actionable optimization recommendations for video campaigns.`
+    }
   ];
 
   constructor(
@@ -308,6 +463,171 @@ export class FacebookAdsDashboardComponent implements OnInit {
   useQuickPrompt(prompt: string): void {
     this.customPrompt = prompt;
     this.showQuickPrompts = false;
+  }
+
+  // Video Analysis Methods
+  switchAnalysisMode(mode: 'general' | 'video'): void {
+    this.analysisMode = mode;
+    this.customPrompt = '';
+    this.selectedVideoTemplate = '';
+    this.customAnalysisResult = null;
+    this.bulkAnalysisResult = null;
+  }
+
+  useVideoTemplate(templateId: string): void {
+    const template = this.videoAnalysisTemplates.find(t => t.id === templateId);
+    if (template) {
+      this.customPrompt = template.prompt;
+      this.selectedVideoTemplate = templateId;
+      this.showVideoTemplates = false;
+    }
+  }
+
+  async startBulkVideoAnalysis(): Promise<void> {
+    if (!this.customPrompt.trim() || this.isBulkAnalyzing) return;
+
+    // Get all video ads for analysis
+    const allVideoAds = this.getAllVideoAds();
+    if (allVideoAds.length === 0) {
+      alert('No video ads found for analysis. Please ensure the competitor has video content.');
+      return;
+    }
+
+    this.isBulkAnalyzing = true;
+    this.bulkAnalysisResult = null;
+    this.bulkAnalysisProgress = {
+      stage: 'initializing',
+      message: 'Preparing video analysis...',
+      current: 0,
+      total: allVideoAds.length,
+      percentage: 0
+    };
+
+    try {
+      const analysisRequest = {
+        videos: allVideoAds.map(video => ({
+          id: video.id,
+          brand: video.brand,
+          url: video.creative?.video_urls?.[0],
+          text: video.creative?.body || video.creative?.title,
+          date: video.dates?.start_date,
+          facebook_url: `https://www.facebook.com/ads/library/?id=${video.id}`
+        })),
+        prompt: this.customPrompt,
+        options: {
+          includeTranscripts: this.includeTranscripts,
+          includeVisualAnalysis: this.includeVisualAnalysis,
+          analysisType: this.selectedVideoTemplate || 'custom',
+          competitorName: this.brandComparisons[0]?.brand || 'Competitor'
+        },
+        workflowId: this.datasetId
+      };
+
+      const response = await this.apiService.startBulkVideoAnalysis(analysisRequest).toPromise();
+      
+      if (response.success) {
+        this.bulkAnalysisProgress.stage = 'processing';
+        this.bulkAnalysisProgress.jobId = response.data.jobId;
+        
+        // Start polling for progress
+        this.pollBulkAnalysisProgress(response.data.jobId);
+      } else {
+        throw new Error(response.error?.message || 'Failed to start bulk video analysis');
+      }
+
+    } catch (error) {
+      console.error('Bulk video analysis failed:', error);
+      this.isBulkAnalyzing = false;
+      this.bulkAnalysisProgress = null;
+      alert('Failed to start bulk video analysis. Please try again.');
+    }
+  }
+
+  private getAllVideoAds(): any[] {
+    const allVideoAds: any[] = [];
+    
+    if (this.analysisResults?.data) {
+      Object.values(this.analysisResults.data).forEach((brandData: any) => {
+        if (brandData.ads_data) {
+          const videoAds = brandData.ads_data
+            .filter((ad: any) => ad.creative?.has_video)
+            .map((ad: any) => ({
+              ...ad,
+              brand: brandData.page_name
+            }));
+          
+          allVideoAds.push(...videoAds);
+        }
+      });
+    }
+
+    return allVideoAds;
+  }
+
+  private async pollBulkAnalysisProgress(jobId: string): Promise<void> {
+    try {
+      const response = await this.apiService.getBulkAnalysisStatus(jobId).toPromise();
+      
+      if (response.success) {
+        this.bulkAnalysisProgress = { 
+          ...this.bulkAnalysisProgress, 
+          ...response.data,
+          percentage: Math.round((response.data.current / response.data.total) * 100)
+        };
+
+        if (response.data.status === 'completed') {
+          this.isBulkAnalyzing = false;
+          this.bulkAnalysisResult = response.data.results;
+          this.bulkAnalysisProgress.stage = 'completed';
+        } else if (response.data.status === 'failed') {
+          this.isBulkAnalyzing = false;
+          this.bulkAnalysisProgress = null;
+          alert('Bulk video analysis failed: ' + (response.data.error || 'Unknown error'));
+        } else {
+          // Continue polling
+          setTimeout(() => this.pollBulkAnalysisProgress(jobId), 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get bulk analysis status:', error);
+      this.isBulkAnalyzing = false;
+      this.bulkAnalysisProgress = null;
+      alert('Failed to track analysis progress.');
+    }
+  }
+
+  cancelBulkAnalysis(): void {
+    if (this.bulkAnalysisProgress?.jobId) {
+      // TODO: Implement cancel API call
+      this.isBulkAnalyzing = false;
+      this.bulkAnalysisProgress = null;
+    }
+  }
+
+  downloadBulkAnalysisReport(): void {
+    if (this.bulkAnalysisResult) {
+      const reportData = {
+        analysis_type: 'bulk_video_analysis',
+        competitor: this.brandComparisons[0]?.brand || 'Competitor',
+        generated_at: new Date().toISOString(),
+        total_videos_analyzed: this.bulkAnalysisProgress?.total || 0,
+        analysis_template: this.selectedVideoTemplate || 'custom',
+        prompt_used: this.customPrompt,
+        results: this.bulkAnalysisResult
+      };
+
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bulk-video-analysis-${this.brandComparisons[0]?.brand || 'competitor'}-${Date.now()}.json`;
+      link.click();
+      
+      window.URL.revokeObjectURL(url);
+    }
   }
 
   formatAnalysisResult(analysis: string): string {

@@ -721,6 +721,301 @@
       margin: 32px 0;
     }
 
+    // Analysis Mode Toggle
+    .analysis-mode-toggle {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 32px;
+      
+      mat-button-toggle-group {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        
+        mat-button-toggle {
+          padding: 12px 24px;
+          
+          .mat-button-toggle-label-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+        }
+      }
+    }
+
+    // Bulk Video Analysis Section
+    .bulk-video-analysis-section {
+      h4 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        color: #1976d2;
+
+        mat-icon {
+          color: #1976d2;
+        }
+      }
+
+      .video-analysis-options {
+        margin-bottom: 24px;
+        
+        .options-row {
+          display: flex;
+          gap: 24px;
+          flex-wrap: wrap;
+          
+          mat-checkbox {
+            .mat-checkbox-label {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+          }
+        }
+      }
+
+      .video-templates-section {
+        margin-bottom: 24px;
+        
+        .template-selector-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          
+          button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          
+          .template-count {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+          }
+        }
+        
+        .video-templates-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 16px;
+          margin-top: 16px;
+          
+          .template-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+            
+            &:hover {
+              border-color: #1976d2;
+              box-shadow: 0 4px 12px rgba(25, 118, 210, 0.15);
+            }
+            
+            &.selected {
+              border-color: #1976d2;
+              background: #f3f8ff;
+              box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+            }
+            
+            .template-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 8px;
+              
+              h5 {
+                margin: 0;
+                color: #333;
+                font-size: 16px;
+                font-weight: 600;
+              }
+              
+              .selected-icon {
+                color: #1976d2;
+                font-size: 20px;
+              }
+            }
+            
+            .template-description {
+              margin: 0;
+              color: #666;
+              font-size: 14px;
+              line-height: 1.4;
+            }
+          }
+        }
+      }
+
+      .video-analysis-actions {
+        display: flex;
+        gap: 16px;
+        margin: 24px 0;
+        align-items: center;
+        
+        .analyze-button {
+          min-width: 200px;
+          padding: 12px 24px;
+          font-size: 16px;
+          font-weight: 600;
+        }
+      }
+
+      // Progress Tracking Styles
+      .analysis-progress {
+        margin: 24px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #1976d2;
+        
+        .progress-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          
+          h5 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+          }
+          
+          .progress-stats {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+          }
+        }
+        
+        mat-progress-bar {
+          margin-bottom: 20px;
+          height: 8px;
+          border-radius: 4px;
+        }
+        
+        .progress-stages {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          
+          .stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            border-radius: 6px;
+            flex: 1;
+            text-align: center;
+            background: #f0f0f0;
+            color: #999;
+            transition: all 0.3s ease;
+            
+            &.active {
+              background: #e3f2fd;
+              color: #1976d2;
+              
+              mat-icon {
+                color: #1976d2;
+              }
+            }
+            
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+            
+            span {
+              font-size: 12px;
+              font-weight: 500;
+            }
+          }
+        }
+      }
+
+      // Bulk Analysis Results
+      .bulk-analysis-results {
+        margin-top: 24px;
+        
+        .results-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 16px 0;
+          
+          h5 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #333;
+            
+            .video-count {
+              font-size: 12px;
+              color: #666;
+              font-weight: normal;
+            }
+          }
+        }
+        
+        .bulk-analysis-content {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 8px;
+          border-left: 4px solid #4caf50;
+          
+          h6 {
+            color: #333;
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            
+            &::before {
+              content: "▶";
+              color: #4caf50;
+              font-size: 12px;
+            }
+          }
+          
+          .analysis-summary,
+          .detailed-analysis,
+          .recommendations {
+            margin-bottom: 24px;
+            
+            &:last-child {
+              margin-bottom: 0;
+            }
+            
+            div {
+              line-height: 1.6;
+              color: #444;
+              
+              strong {
+                color: #333;
+                font-weight: 600;
+              }
+              
+              em {
+                color: #666;
+              }
+            }
+          }
+        }
+      }
+    }
+
     .ai-chat-section {
       h4 {
         display: flex;

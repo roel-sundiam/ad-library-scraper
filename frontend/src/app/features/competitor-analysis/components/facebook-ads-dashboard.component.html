@@ -320,8 +320,22 @@
         </mat-card-header>
         
         <mat-card-content>
-          <!-- Custom Analysis Section -->
-          <div class="custom-analysis-section">
+          <!-- Analysis Mode Toggle -->
+          <div class="analysis-mode-toggle">
+            <mat-button-toggle-group [(value)]="analysisMode" (change)="switchAnalysisMode($event.value)">
+              <mat-button-toggle value="general">
+                <mat-icon>analytics</mat-icon>
+                General Analysis
+              </mat-button-toggle>
+              <mat-button-toggle value="video">
+                <mat-icon>movie</mat-icon>
+                Bulk Video Analysis
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+
+          <!-- General Analysis Section -->
+          <div *ngIf="analysisMode === 'general'" class="custom-analysis-section">
             <h4>
               <mat-icon>psychology</mat-icon>
               Custom AI Analysis
@@ -380,6 +394,157 @@
                 <span class="ai-provider">({{ customAnalysisResult.metadata?.ai_provider || 'AI' }})</span>
               </h5>
               <div class="analysis-content" [innerHTML]="formatAnalysisResult(customAnalysisResult.analysis)"></div>
+            </div>
+          </div>
+
+          <!-- Bulk Video Analysis Section -->
+          <div *ngIf="analysisMode === 'video'" class="bulk-video-analysis-section">
+            <h4>
+              <mat-icon>movie</mat-icon>
+              Bulk Video Analysis
+            </h4>
+            <p>Analyze ALL competitor videos ({{ totalVideoAds }} videos) with AI-powered insights including transcripts and strategic intelligence:</p>
+            
+            <!-- Video Analysis Options -->
+            <div class="video-analysis-options">
+              <div class="options-row">
+                <mat-checkbox [(ngModel)]="includeTranscripts">
+                  <mat-icon>subtitles</mat-icon>
+                  Include Video Transcripts (OpenAI Whisper)
+                </mat-checkbox>
+                <mat-checkbox [(ngModel)]="includeVisualAnalysis" [disabled]="true">
+                  <mat-icon>visibility</mat-icon>
+                  Include Visual Analysis (Coming Soon)
+                </mat-checkbox>
+              </div>
+            </div>
+
+            <!-- Video Analysis Templates -->
+            <div class="video-templates-section">
+              <div class="template-selector-header">
+                <button mat-stroked-button (click)="showVideoTemplates = !showVideoTemplates">
+                  <mat-icon>template_outline</mat-icon>
+                  Choose Analysis Template
+                  <mat-icon>{{ showVideoTemplates ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+                <span class="template-count">{{ videoAnalysisTemplates.length }} professional templates</span>
+              </div>
+
+              <div *ngIf="showVideoTemplates" class="video-templates-grid">
+                <div *ngFor="let template of videoAnalysisTemplates" 
+                     class="template-card"
+                     [class.selected]="selectedVideoTemplate === template.id"
+                     (click)="useVideoTemplate(template.id)">
+                  <div class="template-header">
+                    <h5>{{ template.name }}</h5>
+                    <mat-icon *ngIf="selectedVideoTemplate === template.id" class="selected-icon">check_circle</mat-icon>
+                  </div>
+                  <p class="template-description">{{ template.description }}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Custom Prompt -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Video analysis prompt (customize or use template)...</mat-label>
+              <textarea 
+                matInput 
+                [(ngModel)]="customPrompt" 
+                rows="6"
+                placeholder="Describe what insights you want from the competitor's video content..."
+              ></textarea>
+              <mat-hint>Tip: Use templates above or create your own analysis prompt for {{ totalVideoAds }} videos</mat-hint>
+            </mat-form-field>
+            
+            <!-- Analysis Actions -->
+            <div class="video-analysis-actions">
+              <button 
+                mat-raised-button 
+                color="primary" 
+                (click)="startBulkVideoAnalysis()"
+                [disabled]="!customPrompt.trim() || isBulkAnalyzing || totalVideoAds === 0"
+                class="analyze-button">
+                <mat-icon *ngIf="!isBulkAnalyzing">smart_toy</mat-icon>
+                <mat-spinner *ngIf="isBulkAnalyzing" diameter="20"></mat-spinner>
+                {{ isBulkAnalyzing ? 'Analyzing Videos...' : 'Analyze ' + totalVideoAds + ' Videos' }}
+              </button>
+              
+              <button 
+                *ngIf="isBulkAnalyzing"
+                mat-stroked-button 
+                color="warn"
+                (click)="cancelBulkAnalysis()">
+                <mat-icon>cancel</mat-icon>
+                Cancel Analysis
+              </button>
+            </div>
+
+            <!-- Progress Tracking -->
+            <div *ngIf="bulkAnalysisProgress" class="analysis-progress">
+              <div class="progress-header">
+                <h5>
+                  <mat-icon>hourglass_empty</mat-icon>
+                  {{ bulkAnalysisProgress.message }}
+                </h5>
+                <span class="progress-stats">{{ bulkAnalysisProgress.current || 0 }}/{{ bulkAnalysisProgress.total || 0 }}</span>
+              </div>
+              
+              <mat-progress-bar 
+                mode="determinate" 
+                [value]="bulkAnalysisProgress.percentage || 0">
+              </mat-progress-bar>
+              
+              <div class="progress-stages">
+                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'initializing'">
+                  <mat-icon>start</mat-icon>
+                  <span>Initializing</span>
+                </div>
+                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'transcribing'">
+                  <mat-icon>subtitles</mat-icon>
+                  <span>Transcribing</span>
+                </div>
+                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'analyzing'">
+                  <mat-icon>psychology</mat-icon>
+                  <span>AI Analysis</span>
+                </div>
+                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'completed'">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Complete</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bulk Analysis Results -->
+            <div *ngIf="bulkAnalysisResult" class="bulk-analysis-results">
+              <mat-divider></mat-divider>
+              <div class="results-header">
+                <h5>
+                  <mat-icon>assessment</mat-icon>
+                  Bulk Video Analysis Report
+                  <span class="video-count">({{ bulkAnalysisProgress?.total || 0 }} videos analyzed)</span>
+                </h5>
+                <button mat-stroked-button (click)="downloadBulkAnalysisReport()">
+                  <mat-icon>download</mat-icon>
+                  Download Report
+                </button>
+              </div>
+              
+              <div class="bulk-analysis-content">
+                <div class="analysis-summary" *ngIf="bulkAnalysisResult.summary">
+                  <h6>Executive Summary</h6>
+                  <div [innerHTML]="formatAnalysisResult(bulkAnalysisResult.summary)"></div>
+                </div>
+                
+                <div class="detailed-analysis" *ngIf="bulkAnalysisResult.analysis">
+                  <h6>Detailed Analysis</h6>
+                  <div [innerHTML]="formatAnalysisResult(bulkAnalysisResult.analysis)"></div>
+                </div>
+                
+                <div class="recommendations" *ngIf="bulkAnalysisResult.recommendations">
+                  <h6>Strategic Recommendations</h6>
+                  <div [innerHTML]="formatAnalysisResult(bulkAnalysisResult.recommendations)"></div>
+                </div>
+              </div>
             </div>
           </div>
 

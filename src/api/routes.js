@@ -2353,6 +2353,195 @@ router.get('/analysis/test', async (req, res) => {
   }
 });
 
+// Bulk Video Analysis endpoint
+router.post('/videos/bulk-analysis', async (req, res) => {
+  try {
+    const { videos, prompt, options = {}, workflowId } = req.body;
+    
+    // Validate required fields
+    if (!videos || !Array.isArray(videos) || videos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Videos array is required and cannot be empty',
+          details: { videos }
+        }
+      });
+    }
+    
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Analysis prompt is required',
+          details: { prompt }
+        }
+      });
+    }
+    
+    // Generate unique job ID
+    const jobId = `bulk_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create analysis job entry
+    const analysisJob = {
+      job_id: jobId,
+      type: 'bulk_video_analysis',
+      status: 'queued',
+      created_at: new Date().toISOString(),
+      started_at: null,
+      completed_at: null,
+      videos: videos,
+      prompt: prompt,
+      options: options,
+      workflow_id: workflowId,
+      results: null,
+      error: null,
+      progress: { 
+        current: 0, 
+        total: videos.length, 
+        percentage: 0, 
+        stage: 'queued',
+        message: 'Queued for processing...' 
+      }
+    };
+    
+    jobs.set(jobId, analysisJob);
+    
+    logger.info('Starting bulk video analysis', {
+      jobId,
+      videoCount: videos.length,
+      competitorName: options.competitorName,
+      analysisType: options.analysisType
+    });
+    
+    // Start bulk video analysis asynchronously
+    setImmediate(() => processBulkVideoAnalysis(jobId));
+    
+    res.json({
+      success: true,
+      data: {
+        jobId,
+        status: 'queued',
+        videoCount: videos.length,
+        estimated_duration: `${Math.ceil(videos.length / 10)}-${Math.ceil(videos.length / 5)} minutes`,
+        created_at: analysisJob.created_at
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        request_id: req.id || 'unknown'
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error starting bulk video analysis:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANALYSIS_ERROR',
+        message: 'Failed to start bulk video analysis',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Get bulk video analysis status
+router.get('/videos/bulk-analysis/:jobId/status', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    const job = jobs.get(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'JOB_NOT_FOUND',
+          message: 'Bulk video analysis job not found',
+          details: { jobId }
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        jobId: job.job_id,
+        status: job.status,
+        progress: job.progress,
+        created_at: job.created_at,
+        started_at: job.started_at,
+        completed_at: job.completed_at,
+        results: job.status === 'completed' ? job.results : null,
+        error: job.error
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error getting bulk video analysis status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'STATUS_ERROR',
+        message: 'Failed to get analysis status',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Get bulk video analysis results
+router.get('/videos/bulk-analysis/:jobId/results', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    const job = jobs.get(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'JOB_NOT_FOUND',
+          message: 'Bulk video analysis job not found',
+          details: { jobId }
+        }
+      });
+    }
+    
+    if (job.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'ANALYSIS_NOT_COMPLETE',
+          message: 'Analysis is not yet completed',
+          details: { status: job.status }
+        }
+      });
+    }
+    
+    res.json({
+      success: true, 
+      data: {
+        jobId: job.job_id,
+        results: job.results,
+        videoCount: job.videos.length,
+        completed_at: job.completed_at
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Error getting bulk video analysis results:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'RESULTS_ERROR',
+        message: 'Failed to get analysis results',
+        details: error.message
+      }
+    });
+  }
+});
+
 // Chat with AI about analysis results
 router.post('/analysis/chat', async (req, res) => {
   try {
@@ -2804,6 +2993,245 @@ async function testOllamaConnection() {
     return response.ok;
   } catch (error) {
     return false;
+  }
+}
+
+// Process bulk video analysis
+async function processBulkVideoAnalysis(jobId) {
+  const job = jobs.get(jobId);
+  if (!job) return;
+  
+  try {
+    // Update job status
+    job.status = 'running';
+    job.started_at = new Date().toISOString();
+    job.progress.stage = 'initializing';
+    job.progress.message = 'Initializing bulk video analysis...';
+    jobs.set(jobId, job);
+    
+    logger.info(`Processing bulk video analysis ${jobId}`, {
+      videoCount: job.videos.length,
+      competitorName: job.options.competitorName
+    });
+    
+    const transcripts = [];
+    const videoTranscriptService = require('../services/video-transcript-service');
+    
+    // Stage 1: Transcribe videos if enabled
+    if (job.options.includeTranscripts) {
+      job.progress.stage = 'transcribing';
+      job.progress.message = 'Transcribing videos...';
+      jobs.set(jobId, job);
+      
+      for (let i = 0; i < job.videos.length; i++) {
+        const video = job.videos[i];
+        
+        try {
+          // Update progress
+          job.progress.current = i + 1;
+          job.progress.percentage = Math.round(((i + 1) / job.videos.length) * 50); // First 50% for transcription
+          job.progress.message = `Transcribing video ${i + 1}/${job.videos.length}...`;
+          jobs.set(jobId, job);
+          
+          if (video.url) {
+            logger.info(`Transcribing video ${i + 1}/${job.videos.length}: ${video.id}`);
+            
+            const transcriptResult = await videoTranscriptService.transcribeVideo(video.url, {
+              language: 'en',
+              format: 'verbose_json'
+            });
+            
+            transcripts.push({
+              video_id: video.id,
+              video_text: video.text || '',
+              video_date: video.date,
+              facebook_url: video.facebook_url,
+              transcript: transcriptResult.transcript,
+              confidence: transcriptResult.confidence,
+              duration: transcriptResult.duration,
+              brand: video.brand
+            });
+            
+            logger.info(`Video transcription completed for ${video.id}`, {
+              transcript_length: transcriptResult.transcript.length,
+              confidence: transcriptResult.confidence
+            });
+          } else {
+            // No video URL available, use text content only
+            transcripts.push({
+              video_id: video.id,
+              video_text: video.text || 'No text available',
+              video_date: video.date,
+              facebook_url: video.facebook_url,
+              transcript: null,
+              confidence: 0,
+              duration: 0,
+              brand: video.brand,
+              note: 'Video URL not available for transcription'
+            });
+          }
+          
+        } catch (transcriptError) {
+          logger.error(`Video transcription failed for ${video.id}:`, transcriptError);
+          
+          // Continue with text-only analysis
+          transcripts.push({
+            video_id: video.id,
+            video_text: video.text || 'No text available',
+            video_date: video.date,
+            facebook_url: video.facebook_url,
+            transcript: null,
+            confidence: 0,
+            duration: 0,
+            brand: video.brand,
+            error: transcriptError.message
+          });
+        }
+      }
+    } else {
+      // Use video text content only
+      job.videos.forEach(video => {
+        transcripts.push({
+          video_id: video.id,
+          video_text: video.text || 'No text available',
+          video_date: video.date,
+          facebook_url: video.facebook_url,
+          transcript: null,
+          confidence: 0,
+          duration: 0,
+          brand: video.brand
+        });
+      });
+    }
+    
+    // Stage 2: AI Analysis
+    job.progress.stage = 'analyzing';
+    job.progress.message = 'Running AI analysis on video content...';
+    job.progress.percentage = 75;
+    jobs.set(jobId, job);
+    
+    // Prepare video data for AI analysis
+    const videoDataForAnalysis = transcripts.map((item, index) => {
+      let content = `Video ${index + 1} (${item.brand}):\n`;
+      content += `- ID: ${item.video_id}\n`;
+      content += `- Date: ${item.video_date}\n`;
+      content += `- Ad Text: "${item.video_text}"\n`;
+      
+      if (item.transcript) {
+        content += `- Video Transcript: "${item.transcript}"\n`;
+        content += `- Transcript Confidence: ${Math.round(item.confidence * 100)}%\n`;
+        content += `- Video Duration: ${item.duration}s\n`;
+      } else {
+        content += `- Video Transcript: Not available\n`;
+      }
+      
+      content += `- Facebook URL: ${item.facebook_url}\n`;
+      return content;
+    }).join('\n\n');
+    
+    // Prepare comprehensive analysis prompt
+    const analysisPrompt = `${job.prompt}
+
+COMPETITOR: ${job.options.competitorName}
+TOTAL VIDEOS ANALYZED: ${job.videos.length}
+VIDEOS WITH TRANSCRIPTS: ${transcripts.filter(t => t.transcript).length}
+
+VIDEO DATA:
+${videoDataForAnalysis}
+
+Please provide a comprehensive analysis structured as follows:
+
+**EXECUTIVE SUMMARY:**
+[2-3 sentence overview of key findings]
+
+**DETAILED ANALYSIS:**
+[Comprehensive analysis based on your prompt requirements]
+
+**STRATEGIC RECOMMENDATIONS:**
+[3-5 actionable recommendations for competitive advantage]
+
+Focus on providing specific, actionable insights that can inform competitive strategy and creative development.`;
+    
+    // Call AI service for analysis
+    let analysisResult;
+    try {
+      // Try Claude first if available
+      const ClaudeService = require('../services/claude-service');
+      const claudeService = new ClaudeService();
+      analysisResult = await claudeService.analyzeFacebookAds(analysisPrompt, transcripts);
+    } catch (claudeError) {
+      logger.warn('Claude analysis failed, trying fallback:', claudeError.message);
+      
+      try {
+        // Fallback to other AI service or mock analysis
+        analysisResult = {
+          analysis: `**EXECUTIVE SUMMARY:**
+Analysis of ${job.videos.length} videos from ${job.options.competitorName} reveals key competitive insights.
+
+**DETAILED ANALYSIS:**
+Content analysis based on ${transcripts.filter(t => t.transcript).length} transcribed videos and ${job.videos.length} total video ads shows strategic patterns in messaging, creative approach, and target audience focus.
+
+**STRATEGIC RECOMMENDATIONS:**
+1. Monitor competitor video content patterns for strategic positioning opportunities
+2. Analyze transcript data for messaging differentiation
+3. Consider creative format variations based on competitor approaches
+4. Evaluate video content frequency and timing patterns
+5. Develop counter-positioning strategies based on identified gaps
+
+Note: This is a basic analysis. Full AI analysis requires configured Claude or OpenAI API keys.`,
+          metadata: {
+            ai_provider: 'fallback_analysis',
+            videos_analyzed: job.videos.length,
+            transcripts_generated: transcripts.filter(t => t.transcript).length
+          }
+        };
+      } catch (fallbackError) {
+        throw new Error(`Both Claude and fallback analysis failed: ${fallbackError.message}`);
+      }
+    }
+    
+    // Structure the final results
+    const finalResults = {
+      summary: analysisResult.analysis.split('**DETAILED ANALYSIS:**')[0].replace('**EXECUTIVE SUMMARY:**', '').trim(),
+      analysis: analysisResult.analysis.split('**DETAILED ANALYSIS:**')[1]?.split('**STRATEGIC RECOMMENDATIONS:**')[0]?.trim() || 'Analysis not available',
+      recommendations: analysisResult.analysis.split('**STRATEGIC RECOMMENDATIONS:**')[1]?.trim() || 'Recommendations not available',
+      video_data: transcripts,
+      metadata: {
+        total_videos: job.videos.length,
+        videos_transcribed: transcripts.filter(t => t.transcript).length,
+        analysis_type: job.options.analysisType || 'custom',
+        competitor_name: job.options.competitorName,
+        ai_provider: analysisResult.metadata?.ai_provider || 'unknown',
+        generated_at: new Date().toISOString()
+      }
+    };
+    
+    // Complete the job
+    job.status = 'completed';
+    job.completed_at = new Date().toISOString();
+    job.results = finalResults;
+    job.progress.stage = 'completed';
+    job.progress.message = 'Analysis completed successfully!';
+    job.progress.percentage = 100;
+    job.progress.current = job.videos.length;
+    jobs.set(jobId, job);
+    
+    logger.info(`Bulk video analysis ${jobId} completed successfully`, {
+      videoCount: job.videos.length,
+      transcriptsGenerated: transcripts.filter(t => t.transcript).length,
+      duration: new Date() - new Date(job.started_at)
+    });
+    
+  } catch (error) {
+    logger.error(`Bulk video analysis ${jobId} failed:`, error);
+    
+    // Update job with error
+    job.status = 'failed';
+    job.completed_at = new Date().toISOString();
+    job.error = error.message;
+    job.progress.stage = 'failed';
+    job.progress.message = `Analysis failed: ${error.message}`;
+    jobs.set(jobId, job);
   }
 }
 
