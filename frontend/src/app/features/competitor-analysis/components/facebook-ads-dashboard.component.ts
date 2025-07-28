@@ -347,4 +347,45 @@ export class FacebookAdsDashboardComponent implements OnInit {
       credits_used: 0
     };
   }
+
+  // Show all video ads
+  showVideoAds(): void {
+    if (!this.analysisResults) return;
+
+    // Collect all video ads from all brands
+    const allVideoAds: any[] = [];
+    
+    Object.values(this.analysisResults.data).forEach((brandData: any) => {
+      if (brandData.ads_data) {
+        const videoAds = brandData.ads_data.filter((ad: any) => ad.creative?.has_video);
+        allVideoAds.push(...videoAds.map((ad: any) => ({
+          ...ad,
+          brand: brandData.page_name
+        })));
+      }
+    });
+
+    // Sort by date (most recent first)
+    allVideoAds.sort((a, b) => {
+      const dateA = new Date(a.dates?.start_date || 0);
+      const dateB = new Date(b.dates?.start_date || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    // Create a modal-like display or navigate to filtered view
+    this.showVideoModal(allVideoAds);
+  }
+
+  showVideoModal(videoAds: any[]): void {
+    const videoList = videoAds.slice(0, 20).map((ad, index) => {
+      const hasVideoUrl = ad.creative?.video_urls?.length > 0;
+      const fbLibraryUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
+      
+      return `${index + 1}. ${ad.brand} - "${ad.creative?.body?.substring(0, 60) || 'No text'}..."
+      ${hasVideoUrl ? '🎬 Video URL: ' + ad.creative.video_urls[0] : '📱 View on Facebook: ' + fbLibraryUrl}
+      📅 ${ad.dates?.start_date || 'Unknown date'}`;
+    }).join('\n\n');
+
+    alert(`🎬 Video Ads Found (${videoAds.length} total):\n\n${videoList}\n\n💡 Tip: Click Facebook links to view actual videos`);
+  }
 }

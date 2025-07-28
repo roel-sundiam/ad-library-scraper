@@ -88,6 +88,26 @@
     margin-bottom: 32px;
 
     .metric-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+      &.clickable-metric {
+        cursor: pointer;
+        
+        &:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+          
+          .metric-value {
+            color: #1976d2;
+          }
+          
+          .metric-subtitle {
+            color: #1976d2;
+            font-weight: 500;
+          }
+        }
+      }
+
       .metric-header {
         display: flex;
         align-items: center;

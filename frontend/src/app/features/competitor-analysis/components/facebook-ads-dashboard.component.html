@@ -74,14 +74,14 @@
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="metric-card">
+      <mat-card class="metric-card clickable-metric" (click)="showVideoAds()">
         <mat-card-content>
           <div class="metric-header">
             <mat-icon class="metric-icon">movie</mat-icon>
             <span class="metric-label">Video Ads</span>
           </div>
           <div class="metric-value">{{ totalVideoAds }}</div>
-          <div class="metric-subtitle">Total video advertisements</div>
+          <div class="metric-subtitle">Click to view video advertisements</div>
         </mat-card-content>
       </mat-card>
     </div>
