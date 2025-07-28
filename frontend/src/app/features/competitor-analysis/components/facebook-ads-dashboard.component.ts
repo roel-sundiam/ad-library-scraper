@@ -829,7 +829,29 @@ Focus on actionable optimization recommendations for video campaigns.`
   }
 
   getVideoUrl(video: any): string | null {
-    return video.creative?.video_urls?.[0] || null;
+    // Check for video URLs in various possible fields
+    if (video.creative?.video_urls && video.creative.video_urls.length > 0) {
+      return video.creative.video_urls[0];
+    }
+    
+    // Check for video URL in other possible fields
+    if (video.creative?.video_url) {
+      return video.creative.video_url;
+    }
+    
+    // Check for media URLs that might contain video
+    if (video.creative?.media && Array.isArray(video.creative.media)) {
+      const videoMedia = video.creative.media.find((media: any) => 
+        media.type === 'video' || media.media_type === 'video'
+      );
+      if (videoMedia?.url) {
+        return videoMedia.url;
+      }
+    }
+    
+    // If we know it has video but no URL is available, return null
+    // This indicates the video exists but URL is not accessible via API
+    return null;
   }
 
   getFacebookUrl(adId: string): string {

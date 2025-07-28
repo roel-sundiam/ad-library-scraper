@@ -1250,6 +1250,37 @@
                 }
               }
 
+              .video-url-unavailable {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 16px;
+                padding: 8px 12px;
+                background: #fff3e0;
+                border-radius: 6px;
+                border-left: 3px solid #ff9800;
+
+                mat-icon {
+                  color: #ff9800;
+                  font-size: 16px;
+                  width: 16px;
+                  height: 16px;
+                }
+
+                .url-label {
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: #ff9800;
+                }
+
+                .unavailable-message {
+                  font-size: 12px;
+                  color: #f57c00;
+                  font-style: italic;
+                  flex: 1;
+                }
+              }
+
               .video-actions {
                 display: flex;
                 gap: 12px;

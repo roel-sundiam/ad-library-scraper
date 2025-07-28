@@ -663,6 +663,13 @@
                 </a>
               </div>
               
+              <!-- Video URL Not Available Message -->
+              <div class="video-url-unavailable" *ngIf="!getVideoUrl(video) && video.creative?.has_video">
+                <mat-icon>info</mat-icon>
+                <span class="url-label">Video Status:</span>
+                <span class="unavailable-message">Video content detected, but direct URL not available via Facebook Ad Library API</span>
+              </div>
+              
               <div class="video-actions">
                 <a *ngIf="getVideoUrl(video)" 
                    [href]="getVideoUrl(video)" 
