@@ -31,6 +31,21 @@ export class FacebookAdsDashboardComponent implements OnInit {
   // Display options
   selectedMetric: 'impressions' | 'spend' | 'cpm' | 'ctr' = 'impressions';
   chartView: 'overview' | 'detailed' = 'overview';
+  
+  // AI Analysis properties
+  customPrompt = '';
+  customAnalysisResult: any = null;
+  isAnalyzing = false;
+  showQuickPrompts = false;
+  
+  quickPrompts = [
+    'Analyze video content strategies across competitors',
+    'What messaging themes are most common in these ads?',
+    'Compare creative formats and their effectiveness',
+    'Identify opportunities to differentiate from competitors',
+    'What call-to-action strategies are being used?',
+    'Analyze seasonal content and timing patterns'
+  ];
 
   constructor(
     private route: ActivatedRoute,
@@ -240,5 +255,96 @@ export class FacebookAdsDashboardComponent implements OnInit {
     } else {
       alert(`Ad Details:\n\nAdvertiser: ${ad.advertiser.name}\nFormat: ${ad.creative.has_video ? 'Video' : 'Image'}\nText Length: ${ad.creative.body?.length || 0} characters\nStatus: ${ad.metadata.is_active ? 'Active' : 'Historical'}\nSource: ${ad.metadata.source}`);
     }
+  }
+
+  // AI Analysis Methods
+  runCustomAnalysis(): void {
+    if (!this.customPrompt.trim() || this.isAnalyzing) return;
+
+    this.isAnalyzing = true;
+    this.customAnalysisResult = null;
+
+    // Use the workflow ID from the analysis results
+    const workflowId = this.analysisResults?.metadata?.workflow_id || this.datasetId;
+
+    const analysisRequest = {
+      prompt: this.customPrompt,
+      workflowId: workflowId,
+      filters: {
+        analysis_type: 'custom_competitor_analysis',
+        dashboard_context: true
+      }
+    };
+
+    this.apiService.startAnalysis(analysisRequest).subscribe({
+      next: (response) => {
+        this.isAnalyzing = false;
+        if (response.success) {
+          this.customAnalysisResult = response.data;
+        } else {
+          console.error('Analysis failed:', response);
+          alert('Analysis failed. Please try again.');
+        }
+      },
+      error: (error) => {
+        console.error('Analysis error:', error);
+        this.isAnalyzing = false;
+        alert('Analysis failed. Please check your connection and try again.');
+      }
+    });
+  }
+
+  useQuickPrompt(prompt: string): void {
+    this.customPrompt = prompt;
+    this.showQuickPrompts = false;
+  }
+
+  formatAnalysisResult(analysis: string): string {
+    if (!analysis) return '';
+    
+    // Convert markdown-like formatting to HTML
+    return analysis
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/• /g, '• ')
+      .replace(/\n/g, '<br>');
+  }
+
+  getAnalysisResultsForChat(): any {
+    if (!this.analysisResults) return null;
+
+    // Format data for the AI chat component
+    return {
+      workflow_id: this.analysisResults.metadata?.workflow_id || this.datasetId,
+      analysis: {
+        summary: {
+          your_page: {
+            page_name: this.brandComparisons[0]?.brand || 'Your Brand',
+            total_ads: this.brandComparisons[0]?.ad_frequency || 0,
+            performance_score: Math.round(this.brandComparisons[0]?.metrics?.total_impressions || 75)
+          },
+          competitors: this.brandComparisons.slice(1).map(brand => ({
+            page_name: brand.brand,
+            total_ads: brand.ad_frequency,
+            performance_score: Math.round(brand.metrics.total_impressions)
+          }))
+        },
+        insights: [
+          `Video content appears in ${this.videoContentRate.toFixed(1)}% of analyzed ads`,
+          `${this.totalAdvertisers} brands are actively advertising`,
+          `Total of ${this.totalAds} ads analyzed across all competitors`,
+          'Creative formats vary significantly between competitors'
+        ],
+        recommendations: [
+          'Increase video content production to match industry standards',
+          'Analyze competitor messaging themes for opportunities',
+          'Test different creative formats based on competitor insights',
+          'Monitor competitor advertising frequency patterns'
+        ],
+        analyzed_at: new Date().toISOString(),
+        ai_provider: 'enhanced_mock'
+      },
+      credits_used: 0
+    };
   }
 }

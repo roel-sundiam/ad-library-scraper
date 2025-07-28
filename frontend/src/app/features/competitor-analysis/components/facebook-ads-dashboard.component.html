@@ -287,6 +287,98 @@
       </mat-card>
     </div>
 
+    <!-- AI Analysis & Chat Section -->
+    <div class="section-container">
+      <mat-card class="ai-analysis-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>smart_toy</mat-icon>
+            AI Analysis & Chat
+          </mat-card-title>
+          <mat-card-subtitle>Get AI-powered insights and ask questions about your competitor analysis</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <!-- Custom Analysis Section -->
+          <div class="custom-analysis-section">
+            <h4>
+              <mat-icon>psychology</mat-icon>
+              Custom AI Analysis
+            </h4>
+            <p>Ask AI to analyze your competitor data with a custom prompt:</p>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Enter your analysis prompt...</mat-label>
+              <textarea 
+                matInput 
+                [(ngModel)]="customPrompt" 
+                rows="3"
+                placeholder="e.g., 'Analyze video content strategies across competitors' or 'What messaging themes are most common?'"
+              ></textarea>
+            </mat-form-field>
+            
+            <div class="analysis-actions">
+              <button 
+                mat-raised-button 
+                color="primary" 
+                (click)="runCustomAnalysis()"
+                [disabled]="!customPrompt.trim() || isAnalyzing"
+              >
+                <mat-icon *ngIf="!isAnalyzing">psychology</mat-icon>
+                <mat-spinner *ngIf="isAnalyzing" diameter="20"></mat-spinner>
+                {{ isAnalyzing ? 'Analyzing...' : 'Run AI Analysis' }}
+              </button>
+              
+              <button mat-stroked-button (click)="showQuickPrompts = !showQuickPrompts">
+                <mat-icon>help_outline</mat-icon>
+                Quick Prompts
+              </button>
+            </div>
+
+            <!-- Quick Prompt Suggestions -->
+            <div *ngIf="showQuickPrompts" class="quick-prompts">
+              <h5>Quick Prompt Ideas:</h5>
+              <div class="prompt-chips">
+                <button 
+                  *ngFor="let prompt of quickPrompts" 
+                  mat-stroked-button 
+                  (click)="useQuickPrompt(prompt)"
+                  class="prompt-chip"
+                >
+                  {{ prompt }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div *ngIf="customAnalysisResult" class="analysis-results">
+              <mat-divider></mat-divider>
+              <h5>
+                <mat-icon>insights</mat-icon>
+                Analysis Results
+                <span class="ai-provider">({{ customAnalysisResult.metadata?.ai_provider || 'AI' }})</span>
+              </h5>
+              <div class="analysis-content" [innerHTML]="formatAnalysisResult(customAnalysisResult.analysis)"></div>
+            </div>
+          </div>
+
+          <mat-divider class="section-divider"></mat-divider>
+
+          <!-- AI Chat Interface -->
+          <div class="ai-chat-section">
+            <h4>
+              <mat-icon>chat</mat-icon>
+              Chat with AI About Your Analysis
+            </h4>
+            <p>Ask follow-up questions about your competitor analysis results:</p>
+            
+            <!-- Integrate the AI Chat Component -->
+            <app-ai-chat [analysisResults]="getAnalysisResultsForChat()"></app-ai-chat>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
     <!-- Analysis Meta Information -->
     <div class="section-container">
       <mat-card class="meta-info-card">
