@@ -509,19 +509,23 @@ Focus on actionable optimization recommendations for video campaigns.`
           id: video.id,
           brand: video.brand,
           url: video.creative?.video_urls?.[0],
-          text: video.creative?.body || video.creative?.title,
+          text: (video.creative?.body || video.creative?.title || '').substring(0, 500), // Limit text length
           date: video.dates?.start_date,
           facebook_url: `https://www.facebook.com/ads/library/?id=${video.id}`
         })),
-        prompt: this.customPrompt,
+        prompt: this.customPrompt.substring(0, 2000), // Limit prompt length
         options: {
           includeTranscripts: this.includeTranscripts,
           includeVisualAnalysis: this.includeVisualAnalysis,
           analysisType: this.selectedVideoTemplate || 'custom',
-          competitorName: this.brandComparisons[0]?.brand || 'Competitor'
+          competitorName: (this.brandComparisons[0]?.brand || 'Competitor').substring(0, 100)
         },
         workflowId: this.datasetId
       };
+
+      // Log request size for debugging
+      const requestSize = JSON.stringify(analysisRequest).length;
+      console.log(`Bulk video analysis request size: ${requestSize} characters (${(requestSize / 1024 / 1024).toFixed(2)} MB)`);
 
       const response = await this.apiService.startBulkVideoAnalysis(analysisRequest).toPromise();
       

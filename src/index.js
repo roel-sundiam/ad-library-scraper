@@ -24,7 +24,9 @@ const workflows = new Map();
 
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Increase request size limit for bulk video analysis
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Mount API routes
 app.use('/api', apiRoutes);
