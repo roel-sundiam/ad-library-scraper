@@ -426,6 +426,26 @@
           border-radius: 20px;
           color: #666;
 
+          &.clickable-video-type {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            
+            &:hover {
+              background: #e3f2fd;
+              transform: translateY(-2px);
+              box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+              
+              span {
+                color: #1976d2;
+                font-weight: 500;
+              }
+              
+              .click-indicator {
+                color: #1976d2;
+              }
+            }
+          }
+
           mat-icon {
             font-size: 18px;
             width: 18px;

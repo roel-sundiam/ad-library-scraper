@@ -350,7 +350,12 @@ export class FacebookAdsDashboardComponent implements OnInit {
 
   // Show all video ads
   showVideoAds(): void {
-    if (!this.analysisResults) return;
+    console.log('showVideoAds() called!', this.analysisResults);
+    
+    if (!this.analysisResults) {
+      alert('No analysis results available');
+      return;
+    }
 
     // Collect all video ads from all brands
     const allVideoAds: any[] = [];
@@ -387,5 +392,64 @@ export class FacebookAdsDashboardComponent implements OnInit {
     }).join('\n\n');
 
     alert(`🎬 Video Ads Found (${videoAds.length} total):\n\n${videoList}\n\n💡 Tip: Click Facebook links to view actual videos`);
+  }
+
+  // Show videos filtered by specific brand
+  showBrandVideos(brandName: string): void {
+    console.log('showBrandVideos() called for:', brandName);
+    
+    if (!this.analysisResults) {
+      alert('No analysis results available');
+      return;
+    }
+
+    // Find the specific brand's data
+    let brandData: any = null;
+    Object.values(this.analysisResults.data).forEach((data: any) => {
+      if (data.page_name === brandName) {
+        brandData = data;
+      }
+    });
+
+    if (!brandData || !brandData.ads_data) {
+      alert(`No video data found for ${brandName}`);
+      return;
+    }
+
+    // Filter for video ads from this specific brand
+    const brandVideoAds = brandData.ads_data
+      .filter((ad: any) => ad.creative?.has_video)
+      .map((ad: any) => ({
+        ...ad,
+        brand: brandName
+      }));
+
+    // Sort by date (most recent first)
+    brandVideoAds.sort((a, b) => {
+      const dateA = new Date(a.dates?.start_date || 0);
+      const dateB = new Date(b.dates?.start_date || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    if (brandVideoAds.length === 0) {
+      alert(`No video ads found for ${brandName}`);
+      return;
+    }
+
+    // Show brand-specific video modal
+    this.showBrandVideoModal(brandVideoAds, brandName);
+  }
+
+  showBrandVideoModal(videoAds: any[], brandName: string): void {
+    const videoList = videoAds.slice(0, 15).map((ad, index) => {
+      const hasVideoUrl = ad.creative?.video_urls?.length > 0;
+      const fbLibraryUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
+      
+      return `${index + 1}. "${ad.creative?.body?.substring(0, 80) || 'No text'}..."
+      ${hasVideoUrl ? '🎬 Video URL: ' + ad.creative.video_urls[0] : '📱 View on Facebook: ' + fbLibraryUrl}
+      📅 ${ad.dates?.start_date || 'Unknown date'}`;
+    }).join('\n\n');
+
+    alert(`🎬 ${brandName} Video Ads (${videoAds.length} total):\n\n${videoList}\n\n💡 Tip: Click Facebook links to view ${brandName}'s actual video strategies`);
   }
 }

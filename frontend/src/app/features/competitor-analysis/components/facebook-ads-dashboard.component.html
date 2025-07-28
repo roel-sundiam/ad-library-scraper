@@ -74,14 +74,20 @@
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="metric-card clickable-metric" (click)="showVideoAds()">
+      <mat-card class="metric-card">
         <mat-card-content>
           <div class="metric-header">
             <mat-icon class="metric-icon">movie</mat-icon>
             <span class="metric-label">Video Ads</span>
           </div>
           <div class="metric-value">{{ totalVideoAds }}</div>
-          <div class="metric-subtitle">Click to view video advertisements</div>
+          <div class="metric-subtitle">Total video advertisements</div>
+          <div style="margin-top: 12px;">
+            <button mat-raised-button color="primary" (click)="showVideoAds()">
+              <mat-icon>play_circle</mat-icon>
+              View All Videos
+            </button>
+          </div>
         </mat-card-content>
       </mat-card>
     </div>
@@ -273,9 +279,10 @@
                 <mat-icon>image</mat-icon>
                 <span>{{ brand.creative_types.image }} Images</span>
               </div>
-              <div class="creative-type">
+              <div class="creative-type clickable-video-type" (click)="showBrandVideos(brand.brand)">
                 <mat-icon>play_circle</mat-icon>
                 <span>{{ brand.creative_types.video }} Videos</span>
+                <mat-icon class="click-indicator" style="font-size: 16px; margin-left: 4px;">open_in_new</mat-icon>
               </div>
               <div class="creative-type">
                 <mat-icon>view_carousel</mat-icon>
