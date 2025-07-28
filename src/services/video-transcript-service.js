@@ -42,6 +42,7 @@ class VideoTranscriptService {
 
   async transcribeVideo(videoUrl, options = {}) {
     const startTime = Date.now();
+    let tempFilePath = null;
 
     try {
       logger.info('[MOCK/REAL] Starting video transcription', {
@@ -88,7 +89,6 @@ class VideoTranscriptService {
       }
 
       // Real OpenAI transcription (if available)
-      let tempFilePath = null;
       
       // Download video to temporary file
       tempFilePath = await this.downloadVideo(videoUrl);

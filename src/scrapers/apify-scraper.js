@@ -417,6 +417,60 @@ class ApifyScraper {
   }
 
   /**
+   * Extract video URLs from Apify data in priority order
+   */
+  extractVideoUrls(adContent, snapshot) {
+    const videoUrls = [];
+    
+    // Debug logging to see what data we're getting
+    logger.info('DEBUG: Extracting video URLs', {
+      hasAdContentVideos: Array.isArray(adContent.videos),
+      adContentVideosLength: adContent.videos ? adContent.videos.length : 0,
+      hasSnapshotVideos: Array.isArray(snapshot.videos),
+      snapshotVideosLength: snapshot.videos ? snapshot.videos.length : 0,
+      sampleAdContent: JSON.stringify(adContent, null, 2).substring(0, 500),
+      sampleSnapshot: JSON.stringify(snapshot, null, 2).substring(0, 500)
+    });
+    
+    // Check snapshot.videos first (most reliable source from test results)
+    if (Array.isArray(snapshot.videos)) {
+      snapshot.videos.forEach(video => {
+        // Prefer HD over SD, but include both
+        if (video.video_hd_url) {
+          videoUrls.push(video.video_hd_url);
+        }
+        if (video.video_sd_url && !videoUrls.includes(video.video_sd_url)) {
+          videoUrls.push(video.video_sd_url);
+        }
+      });
+    }
+    
+    // Check ad_content.videos as backup
+    if (Array.isArray(adContent.videos)) {
+      adContent.videos.forEach(video => {
+        if (video.video_hd_url && !videoUrls.includes(video.video_hd_url)) {
+          videoUrls.push(video.video_hd_url);
+        }
+        if (video.video_sd_url && !videoUrls.includes(video.video_sd_url)) {
+          videoUrls.push(video.video_sd_url);
+        }
+      });
+    }
+    
+    // Check for single video URL as fallback
+    if (snapshot.creative_body?.video_url && !videoUrls.includes(snapshot.creative_body.video_url)) {
+      videoUrls.push(snapshot.creative_body.video_url);
+    }
+    
+    logger.info('DEBUG: Video URL extraction complete', {
+      foundVideoUrls: videoUrls.length,
+      videoUrls: videoUrls
+    });
+    
+    return videoUrls;
+  }
+
+  /**
    * Normalize Apify data to our format
    */
   normalizeApifyData(data, scraperName) {
@@ -513,6 +567,9 @@ class ApifyScraper {
           has_video: Array.isArray(adContent.videos) && adContent.videos.length > 0 || 
                      Array.isArray(snapshot.videos) && snapshot.videos.length > 0 ||
                      snapshot.creative_body?.video_url || false,
+          // Extract video URLs in the format expected by the bulk video analysis component
+          video_urls: this.extractVideoUrls(adContent, snapshot),
+          videos: adContent.videos || snapshot.videos || [],
           landing_url: adContent.link_url || snapshot.link_url || snapshot.creative_body?.link_url || ''
         },
         targeting: {
