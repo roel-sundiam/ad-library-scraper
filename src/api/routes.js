@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
+const fetch = require('node-fetch');
 const FacebookAdLibraryScraper = require('../scrapers/facebook-scraper');
 const FacebookAdLibraryAPI = require('../scrapers/facebook-api-client');
 const ApifyScraper = require('../scrapers/apify-scraper');
@@ -2133,6 +2134,645 @@ function parseTextAnalysis(analysisText) {
     insights: insights.slice(0, 5), // Limit to 5 insights
     recommendations: recommendations.slice(0, 5) // Limit to 5 recommendations
   };
+}
+
+// AI Analysis API Routes
+const ClaudeService = require('../services/claude-service');
+const VideoTranscriptService = require('../services/video-transcript-service');
+
+// Initialize services
+const claudeService = new ClaudeService();
+const videoTranscriptService = new VideoTranscriptService();
+
+// Start AI analysis with custom prompt
+router.post('/analysis', async (req, res) => {
+  try {
+    const { 
+      prompt, 
+      workflowId, 
+      adIds, 
+      filters = {} 
+    } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Analysis prompt is required'
+        }
+      });
+    }
+
+    let adsData = [];
+
+    // Get ads data from workflow or specific ad IDs
+    if (workflowId) {
+      const workflow = workflows.get(workflowId);
+      if (!workflow) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'WORKFLOW_NOT_FOUND',
+            message: 'Workflow not found'
+          }
+        });
+      }
+
+      // Extract ads from all pages in workflow
+      Object.values(workflow.pages).forEach(page => {
+        if (page.data && page.data.ads) {
+          adsData = adsData.concat(page.data.ads);
+        }
+      });
+    } else if (adIds && adIds.length > 0) {
+      // TODO: Get specific ads by IDs from database
+      // For now, return error as we need workflow data
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'FEATURE_NOT_IMPLEMENTED',
+          message: 'Analysis by specific ad IDs not yet implemented. Please use workflowId.'
+        }
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Either workflowId or adIds must be provided'
+        }
+      });
+    }
+
+    if (adsData.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_DATA',
+          message: 'No ad data available for analysis'
+        }
+      });
+    }
+
+    logger.info('Starting custom AI analysis', {
+      prompt: prompt.substring(0, 100) + '...',
+      adsCount: adsData.length,
+      filters,
+      workflowId
+    });
+
+    // Process video transcripts if needed (skip for now to avoid OpenAI costs)
+    const adsWithTranscripts = adsData; // Skip video transcription until OpenAI key is available
+
+    // Try AI analysis with fallback priority: Ollama → Claude → Enhanced Mock
+    let analysisResult;
+    let aiProvider = 'enhanced_mock';
+
+    try {
+      // Try Ollama first (free open source) - only if running locally
+      if (process.env.NODE_ENV !== 'production') {
+        analysisResult = await callOllamaForAnalysis(prompt, adsWithTranscripts, filters);
+        if (analysisResult) {
+          aiProvider = 'ollama';
+        }
+      }
+    } catch (ollamaError) {
+      logger.warn('Ollama analysis failed, trying Claude...', ollamaError.message);
+    }
+
+    // Try Claude if Ollama failed or not available
+    if (!analysisResult) {
+      try {
+        if (process.env.ANTHROPIC_API_KEY) {
+          const claudeResult = await claudeService.analyzeAds(prompt, adsWithTranscripts, filters);
+          analysisResult = {
+            analysis: claudeResult.analysis,
+            metadata: claudeResult.metadata
+          };
+          aiProvider = 'anthropic';
+        }
+      } catch (claudeError) {
+        logger.warn('Claude analysis failed, using enhanced mock response...', claudeError.message);
+      }
+    }
+
+    // Fallback to enhanced mock analysis (uses actual ad data)
+    if (!analysisResult) {
+      analysisResult = generateEnhancedMockAnalysis(prompt, adsWithTranscripts);
+      aiProvider = 'enhanced_mock';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        analysis: analysisResult.analysis || analysisResult,
+        metadata: {
+          ...analysisResult.metadata,
+          custom_prompt: prompt,
+          ads_analyzed: adsWithTranscripts.length,
+          ai_provider: aiProvider,
+          has_video_transcripts: adsWithTranscripts.some(ad => 
+            ad.creative?.video_transcripts?.length > 0
+          )
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('AI analysis failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANALYSIS_ERROR',
+        message: error.message
+      }
+    });
+  }
+});
+
+// Test AI connection
+router.get('/analysis/test', async (req, res) => {
+  try {
+    // Test Claude connection
+    const claudeTest = await claudeService.testConnection();
+    
+    // Test video transcription service
+    const transcriptTest = await videoTranscriptService.testConnection();
+
+    res.json({
+      success: true,
+      data: {
+        claude: claudeTest,
+        video_transcript: transcriptTest,
+        ollama_available: await testOllamaConnection(),
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    logger.error('AI connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CONNECTION_TEST_ERROR',
+        message: error.message
+      }
+    });
+  }
+});
+
+// Chat with AI about analysis results
+router.post('/analysis/chat', async (req, res) => {
+  try {
+    const { 
+      message, 
+      workflowId, 
+      conversationHistory = [] 
+    } = req.body;
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Chat message is required'
+        }
+      });
+    }
+
+    if (!workflowId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Workflow ID is required for context'
+        }
+      });
+    }
+
+    const workflow = workflows.get(workflowId);
+    if (!workflow) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'WORKFLOW_NOT_FOUND',
+          message: 'Workflow not found'
+        }
+      });
+    }
+
+    // Build context from workflow data
+    const contextPrompt = buildChatContextPrompt(workflow, message, conversationHistory);
+
+    // Get ads data for context
+    let adsData = [];
+    Object.values(workflow.pages).forEach(page => {
+      if (page.data && page.data.ads) {
+        adsData = adsData.concat(page.data.ads);
+      }
+    });
+
+    logger.info('Processing AI chat message', {
+      message: message.substring(0, 100) + '...',
+      workflowId,
+      conversationLength: conversationHistory.length,
+      adsCount: adsData.length
+    });
+
+    // Process video transcripts if needed (skip for now to avoid OpenAI costs)
+    const adsWithTranscripts = adsData; // Skip video transcription until OpenAI key is available
+
+    // Try AI chat with fallback priority: Ollama → Claude → Mock
+    let chatResult;
+    let aiProvider = 'mock';
+
+    try {
+      // Try Ollama first (free open source)
+      chatResult = await callOllamaForAnalysis(contextPrompt, adsWithTranscripts);
+      if (chatResult) {
+        aiProvider = 'ollama';
+      }
+    } catch (ollamaError) {
+      logger.warn('Ollama chat failed, trying Claude...', ollamaError.message);
+      
+      try {
+        // Fallback to Claude if available
+        if (process.env.ANTHROPIC_API_KEY) {
+          chatResult = await claudeService.analyzeAds(contextPrompt, adsWithTranscripts);
+          aiProvider = 'anthropic';
+        }
+      } catch (claudeError) {
+        logger.warn('Claude chat failed, using mock response...', claudeError.message);
+      }
+    }
+
+    // Fallback to mock chat if all AI services fail
+    if (!chatResult) {
+      chatResult = generateMockChatResponse(message, workflow);
+      aiProvider = 'mock';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        response: chatResult.analysis || chatResult.response || chatResult,
+        metadata: {
+          model: chatResult.metadata?.model || aiProvider,
+          tokens_used: chatResult.metadata?.tokens_used || 0,
+          context_ads: adsWithTranscripts.length,
+          ai_provider: aiProvider,
+          timestamp: new Date().toISOString()
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('AI chat failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CHAT_ERROR',
+        message: error.message
+      }
+    });
+  }
+});
+
+// Helper function to process video transcripts
+async function processVideoTranscripts(adsData) {
+  const adsWithTranscripts = [];
+
+  for (const ad of adsData) {
+    const adCopy = { ...ad };
+    
+    // Check if ad has video URLs that need transcription
+    if (ad.creative?.video_urls?.length > 0) {
+      try {
+        const transcripts = [];
+        
+        // Limit transcription to first 3 videos per ad to control costs
+        const videosToTranscribe = ad.creative.video_urls.slice(0, 3);
+        
+        for (const videoUrl of videosToTranscribe) {
+          try {
+            const transcript = await videoTranscriptService.transcribeVideo(videoUrl);
+            transcripts.push({
+              video_url: videoUrl,
+              success: true,
+              transcript: transcript.transcript,
+              confidence: transcript.confidence,
+              duration: transcript.duration
+            });
+          } catch (transcriptError) {
+            logger.warn('Video transcription failed:', { videoUrl, error: transcriptError.message });
+            transcripts.push({
+              video_url: videoUrl,
+              success: false,
+              error: transcriptError.message
+            });
+          }
+        }
+        
+        // Add transcripts to ad creative data
+        if (!adCopy.creative) adCopy.creative = {};
+        adCopy.creative.video_transcripts = transcripts;
+        
+      } catch (error) {
+        logger.warn('Video processing failed for ad:', { adId: ad.id, error: error.message });
+      }
+    }
+    
+    adsWithTranscripts.push(adCopy);
+  }
+
+  return adsWithTranscripts;
+}
+
+// Helper function to build chat context prompt
+function buildChatContextPrompt(workflow, userMessage, conversationHistory) {
+  const pages = workflow.pages;
+  const analysisData = workflow.analysis?.data;
+
+  let contextText = `You are an AI assistant helping analyze Facebook advertising competitor data. Here's the context:
+
+**Current Analysis:**
+- Your Brand: ${pages.your_page?.data?.advertiser?.page_name || 'Unknown'}
+- Competitor 1: ${pages.competitor_1?.data?.advertiser?.page_name || 'Unknown'}  
+- Competitor 2: ${pages.competitor_2?.data?.advertiser?.page_name || 'Unknown'}
+
+**Previous Analysis Results:**
+${analysisData ? JSON.stringify(analysisData, null, 2) : 'No previous analysis available'}
+
+**Conversation History:**
+${conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n')}
+
+**Current Question:** ${userMessage}
+
+Please provide a helpful, specific response based on the analysis data and conversation context. Focus on actionable insights and recommendations.`;
+
+  return contextText;
+}
+
+// Helper function to call Ollama for analysis
+async function callOllamaForAnalysis(prompt, adsData, filters = {}) {
+  try {
+    const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+    const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+
+    // Prepare ads data for Ollama
+    const adsText = adsData.slice(0, 20).map((ad, index) => {
+      return `Ad ${index + 1}: ${ad.advertiser?.page_name || 'Unknown'} - "${ad.creative?.body || 'No text'}"`;
+    }).join('\n');
+
+    const fullPrompt = `${prompt}\n\nAd Data:\n${adsText}\n\nPlease provide a helpful analysis based on this Facebook advertising data.`;
+
+    const response = await fetch(`${ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: ollamaModel,
+        prompt: fullPrompt,
+        stream: false,
+        options: {
+          temperature: 0.3,
+          top_p: 0.9
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    return {
+      analysis: result.response,
+      metadata: {
+        model: ollamaModel,
+        tokens_used: result.prompt_eval_count + result.eval_count,
+        ai_provider: 'ollama'
+      }
+    };
+
+  } catch (error) {
+    logger.error('Ollama API call failed:', error);
+    throw error;
+  }
+}
+
+// Helper function to generate enhanced mock analysis using real ad data
+function generateEnhancedMockAnalysis(prompt, adsData) {
+  // Analyze real ad data to provide meaningful insights
+  const totalAds = adsData.length;
+  const advertisers = [...new Set(adsData.map(ad => ad.advertiser?.page_name).filter(Boolean))];
+  const videoAds = adsData.filter(ad => ad.creative?.video_urls?.length > 0).length;
+  const videoPercentage = Math.round((videoAds / totalAds) * 100);
+  
+  // Analyze ad content themes
+  const commonWords = extractCommonThemes(adsData);
+  const adFormats = analyzeAdFormats(adsData);
+  
+  const mockAnalysis = `## Analysis Results (Data-Driven Response)
+
+**Your Custom Prompt:** "${prompt.substring(0, 100)}..."
+
+**Data Analysis Summary:**
+• Analyzed ${totalAds} real advertisements from ${advertisers.length} brands
+• Video content found in ${videoPercentage}% of ads (${videoAds}/${totalAds})
+• Top advertisers: ${advertisers.slice(0, 3).join(', ')}
+• Ad formats: ${adFormats.join(', ')}
+
+**Key Content Themes Found:**
+${commonWords.slice(0, 5).map(theme => `• ${theme}`).join('\n')}
+
+**Performance Insights:**
+• Video ads typically generate 2-3x higher engagement than static images
+• Brands with consistent messaging show better brand recall
+• Call-to-action phrases vary significantly across competitors
+• Mobile-optimized creatives dominate the landscape
+
+**Competitive Recommendations:**
+• ${getSpecificRecommendation(advertisers, videoPercentage)}
+• Test video content formats to match industry standards
+• Analyze top-performing competitor messaging themes
+• Consider seasonal content timing strategies
+
+**Technical Details:**
+• Analysis based on actual Facebook Ad Library data
+• ${totalAds} ads scraped and processed successfully
+• Real advertiser names and content analyzed
+• Mock AI processing simulates Claude 4 Opus analysis
+
+*Note: This analysis uses your real competitor data but simulated AI processing. For advanced AI insights, add Claude or OpenAI API keys.*`;
+
+  return {
+    analysis: mockAnalysis,
+    metadata: {
+      model: 'enhanced-mock-analysis',
+      tokens_used: 0,
+      ai_provider: 'enhanced_mock',
+      real_data_used: true,
+      ads_analyzed: totalAds
+    }
+  };
+}
+
+// Helper function to generate mock analysis response (legacy)
+function generateMockAnalysis(prompt, adsData) {
+  const mockAnalysis = `## Analysis Results (Mock Response)
+
+**Your Custom Prompt:** "${prompt.substring(0, 100)}..."
+
+**Key Findings:**
+• Analyzed ${adsData.length} advertisements across competitors
+• Video content appears in ${Math.round(Math.random() * 30 + 10)}% of ads
+• Performance varies significantly by creative format
+• Strong correlation between engagement and visual storytelling
+
+**Recommendations:**
+• Increase video content production for better engagement
+• Test different messaging approaches based on competitor insights  
+• Consider expanding ad frequency to match competitor activity
+• Focus on mobile-optimized creative formats
+
+**Competitive Insights:**
+• Your competitors are running more diverse campaign types
+• Social proof and testimonials are common themes
+• Seasonal content timing shows strategic planning
+• Budget allocation suggests focus on high-performing segments
+
+*Note: This is a mock response. Install Ollama or configure Claude/OpenAI API keys for real AI analysis.*`;
+
+  return {
+    analysis: mockAnalysis,
+    metadata: {
+      model: 'mock-analysis',
+      tokens_used: 0,
+      ai_provider: 'mock'
+    }
+  };
+}
+
+// Helper function to generate mock chat response
+function generateMockChatResponse(message, workflow) {
+  const lowerMessage = message.toLowerCase();
+  
+  let response = '';
+  
+  if (lowerMessage.includes('performance') || lowerMessage.includes('score')) {
+    response = `Based on your competitor analysis, performance differences often come from:
+
+**Creative Strategy:**
+• Video content typically performs 2-3x better than static images
+• User-generated content builds more trust and engagement
+• Clear value propositions in ad copy drive better results
+
+**Targeting & Budget:**
+• Competitors may have more refined audience targeting
+• Higher ad spend can improve reach and frequency
+• A/B testing different audiences shows optimization efforts
+
+**Recommendations:**
+• Analyze your top-performing competitors' creative formats
+• Test video content if you haven't already
+• Consider increasing your advertising budget gradually`;
+    
+  } else if (lowerMessage.includes('creative') || lowerMessage.includes('content')) {
+    response = `For creative strategy improvements:
+
+**Content Types to Test:**
+• Video testimonials and product demonstrations
+• Behind-the-scenes content for authenticity  
+• User-generated content and reviews
+• Seasonal and trending topics
+
+**Design Elements:**
+• Mobile-first creative formats
+• Clear, readable text overlays
+• Strong brand consistency across campaigns
+• Eye-catching thumbnails for video content`;
+    
+  } else {
+    response = `Great question! Based on typical competitor analysis patterns:
+
+**General Insights:**
+• Most successful brands run 3-5 different campaign types simultaneously
+• Video content consistently outperforms static images
+• Regular campaign refreshes prevent ad fatigue
+• Clear call-to-actions improve conversion rates
+
+**Next Steps:**
+• Study your competitors' most engaging content
+• Test different creative formats systematically
+• Monitor their campaign frequency and timing
+• Consider their unique value propositions
+
+*Note: This is a mock response. Install Ollama for real AI-powered analysis.*`;
+  }
+
+  return {
+    response: response,
+    metadata: {
+      model: 'mock-chat',
+      tokens_used: 0,
+      ai_provider: 'mock'
+    }
+  };
+}
+
+// Helper functions for enhanced mock analysis
+function extractCommonThemes(adsData) {
+  const allText = adsData
+    .map(ad => `${ad.creative?.title || ''} ${ad.creative?.body || ''}`)
+    .join(' ')
+    .toLowerCase();
+  
+  // Common advertising themes/keywords
+  const themes = [
+    'limited time offer', 'free shipping', 'new collection', 'best selling',
+    'exclusive deal', 'sale', 'discount', 'premium quality', 'innovative',
+    'trusted brand', 'customer favorite', 'award winning', 'eco friendly'
+  ];
+  
+  return themes.filter(theme => allText.includes(theme.replace(' ', '')) || allText.includes(theme));
+}
+
+function analyzeAdFormats(adsData) {
+  const formats = [];
+  const hasImages = adsData.some(ad => ad.creative?.image_urls?.length > 0);
+  const hasVideos = adsData.some(ad => ad.creative?.video_urls?.length > 0);
+  const hasCarousels = adsData.some(ad => ad.creative?.image_urls?.length > 1);
+  
+  if (hasImages) formats.push('Static Images');
+  if (hasVideos) formats.push('Video Content');
+  if (hasCarousels) formats.push('Carousel Ads');
+  
+  return formats.length > 0 ? formats : ['Mixed Formats'];
+}
+
+function getSpecificRecommendation(advertisers, videoPercentage) {
+  if (videoPercentage > 50) {
+    return 'Video content is dominant in your competitive landscape - prioritize video production';
+  } else if (videoPercentage > 25) {
+    return 'Mixed content strategy detected - test both video and static formats';
+  } else {
+    return 'Static content dominates - opportunity to differentiate with video content';
+  }
+}
+
+// Helper function to test Ollama connection
+async function testOllamaConnection() {
+  try {
+    const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+    const response = await fetch(`${ollamaUrl}/api/tags`);
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
 }
 
 module.exports = router;
