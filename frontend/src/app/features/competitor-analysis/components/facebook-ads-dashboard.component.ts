@@ -265,7 +265,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
     this.customAnalysisResult = null;
 
     // Use the workflow ID from the analysis results
-    const workflowId = this.analysisResults?.metadata?.workflow_id || this.datasetId;
+    const workflowId = this.datasetId; // Use datasetId as workflow identifier
 
     const analysisRequest = {
       prompt: this.customPrompt,
@@ -315,7 +315,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
 
     // Format data for the AI chat component
     return {
-      workflow_id: this.analysisResults.metadata?.workflow_id || this.datasetId,
+      workflow_id: this.datasetId,
       analysis: {
         summary: {
           your_page: {
