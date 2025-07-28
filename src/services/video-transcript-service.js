@@ -1,44 +1,33 @@
-const OpenAI = require('openai');
-const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
 const logger = require('../utils/logger');
 
-// Set ffmpeg path
-ffmpeg.setFfmpegPath(ffmpegStatic);
+// Optional dependencies - gracefully handle missing packages
+let OpenAI;
+let axios;
 
-// Open source alternatives
-let whisperCpp;
-let transformers;
-let huggingFaceInference;
-
-// Lazy load optional dependencies
 try {
-  whisperCpp = require('node-whisper');
+  OpenAI = require('openai');
 } catch (e) {
-  logger.warn('node-whisper not available, falling back to other methods');
+  logger.warn('OpenAI not available:', e.message);
 }
 
 try {
-  transformers = require('@xenova/transformers');
+  axios = require('axios');
 } catch (e) {
-  logger.warn('@xenova/transformers not available, falling back to other methods');
-}
-
-try {
-  const { HfInference } = require('@huggingface/inference');
-  huggingFaceInference = HfInference;
-} catch (e) {
-  logger.warn('@huggingface/inference not available, falling back to other methods');
+  logger.warn('axios not available:', e.message);
 }
 
 class VideoTranscriptService {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    if (OpenAI && process.env.OPENAI_API_KEY) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+    } else {
+      logger.warn('OpenAI not configured - transcription will be mocked');
+      this.openai = null;
+    }
     this.tempDir = path.join(__dirname, '../../temp');
     this.ensureTempDir();
   }
@@ -53,14 +42,54 @@ class VideoTranscriptService {
 
   async transcribeVideo(videoUrl, options = {}) {
     const startTime = Date.now();
-    let tempFilePath = null;
 
     try {
-      logger.info('Starting video transcription', {
+      logger.info('[MOCK/REAL] Starting video transcription', {
         videoUrl: videoUrl.substring(0, 100) + '...',
-        options
+        options,
+        hasOpenAI: !!this.openai
       });
 
+      // If OpenAI is not configured, return mock transcription
+      if (!this.openai) {
+        logger.info('Returning mock transcription data');
+        
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+        
+        const mockTranscripts = [
+          "Discover the amazing benefits of our premium quality products. Join thousands of satisfied customers who trust our brand.",
+          "Experience innovation like never before. Our cutting-edge technology delivers exceptional results every time.",
+          "Don't miss out on this limited-time offer. Get yours today and see the difference quality makes.",
+          "Transform your lifestyle with our award-winning solutions. Trusted by professionals worldwide.",
+          "Join the revolution of customers who choose excellence. Order now and experience the premium difference."
+        ];
+        
+        const mockTranscript = mockTranscripts[Math.floor(Math.random() * mockTranscripts.length)];
+        const duration = Date.now() - startTime;
+        
+        return {
+          transcript: mockTranscript,
+          language: 'en',
+          duration: 25 + Math.random() * 35, // 25-60 seconds
+          segments: [{
+            start: 0,
+            end: 30,
+            text: mockTranscript,
+            avg_logprob: -0.3
+          }],
+          confidence: 85 + Math.random() * 10, // 85-95%
+          processing_time_ms: duration,
+          file_size_mb: '2.5',
+          model: 'mock-whisper-1',
+          transcribed_at: new Date().toISOString(),
+          note: 'Mock transcription for UI testing'
+        };
+      }
+
+      // Real OpenAI transcription (if available)
+      let tempFilePath = null;
+      
       // Download video to temporary file
       tempFilePath = await this.downloadVideo(videoUrl);
       
@@ -108,6 +137,16 @@ class VideoTranscriptService {
         processing_time: duration
       });
 
+      // Clean up temporary file
+      if (tempFilePath) {
+        try {
+          await fs.remove(tempFilePath);
+          logger.debug('Temporary video file cleaned up:', tempFilePath);
+        } catch (cleanupError) {
+          logger.warn('Failed to cleanup temp file:', cleanupError);
+        }
+      }
+
       return result;
 
     } catch (error) {
@@ -127,6 +166,10 @@ class VideoTranscriptService {
   }
 
   async downloadVideo(videoUrl) {
+    if (!axios) {
+      throw new Error('axios not available for video download');
+    }
+
     const fileName = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp4`;
     const filePath = path.join(this.tempDir, fileName);
 
@@ -171,6 +214,16 @@ class VideoTranscriptService {
 
   async testConnection() {
     try {
+      if (!this.openai) {
+        return {
+          success: false,
+          message: 'OpenAI not configured - using mock transcription',
+          model_available: false,
+          api_key_configured: !!process.env.OPENAI_API_KEY,
+          mock_mode: true
+        };
+      }
+
       // Test with a simple audio file creation (not actual transcription)
       const models = await this.openai.models.list();
       const whisperModel = models.data.find(model => model.id === 'whisper-1');
@@ -179,14 +232,16 @@ class VideoTranscriptService {
         success: true,
         message: 'OpenAI Whisper connection successful',
         model_available: !!whisperModel,
-        api_key_configured: !!process.env.OPENAI_API_KEY
+        api_key_configured: !!process.env.OPENAI_API_KEY,
+        mock_mode: false
       };
     } catch (error) {
       logger.error('OpenAI connection test failed:', error);
       return {
         success: false,
         error: error.message,
-        api_key_configured: !!process.env.OPENAI_API_KEY
+        api_key_configured: !!process.env.OPENAI_API_KEY,
+        mock_mode: !this.openai
       };
     }
   }
