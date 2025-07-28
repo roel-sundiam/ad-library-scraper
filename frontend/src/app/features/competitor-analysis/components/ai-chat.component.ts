@@ -116,18 +116,28 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
   }
 
   private sendToAI(message: string): void {
-    // Create analysis prompt with context
-    const contextPrompt = this.createContextualPrompt(message);
-    
-    const analysisRequest = {
-      prompt: contextPrompt,
-      filters: {
-        analysis_type: 'competitor_chat',
-        context: this.analysisResults ? 'with_results' : 'general'
-      }
+    // Check if we have analysis results with workflow ID
+    if (!this.analysisResults?.workflow_id) {
+      this.addErrorMessage('Please run a competitor analysis first to start chatting with AI.');
+      this.isTyping = false;
+      this.isSending = false;
+      return;
+    }
+
+    // Prepare conversation history
+    const conversationHistory = this.messages.map(msg => ({
+      sender: msg.sender,
+      text: msg.text,
+      timestamp: msg.timestamp
+    }));
+
+    const chatRequest = {
+      message: message,
+      workflowId: this.analysisResults.workflow_id,
+      conversationHistory: conversationHistory
     };
 
-    this.apiService.startAnalysis(analysisRequest).subscribe({
+    this.apiService.sendChatMessage(chatRequest).subscribe({
       next: (response) => {
         this.isTyping = false;
         this.isSending = false;
@@ -135,7 +145,7 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
         if (response.success) {
           const aiMessage: ChatMessage = {
             sender: 'ai',
-            text: response.data.analysis,
+            text: response.data.response,
             timestamp: new Date()
           };
           this.messages.push(aiMessage);

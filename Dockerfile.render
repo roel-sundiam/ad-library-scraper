@@ -1,0 +1,37 @@
+# Multi-stage build for Render with Ollama
+FROM node:18-alpine AS base
+
+# Install system dependencies for Ollama
+RUN apk add --no-cache curl bash
+
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci --only=production
+
+# Copy application code
+COPY . .
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+echo "Starting Ollama service..."\n\
+ollama serve &\n\
+echo "Waiting for Ollama to start..."\n\
+sleep 10\n\
+echo "Downloading AI model..."\n\
+ollama pull llama3.1:8b\n\
+echo "Starting Node.js application..."\n\
+npm start' > start.sh && chmod +x start.sh
+
+# Expose ports
+EXPOSE 3000 11434
+
+# Start both Ollama and Node.js
+CMD ["./start.sh"]

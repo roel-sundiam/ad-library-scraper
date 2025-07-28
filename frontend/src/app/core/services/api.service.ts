@@ -44,6 +44,11 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/analysis/test`);
   }
 
+  // AI Chat endpoints
+  sendChatMessage(request: { message: string; workflowId: string; conversationHistory?: any[] }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/analysis/chat`, request);
+  }
+
   // Video transcription endpoints
   transcribeVideo(request: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/videos/transcript`, request);

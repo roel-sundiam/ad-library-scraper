@@ -2136,13 +2136,35 @@ function parseTextAnalysis(analysisText) {
   };
 }
 
-// AI Analysis API Routes
-const ClaudeService = require('../services/claude-service');
-const VideoTranscriptService = require('../services/video-transcript-service');
+// AI Analysis API Routes (Initialize only when needed)
+let claudeService = null;
+let videoTranscriptService = null;
 
-// Initialize services
-const claudeService = new ClaudeService();
-const videoTranscriptService = new VideoTranscriptService();
+// Helper function to get Claude service (lazy initialization)
+function getClaudeService() {
+  if (!claudeService && process.env.ANTHROPIC_API_KEY) {
+    try {
+      const ClaudeService = require('../services/claude-service');
+      claudeService = new ClaudeService();
+    } catch (error) {
+      logger.warn('Failed to initialize Claude service:', error.message);
+    }
+  }
+  return claudeService;
+}
+
+// Helper function to get Video Transcript service (lazy initialization)
+function getVideoTranscriptService() {
+  if (!videoTranscriptService && process.env.OPENAI_API_KEY) {
+    try {
+      const VideoTranscriptService = require('../services/video-transcript-service');
+      videoTranscriptService = new VideoTranscriptService();
+    } catch (error) {
+      logger.warn('Failed to initialize Video Transcript service:', error.message);
+    }
+  }
+  return videoTranscriptService;
+}
 
 // Start AI analysis with custom prompt
 router.post('/analysis', async (req, res) => {
@@ -2244,8 +2266,9 @@ router.post('/analysis', async (req, res) => {
     // Try Claude if Ollama failed or not available
     if (!analysisResult) {
       try {
-        if (process.env.ANTHROPIC_API_KEY) {
-          const claudeResult = await claudeService.analyzeAds(prompt, adsWithTranscripts, filters);
+        const claude = getClaudeService();
+        if (claude) {
+          const claudeResult = await claude.analyzeAds(prompt, adsWithTranscripts, filters);
           analysisResult = {
             analysis: claudeResult.analysis,
             metadata: claudeResult.metadata
@@ -2295,10 +2318,18 @@ router.post('/analysis', async (req, res) => {
 router.get('/analysis/test', async (req, res) => {
   try {
     // Test Claude connection
-    const claudeTest = await claudeService.testConnection();
+    let claudeTest = { success: false, message: 'No API key configured' };
+    const claude = getClaudeService();
+    if (claude) {
+      claudeTest = await claude.testConnection();
+    }
     
-    // Test video transcription service
-    const transcriptTest = await videoTranscriptService.testConnection();
+    // Test video transcription service  
+    let transcriptTest = { success: false, message: 'No API key configured' };
+    const videoService = getVideoTranscriptService();
+    if (videoService) {
+      transcriptTest = await videoService.testConnection();
+    }
 
     res.json({
       success: true,
@@ -2398,8 +2429,9 @@ router.post('/analysis/chat', async (req, res) => {
       
       try {
         // Fallback to Claude if available
-        if (process.env.ANTHROPIC_API_KEY) {
-          chatResult = await claudeService.analyzeAds(contextPrompt, adsWithTranscripts);
+        const claude = getClaudeService();
+        if (claude) {
+          chatResult = await claude.analyzeAds(contextPrompt, adsWithTranscripts);
           aiProvider = 'anthropic';
         }
       } catch (claudeError) {
