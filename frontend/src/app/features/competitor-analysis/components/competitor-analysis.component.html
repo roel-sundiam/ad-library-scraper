@@ -1,7 +1,7 @@
 <div class="competitor-analysis-container">
   <div class="page-header">
-    <h1>Competitor Analysis</h1>
-    <p>Analyze your brand's advertising strategy against competitors using Facebook Ad Library data</p>
+    <h1>Single Competitor Analysis</h1>
+    <p>Analyze a competitor's Facebook advertising strategy using Facebook Ad Library data</p>
   </div>
 
   <div class="content-layout">
@@ -12,10 +12,10 @@
           <div class="header-content">
             <div class="title-section">
               <mat-card-title>
-                <mat-icon class="header-icon">compare_arrows</mat-icon>
-                Configure Competitor Analysis
+                <mat-icon class="header-icon">analytics</mat-icon>
+                Configure Single Competitor Analysis
               </mat-card-title>
-              <mat-card-subtitle>Compare your Facebook advertising strategy with up to 2 competitors</mat-card-subtitle>
+              <mat-card-subtitle>Analyze a competitor's Facebook advertising strategy and get detailed insights</mat-card-subtitle>
             </div>
             <div class="config-section">
               <button mat-stroked-button 
@@ -41,44 +41,16 @@
 
           <form [formGroup]="analysisForm" (ngSubmit)="onSubmit()">
             
-            <!-- Your Facebook Page URL -->
+            <!-- Competitor URL -->
             <div class="form-group">
-              <label class="section-label">Your Facebook Page URL</label>
+              <label class="section-label">Competitor Facebook Page URL</label>
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Your brand's Facebook page</mat-label>
-                <input matInput formControlName="yourPageUrl" placeholder="https://facebook.com/yourbrand">
-                <mat-icon matSuffix>home</mat-icon>
-                <mat-hint>Use the public Facebook page URL, not the Ad Library URL</mat-hint>
-                <mat-error *ngIf="getErrorMessage('yourPageUrl')">
-                  {{ getErrorMessage('yourPageUrl') }}
-                </mat-error>
-              </mat-form-field>
-            </div>
-
-            <!-- Competitor 1 URL -->
-            <div class="form-group">
-              <label class="section-label">Competitor #1 Facebook Page URL</label>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>First competitor's Facebook page</mat-label>
-                <input matInput formControlName="competitor1Url" placeholder="https://facebook.com/competitor1">
+                <mat-label>Competitor's Facebook page</mat-label>
+                <input matInput formControlName="competitorUrl" placeholder="https://facebook.com/competitor">
                 <mat-icon matSuffix>business</mat-icon>
-                <mat-hint>Public Facebook page URL of your first competitor</mat-hint>
-                <mat-error *ngIf="getErrorMessage('competitor1Url')">
-                  {{ getErrorMessage('competitor1Url') }}
-                </mat-error>
-              </mat-form-field>
-            </div>
-
-            <!-- Competitor 2 URL -->
-            <div class="form-group">
-              <label class="section-label">Competitor #2 Facebook Page URL</label>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Second competitor's Facebook page</mat-label>
-                <input matInput formControlName="competitor2Url" placeholder="https://facebook.com/competitor2">
-                <mat-icon matSuffix>business</mat-icon>
-                <mat-hint>Public Facebook page URL of your second competitor</mat-hint>
-                <mat-error *ngIf="getErrorMessage('competitor2Url')">
-                  {{ getErrorMessage('competitor2Url') }}
+                <mat-hint>Enter the public Facebook page URL of the competitor you want to analyze</mat-hint>
+                <mat-error *ngIf="getErrorMessage('competitorUrl')">
+                  {{ getErrorMessage('competitorUrl') }}
                 </mat-error>
               </mat-form-field>
             </div>
@@ -93,7 +65,7 @@
                 class="submit-button">
                 <mat-icon *ngIf="!isSubmitting">analytics</mat-icon>
                 <mat-spinner *ngIf="isSubmitting" diameter="20"></mat-spinner>
-                {{ isSubmitting ? 'Starting Analysis...' : 'Start Competitor Analysis' }}
+                {{ isSubmitting ? 'Starting Analysis...' : 'Analyze Competitor' }}
               </button>
             </div>
           </form>
@@ -113,10 +85,10 @@
         </mat-card-header>
         <mat-card-content>
           <ol class="steps-list">
-            <li><strong>Data Collection:</strong> We analyze ads from each Facebook page using the Ad Library API</li>
-            <li><strong>AI Analysis:</strong> Compare advertising strategies, messaging, and creative approaches</li>
-            <li><strong>Insights:</strong> Get actionable recommendations to improve your campaigns</li>
-            <li><strong>Results:</strong> View comprehensive competitive analysis and export data</li>
+            <li><strong>Data Collection:</strong> We scrape ads from the competitor's Facebook page using the Ad Library API</li>
+            <li><strong>AI Analysis:</strong> Analyze advertising strategies, messaging, creative approaches, and video content</li>
+            <li><strong>Insights:</strong> Get actionable intelligence about competitor tactics and opportunities</li>
+            <li><strong>Results:</strong> View comprehensive competitor analysis with video breakdowns and export data</li>
           </ol>
         </mat-card-content>
       </mat-card>
@@ -179,15 +151,15 @@
           <ul class="requirements-list">
             <li>
               <mat-icon class="check-icon">analytics</mat-icon>
-              Live Facebook ads data with impressions & spend
+              Live Facebook ads data from competitor pages
             </li>
             <li>
-              <mat-icon class="check-icon">trending_up</mat-icon>
-              Competitor performance metrics comparison
+              <mat-icon class="check-icon">movie</mat-icon>
+              Video content analysis with bulk processing
             </li>
             <li>
               <mat-icon class="check-icon">palette</mat-icon>
-              Creative strategy analysis & insights
+              Creative strategy analysis & AI-powered insights
             </li>
             <li>
               <mat-icon class="check-icon">schedule</mat-icon>

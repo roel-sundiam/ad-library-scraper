@@ -606,12 +606,12 @@ router.post('/start-analysis', async (req, res) => {
     const { pageUrls } = req.body;
     
     // Validate required fields
-    if (!pageUrls || !Array.isArray(pageUrls) || pageUrls.length !== 3) {
+    if (!pageUrls || !Array.isArray(pageUrls) || pageUrls.length !== 1) {
       return res.status(400).json({
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'Exactly 3 Facebook page URLs are required',
+          message: 'Exactly 1 Facebook page URL is required',
           details: { pageUrls }
         }
       });
@@ -646,15 +646,15 @@ router.post('/start-analysis', async (req, res) => {
       page_urls: pageUrls,
       results: [],
       error: null,
-      progress: { current: 0, total: 3, percentage: 0, message: 'Initializing Apify analysis...' }
+      progress: { current: 0, total: 1, percentage: 0, message: 'Initializing single competitor analysis...' }
     };
     
     jobs.set(runId, analysisJob);
     
-    logger.info('Starting Apify competitor analysis', {
+    logger.info('Starting single competitor analysis', {
       runId,
       datasetId,
-      pageUrls
+      competitorUrl: pageUrls[0]
     });
     
     // Start Apify analysis asynchronously
@@ -667,7 +667,7 @@ router.post('/start-analysis', async (req, res) => {
         datasetId,
         status: 'queued',
         pageUrls,
-        estimated_duration: '3-7 minutes',
+        estimated_duration: '1-3 minutes',
         created_at: analysisJob.created_at
       },
       meta: {
@@ -682,7 +682,7 @@ router.post('/start-analysis', async (req, res) => {
       success: false,
       error: {
         code: 'ANALYSIS_ERROR',
-        message: 'Failed to start Apify analysis',
+        message: 'Failed to start competitor analysis',
         details: error.message
       }
     });
@@ -1149,8 +1149,8 @@ async function processApifyAnalysis(runId) {
     job.progress.message = 'Starting Apify scraping...';
     jobs.set(runId, job);
     
-    logger.info(`Processing Apify analysis ${runId}`, {
-      pageUrls: job.page_urls
+    logger.info(`Processing single competitor analysis ${runId}`, {
+      competitorUrl: job.page_urls[0]
     });
     
     // Initialize Apify scraper

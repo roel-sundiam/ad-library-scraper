@@ -23,9 +23,9 @@
       <div class="header-content">
         <h1>
           <mat-icon>analytics</mat-icon>
-          Facebook Ads Competitive Analysis
+          Single Competitor Analysis
         </h1>
-        <p>Live analysis of {{ brandComparisons.length }} brands with {{ totalAds }} total ads</p>
+        <p>Analysis of {{ brandComparisons[0]?.brand || 'competitor' }} with {{ totalAds }} total ads found</p>
       </div>
       <div class="header-actions">
         <button mat-stroked-button (click)="exportData()">
@@ -56,10 +56,10 @@
         <mat-card-content>
           <div class="metric-header">
             <mat-icon class="metric-icon">business</mat-icon>
-            <span class="metric-label">Advertisers</span>
+            <span class="metric-label">Competitor</span>
           </div>
-          <div class="metric-value">{{ totalAdvertisers }}</div>
-          <div class="metric-subtitle">Unique brands analyzed</div>
+          <div class="metric-value">{{ brandComparisons[0]?.brand || 'N/A' }}</div>
+          <div class="metric-subtitle">Brand being analyzed</div>
         </mat-card-content>
       </mat-card>
 
@@ -97,46 +97,60 @@
       <mat-card class="comparison-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon>compare</mat-icon>
-            Brand Performance Comparison
+            <mat-icon>insights</mat-icon>
+            Competitor Insights
           </mat-card-title>
-          <mat-card-subtitle>Compare advertising metrics across competitors</mat-card-subtitle>
+          <mat-card-subtitle>Key metrics and advertising patterns for {{ brandComparisons[0]?.brand || 'this competitor' }}</mat-card-subtitle>
         </mat-card-header>
         
         <mat-card-content>
-          <!-- Metric Selector -->
-          <div class="metric-selector">
-            <mat-button-toggle-group [(value)]="selectedMetric" (change)="onMetricChange($event.value)">
-              <mat-button-toggle value="impressions">Video Rate</mat-button-toggle>
-              <mat-button-toggle value="spend">Avg Text Length</mat-button-toggle>
-              <mat-button-toggle value="cpm">Video Ads</mat-button-toggle>
-              <mat-button-toggle value="ctr">Image Ads</mat-button-toggle>
-            </mat-button-toggle-group>
-          </div>
+          <div *ngIf="brandComparisons.length > 0" class="competitor-overview">
+            <div class="competitor-stats-grid">
+              <div class="stat-item">
+                <div class="stat-icon-container impressions">
+                  <mat-icon>play_circle</mat-icon>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ formatPercentage(brandComparisons[0].metrics.total_impressions) }}</div>
+                  <div class="stat-label">Video Content Rate</div>
+                </div>
+              </div>
 
-          <!-- Brand Comparison Bars -->
-          <div class="comparison-bars">
-            <div *ngFor="let brand of brandComparisons; let i = index" class="brand-bar">
-              <div class="brand-info">
-                <div class="brand-name">{{ brand.brand }}</div>
-                <div class="brand-stats">
-                  <span class="ads-count">{{ brand.ad_frequency }} ads</span>
-                  <span class="market-share">{{ formatPercentage(brand.market_share) }} share</span>
+              <div class="stat-item">
+                <div class="stat-icon-container spend">
+                  <mat-icon>text_fields</mat-icon>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ brandComparisons[0].metrics.total_spend.toFixed(0) }}</div>
+                  <div class="stat-label">Avg Text Length (chars)</div>
                 </div>
               </div>
-              
-              <div class="progress-container">
-                <div class="progress-bar" 
-                     [style.width.%]="(getMetricValue(brand, selectedMetric) / getMetricValue(brandComparisons[0], selectedMetric)) * 100"
-                     [style.background-color]="getBrandColor(i)">
+
+              <div class="stat-item">
+                <div class="stat-icon-container cpm">
+                  <mat-icon>movie</mat-icon>
                 </div>
-                <span class="metric-value-text">
-                  <span *ngIf="selectedMetric === 'impressions'">{{ formatPercentage(brand.metrics.total_impressions) }}</span>
-                  <span *ngIf="selectedMetric === 'spend'">{{ brand.metrics.total_spend.toFixed(0) }} chars</span>
-                  <span *ngIf="selectedMetric === 'cpm'">{{ brand.metrics.average_cpm }} videos</span>
-                  <span *ngIf="selectedMetric === 'ctr'">{{ brand.metrics.average_ctr }} images</span>
-                </span>
+                <div class="stat-details">
+                  <div class="stat-value">{{ brandComparisons[0].metrics.average_cpm }}</div>
+                  <div class="stat-label">Video Ads</div>
+                </div>
               </div>
+
+              <div class="stat-item">
+                <div class="stat-icon-container ctr">
+                  <mat-icon>image</mat-icon>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ brandComparisons[0].metrics.average_ctr }}</div>
+                  <div class="stat-label">Image Ads</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="competitor-summary">
+              <h4>{{ brandComparisons[0].brand }} Summary</h4>
+              <p><strong>{{ brandComparisons[0].ad_frequency }}</strong> total ads found with <strong>{{ formatPercentage(videoContentRate) }}</strong> video content rate</p>
+              <p>Creative mix: <strong>{{ brandComparisons[0].creative_types.image }}</strong> image ads, <strong>{{ brandComparisons[0].creative_types.video }}</strong> video ads</p>
             </div>
           </div>
         </mat-card-content>
@@ -423,5 +437,124 @@
       </mat-card>
     </div>
 
+  </div>
+</div>
+
+<!-- Modern Video Modal -->
+<div class="video-modal-overlay" *ngIf="showVideoModal" (click)="closeVideoModal()">
+  <div class="video-modal" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2>
+        <mat-icon>movie</mat-icon>
+        {{ modalTitle }}
+      </h2>
+      <button mat-icon-button (click)="closeVideoModal()" class="close-button">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Video Summary Stats -->
+    <div class="video-stats" *ngIf="!isFiltered">
+      <div class="stat-card">
+        <mat-icon>movie</mat-icon>
+        <div class="stat-info">
+          <span class="stat-number">{{ totalModalVideos }}</span>
+          <span class="stat-label">Total Videos</span>
+        </div>
+      </div>
+      
+      <div class="stat-card" *ngFor="let brand of videoBreakdown">
+        <mat-icon [style.color]="getBrandColor(brand.index)">business</mat-icon>
+        <div class="stat-info">
+          <span class="stat-number">{{ brand.count }}</span>
+          <span class="stat-label">{{ brand.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="modal-content">
+      <div class="video-list">
+        <div *ngFor="let video of displayedVideos; let i = index" class="video-item">
+          <div class="video-info">
+            <div class="video-header">
+              <span class="video-number">{{ i + 1 }}</span>
+              <div class="brand-tag" [style.background-color]="getBrandColorForName(video.brand)">
+                {{ video.brand }}
+              </div>
+              <span class="video-date">{{ formatDate(video.dates?.start_date) }}</span>
+            </div>
+            
+            <div class="video-content">
+              <p class="video-text">{{ getVideoText(video) }}</p>
+              
+              <!-- Video URL Display -->
+              <div class="video-url" *ngIf="getVideoUrl(video)">
+                <mat-icon>link</mat-icon>
+                <span class="url-label">Video URL:</span>
+                <a [href]="getVideoUrl(video)" target="_blank" class="video-link">
+                  {{ getVideoUrl(video) }}
+                </a>
+              </div>
+              
+              <div class="video-actions">
+                <a *ngIf="getVideoUrl(video)" 
+                   [href]="getVideoUrl(video)" 
+                   target="_blank" 
+                   mat-raised-button 
+                   color="primary" 
+                   class="action-button">
+                  <mat-icon>play_circle</mat-icon>
+                  Watch Video
+                </a>
+                
+                <a [href]="getFacebookUrl(video.id)" 
+                   target="_blank" 
+                   mat-stroked-button 
+                   class="action-button">
+                  <mat-icon>open_in_new</mat-icon>
+                  View on Facebook
+                </a>
+                
+                <button mat-raised-button 
+                        color="accent" 
+                        (click)="analyzeVideoWithAI(video)"
+                        class="action-button">
+                  <mat-icon>psychology</mat-icon>
+                  Analyze with AI
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Load More Button -->
+      <div class="load-more-section" *ngIf="hasMoreVideos">
+        <button mat-raised-button color="accent" (click)="loadMoreVideos()">
+          <mat-icon>expand_more</mat-icon>
+          Load More Videos ({{ remainingVideos }} remaining)
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <div class="modal-tips">
+        <mat-icon>tips_and_updates</mat-icon>
+        <span>Use AI Chat to analyze video patterns across all your competitor videos</span>
+      </div>
+      
+      <div class="modal-actions">
+        <button mat-stroked-button (click)="exportVideoData()">
+          <mat-icon>download</mat-icon>
+          Export Video List
+        </button>
+        <button mat-raised-button color="primary" (click)="closeVideoModal()">
+          Close
+        </button>
+      </div>
+    </div>
   </div>
 </div>

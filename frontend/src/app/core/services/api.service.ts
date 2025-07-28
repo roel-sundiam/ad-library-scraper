@@ -90,10 +90,8 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/facebook/status`);
   }
 
-  // Legacy Competitor Analysis Workflow endpoints (DEPRECATED)
-  startCompetitorAnalysis(request: { yourPageUrl: string; competitor1Url: string; competitor2Url: string }): Observable<any> {
-    return this.http.post(`${this.baseUrl}/workflow/competitor-analysis`, request);
-  }
+  // Legacy Competitor Analysis Workflow endpoints (DEPRECATED - REMOVED)
+  // Use startFacebookAnalysis with single URL instead
 
   getWorkflowStatus(workflowId: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/workflow/${workflowId}/status`);
@@ -114,5 +112,18 @@ export class ApiService {
 
   cancelWorkflow(workflowId: string): Observable<any> {
     return this.http.post(`${this.baseUrl}/workflow/${workflowId}/cancel`, {});
+  }
+
+  // Bulk Video Analysis endpoints
+  startBulkVideoAnalysis(request: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/videos/bulk-analysis`, request);
+  }
+
+  getBulkAnalysisStatus(jobId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/videos/bulk-analysis/${jobId}/status`);
+  }
+
+  getBulkAnalysisResults(jobId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/videos/bulk-analysis/${jobId}/results`);
   }
 }

@@ -38,6 +38,17 @@ export class FacebookAdsDashboardComponent implements OnInit {
   isAnalyzing = false;
   showQuickPrompts = false;
   
+  // Modern Video Modal properties
+  showVideoModal = false;
+  modalTitle = '';
+  displayedVideos: any[] = [];
+  allModalVideos: any[] = [];
+  totalModalVideos = 0;
+  videoBreakdown: any[] = [];
+  isFiltered = false;
+  videosPerPage = 10;
+  currentVideoPage = 1;
+  
   quickPrompts = [
     'Analyze video content strategies across competitors',
     'What messaging themes are most common in these ads?',
@@ -361,14 +372,20 @@ export class FacebookAdsDashboardComponent implements OnInit {
     const allVideoAds: any[] = [];
     
     Object.values(this.analysisResults.data).forEach((brandData: any) => {
+      console.log('Processing brand:', brandData.page_name, 'with', brandData.ads_data?.length || 0, 'total ads');
+      
       if (brandData.ads_data) {
         const videoAds = brandData.ads_data.filter((ad: any) => ad.creative?.has_video);
+        console.log('Found', videoAds.length, 'video ads for', brandData.page_name);
+        
         allVideoAds.push(...videoAds.map((ad: any) => ({
           ...ad,
           brand: brandData.page_name
         })));
       }
     });
+
+    console.log('Total video ads collected:', allVideoAds.length);
 
     // Sort by date (most recent first)
     allVideoAds.sort((a: any, b: any) => {
@@ -377,21 +394,59 @@ export class FacebookAdsDashboardComponent implements OnInit {
       return dateB.getTime() - dateA.getTime();
     });
 
-    // Create a modal-like display or navigate to filtered view
-    this.showVideoModal(allVideoAds);
+    // Open modern video modal
+    this.openVideoModal(allVideoAds, 'All Competitor Videos');
   }
 
-  showVideoModal(videoAds: any[]): void {
-    const videoList = videoAds.slice(0, 20).map((ad, index) => {
-      const hasVideoUrl = ad.creative?.video_urls?.length > 0;
-      const fbLibraryUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
-      
-      return `${index + 1}. ${ad.brand} - "${ad.creative?.body?.substring(0, 60) || 'No text'}..."
-      ${hasVideoUrl ? '🎬 Video URL: ' + ad.creative.video_urls[0] : '📱 View on Facebook: ' + fbLibraryUrl}
-      📅 ${ad.dates?.start_date || 'Unknown date'}`;
-    }).join('\n\n');
+  // Modern Video Modal Methods
+  openVideoModal(videoAds: any[], title: string, filtered = false): void {
+    this.allModalVideos = videoAds;
+    this.totalModalVideos = videoAds.length;
+    this.modalTitle = title;
+    this.isFiltered = filtered;
+    this.currentVideoPage = 1;
+    
+    // Calculate breakdown by brand
+    this.calculateVideoBreakdown();
+    
+    // Load first page of videos
+    this.loadVideoPage();
+    
+    // Show modal
+    this.showVideoModal = true;
+  }
 
-    alert(`🎬 Video Ads Found (${videoAds.length} total):\n\n${videoList}\n\n💡 Tip: Click Facebook links to view actual videos`);
+  calculateVideoBreakdown(): void {
+    const breakdown: { [key: string]: number } = {};
+    
+    this.allModalVideos.forEach(video => {
+      const brand = video.brand || 'Unknown';
+      breakdown[brand] = (breakdown[brand] || 0) + 1;
+    });
+
+    this.videoBreakdown = Object.entries(breakdown).map(([name, count], index) => ({
+      name,
+      count,
+      index
+    }));
+  }
+
+  loadVideoPage(): void {
+    const startIndex = (this.currentVideoPage - 1) * this.videosPerPage;
+    const endIndex = startIndex + this.videosPerPage;
+    this.displayedVideos = this.allModalVideos.slice(0, endIndex);
+  }
+
+  loadMoreVideos(): void {
+    this.currentVideoPage++;
+    this.loadVideoPage();
+  }
+
+  closeVideoModal(): void {
+    this.showVideoModal = false;
+    this.allModalVideos = [];
+    this.displayedVideos = [];
+    this.videoBreakdown = [];
   }
 
   // Show videos filtered by specific brand
@@ -436,20 +491,126 @@ export class FacebookAdsDashboardComponent implements OnInit {
       return;
     }
 
-    // Show brand-specific video modal
-    this.showBrandVideoModal(brandVideoAds, brandName);
+    // Open modern modal for brand-specific videos
+    this.openVideoModal(brandVideoAds, `${brandName} Videos`, true);
   }
 
-  showBrandVideoModal(videoAds: any[], brandName: string): void {
-    const videoList = videoAds.slice(0, 15).map((ad, index) => {
-      const hasVideoUrl = ad.creative?.video_urls?.length > 0;
-      const fbLibraryUrl = `https://www.facebook.com/ads/library/?id=${ad.id}`;
-      
-      return `${index + 1}. "${ad.creative?.body?.substring(0, 80) || 'No text'}..."
-      ${hasVideoUrl ? '🎬 Video URL: ' + ad.creative.video_urls[0] : '📱 View on Facebook: ' + fbLibraryUrl}
-      📅 ${ad.dates?.start_date || 'Unknown date'}`;
-    }).join('\n\n');
+  // Helper methods for modern modal
+  get hasMoreVideos(): boolean {
+    return this.displayedVideos.length < this.allModalVideos.length;
+  }
 
-    alert(`🎬 ${brandName} Video Ads (${videoAds.length} total):\n\n${videoList}\n\n💡 Tip: Click Facebook links to view ${brandName}'s actual video strategies`);
+  get remainingVideos(): number {
+    return this.allModalVideos.length - this.displayedVideos.length;
+  }
+
+  getVideoText(video: any): string {
+    return video.creative?.body || video.creative?.title || 'No text available';
+  }
+
+  getVideoUrl(video: any): string | null {
+    return video.creative?.video_urls?.[0] || null;
+  }
+
+  getFacebookUrl(adId: string): string {
+    return `https://www.facebook.com/ads/library/?id=${adId}`;
+  }
+
+  // Navigate to AI chat with video context for analysis
+  analyzeVideoWithAI(video: any): void {
+    // Close the video modal first
+    this.closeVideoModal();
+    
+    // Prepare video analysis prompt
+    const videoInfo = {
+      brand: video.brand,
+      text: this.getVideoText(video),
+      date: this.formatDate(video.dates?.start_date),
+      facebook_url: this.getFacebookUrl(video.id),
+      video_url: this.getVideoUrl(video)
+    };
+    
+    // Create analysis prompt with video details
+    const analysisPrompt = `Analyze this competitor video ad:
+
+Brand: ${videoInfo.brand}
+Date: ${videoInfo.date}
+Ad Text: "${videoInfo.text}"
+Facebook URL: ${videoInfo.facebook_url}
+${videoInfo.video_url ? `Video URL: ${videoInfo.video_url}` : 'Video URL: Not available'}
+
+Please provide insights on:
+1. Messaging strategy and positioning
+2. Target audience implications
+3. Creative approach and format
+4. Competitive intelligence insights
+5. Opportunities for differentiation
+
+Context: This is part of my competitor analysis dataset with ${this.totalVideoAds} total video ads across ${this.brandComparisons.length} brands.`;
+
+    // Set the prompt in the custom analysis field
+    this.customPrompt = analysisPrompt;
+    
+    // Scroll to AI analysis section
+    setTimeout(() => {
+      const aiSection = document.querySelector('.ai-analysis-card');
+      if (aiSection) {
+        aiSection.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+        
+        // Focus on the prompt textarea
+        const textarea = document.querySelector('textarea[matInput]') as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.focus();
+        }
+      }
+    }, 100);
+  }
+
+  formatDate(dateString: string): string {
+    if (!dateString) return 'No date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  }
+
+  getBrandColorForName(brandName: string): string {
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+    const index = Math.abs(brandName.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
+    return colors[index];
+  }
+
+  exportVideoData(): void {
+    const videoData = {
+      summary: {
+        total_videos: this.totalModalVideos,
+        breakdown: this.videoBreakdown,
+        exported_at: new Date().toISOString()
+      },
+      videos: this.allModalVideos.map(video => ({
+        brand: video.brand,
+        text: this.getVideoText(video),
+        date: video.dates?.start_date,
+        facebook_url: this.getFacebookUrl(video.id),
+        video_url: video.creative?.video_urls?.[0] || null
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(videoData, null, 2)], {
+      type: 'application/json'
+    });
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `video-analysis-${this.modalTitle.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.json`;
+    link.click();
+    
+    window.URL.revokeObjectURL(url);
   }
 }

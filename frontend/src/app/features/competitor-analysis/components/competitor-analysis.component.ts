@@ -21,9 +21,7 @@ export class CompetitorAnalysisComponent implements OnInit {
     private router: Router
   ) {
     this.analysisForm = this.fb.group({
-      yourPageUrl: ['', [Validators.required, this.facebookUrlValidator]],
-      competitor1Url: ['', [Validators.required, this.facebookUrlValidator]],
-      competitor2Url: ['', [Validators.required, this.facebookUrlValidator]]
+      competitorUrl: ['', [Validators.required, this.facebookUrlValidator]]
     });
   }
 
@@ -64,22 +62,14 @@ export class CompetitorAnalysisComponent implements OnInit {
 
       const formData = this.analysisForm.value;
       
-      // Convert form data to pageUrls array for new API
-      const pageUrls = [
-        formData.yourPageUrl,
-        formData.competitor1Url,
-        formData.competitor2Url
-      ];
-
-      this.apiService.startCompetitorAnalysis({
-        yourPageUrl: formData.yourPageUrl,
-        competitor1Url: formData.competitor1Url,
-        competitor2Url: formData.competitor2Url
+      // Use new single competitor API
+      this.apiService.startFacebookAnalysis({
+        pageUrls: [formData.competitorUrl]
       }).subscribe({
-        next: (response: any) => {
-          if (response.success && response.data.workflow_id) {
-            // Navigate to progress dashboard with workflow ID
-            this.router.navigate(['/competitor-analysis/progress', response.data.workflow_id]);
+        next: (response: FacebookAnalysisResponse) => {
+          if (response.success && response.data.runId) {
+            // Navigate to progress dashboard with run ID
+            this.router.navigate(['/competitor-analysis/progress', response.data.runId]);
           } else {
             this.errorMessage = 'Failed to start analysis. Please try again.';
             this.isSubmitting = false;
@@ -129,7 +119,7 @@ export class CompetitorAnalysisComponent implements OnInit {
     const control = this.analysisForm.get(controlName);
     if (control?.errors && control.touched) {
       if (control.errors['required']) {
-        return 'This field is required';
+        return 'Competitor URL is required';
       }
       if (control.errors['invalidUrl']) {
         return 'Please enter a valid URL';

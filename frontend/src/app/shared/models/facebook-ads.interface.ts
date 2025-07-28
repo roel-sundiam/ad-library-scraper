@@ -13,6 +13,7 @@ export interface FacebookAd {
     call_to_action: string;
     images: string[];
     has_video: boolean;
+    video_urls?: string[];
     landing_url?: string;
   };
   targeting: {
@@ -158,4 +159,29 @@ export interface AnalysisInsights {
     [format: string]: number;
   };
   recommendations: string[];
+}
+
+export interface SingleCompetitorAnalysis {
+  competitor: CompetitorPageData;
+  insights: {
+    total_ads: number;
+    video_ads: number;
+    video_content_rate: number;
+    creative_formats: {
+      image: number;
+      video: number;
+      carousel: number;
+    };
+    messaging_themes: string[];
+    top_performing_ads: FacebookAd[];
+    recommendations: string[];
+  };
+  video_analysis?: {
+    total_videos: number;
+    videos_by_type: {
+      [type: string]: number;
+    };
+    common_themes: string[];
+    transcript_insights?: string[];
+  };
 }
