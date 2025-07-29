@@ -130,7 +130,13 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
     };
 
     // Add workflow context if available (contextual mode)
-    if (this.analysisResults?.workflow_id && this.analysisResults.workflow_id.trim()) {
+    // Skip mock/test workflows as they don't exist in the real system
+    const isValidWorkflow = this.analysisResults?.workflow_id && 
+                           this.analysisResults.workflow_id.trim() &&
+                           this.analysisResults.analysis?.ai_provider !== 'enhanced_mock' &&
+                           this.analysisResults.analysis?.ai_provider !== 'mock';
+    
+    if (isValidWorkflow) {
       chatRequest.workflowId = this.analysisResults.workflow_id;
     }
     // Otherwise use general mode (no workflow context required)
