@@ -45,7 +45,7 @@ export class ApiService {
   }
 
   // AI Chat endpoints
-  sendChatMessage(request: { message: string; workflowId: string; conversationHistory?: any[] }): Observable<any> {
+  sendChatMessage(request: { message: string; workflowId?: string; conversationHistory?: any[] }): Observable<any> {
     return this.http.post(`${this.baseUrl}/analysis/chat`, request);
   }
 
