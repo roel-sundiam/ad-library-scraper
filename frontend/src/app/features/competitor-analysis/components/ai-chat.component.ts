@@ -26,6 +26,8 @@ interface AnalysisResults {
     recommendations: string[];
     analyzed_at: string;
     ai_provider: string;
+    real_ads_data?: any[]; // Real ad data extracted from scraped results
+    brands_analyzed?: string[]; // List of analyzed brand names
   };
   credits_used: number;
 }
@@ -129,14 +131,21 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
       conversationHistory: conversationHistory
     };
 
-    // Add workflow context if available (contextual mode)
+    // Priority 1: Include real ad data for contextual analysis (preferred approach)
+    if (this.analysisResults?.analysis?.real_ads_data) {
+      chatRequest.adsData = this.analysisResults.analysis.real_ads_data;
+      chatRequest.brandsAnalyzed = this.analysisResults.analysis.brands_analyzed;
+      console.log('Including real ad data in chat request:', {
+        adsCount: chatRequest.adsData.length,
+        brands: chatRequest.brandsAnalyzed
+      });
+    }
+    // Priority 2: Add workflow context if available and no real ads data (fallback)
     // Skip mock/test workflows as they don't exist in the real system
-    const isValidWorkflow = this.analysisResults?.workflow_id && 
-                           this.analysisResults.workflow_id.trim() &&
-                           this.analysisResults.analysis?.ai_provider !== 'enhanced_mock' &&
-                           this.analysisResults.analysis?.ai_provider !== 'mock';
-    
-    if (isValidWorkflow) {
+    else if (this.analysisResults?.workflow_id && 
+             this.analysisResults.workflow_id.trim() &&
+             this.analysisResults.analysis?.ai_provider !== 'enhanced_mock' &&
+             this.analysisResults.analysis?.ai_provider !== 'mock') {
       chatRequest.workflowId = this.analysisResults!.workflow_id;
     }
     // Otherwise use general mode (no workflow context required)

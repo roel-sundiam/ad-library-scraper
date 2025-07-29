@@ -423,6 +423,43 @@ Focus on actionable optimization recommendations for video campaigns.`
     }
   }
 
+  // Helper method to extract real ad data for AI analysis
+  private extractAdDataForAnalysis(): any[] {
+    if (!this.analysisResults?.data) return [];
+    
+    const allAds: any[] = [];
+    const brands = Object.keys(this.analysisResults.data);
+    
+    brands.forEach(brandKey => {
+      const brandData = this.analysisResults!.data[brandKey];
+      if (brandData.ads_data && brandData.ads_data.length > 0) {
+        brandData.ads_data.forEach(ad => {
+          allAds.push({
+            advertiser_name: brandData.page_name,
+            ad_creative_body: ad.creative?.body || ad.creative?.title || '',
+            ad_text: ad.creative?.description || '',
+            creative: {
+              has_video: ad.creative?.has_video || false,
+              image_url: ad.creative?.images?.[0] || '',
+              video_urls: ad.creative?.video_urls || [],
+              video_transcripts: (ad.creative as any)?.video_transcripts || []
+            },
+            metrics: {
+              impressions: (ad as any).metrics?.impressions || 0,
+              clicks: (ad as any).metrics?.clicks || 0,
+              spend: (ad as any).metrics?.spend || 0
+            },
+            targeting: ad.targeting || {},
+            dates: ad.dates || {},
+            platforms: (ad as any).platforms || []
+          });
+        });
+      }
+    });
+    
+    return allAds;
+  }
+
   // AI Analysis Methods
   runCustomAnalysis(): void {
     if (!this.customPrompt.trim() || this.isAnalyzing) return;
@@ -430,11 +467,17 @@ Focus on actionable optimization recommendations for video campaigns.`
     this.isAnalyzing = true;
     this.customAnalysisResult = null;
 
+    // Extract real ad data for contextual analysis
+    const realAdData = this.extractAdDataForAnalysis();
+    
     const analysisRequest: any = {
       prompt: this.customPrompt,
+      adsData: realAdData, // Include actual scraped ad data
       filters: {
         analysis_type: 'custom_competitor_analysis',
-        dashboard_context: true
+        dashboard_context: true,
+        total_ads: realAdData.length,
+        brands_analyzed: this.brandComparisons.length
       }
     };
 
@@ -442,6 +485,12 @@ Focus on actionable optimization recommendations for video campaigns.`
     if (this.datasetId && !this.datasetId.startsWith('dataset_')) {
       analysisRequest.workflowId = this.datasetId;
     }
+    
+    console.log('Custom Analysis Request with real data:', {
+      adsCount: realAdData.length,
+      brands: realAdData.map(ad => ad.advertiser_name).filter((name, index, arr) => arr.indexOf(name) === index),
+      hasVideoTranscripts: realAdData.some(ad => ad.creative.video_transcripts?.length > 0)
+    });
 
     this.apiService.startAnalysis(analysisRequest).subscribe({
       next: (response) => {
@@ -653,7 +702,10 @@ Focus on actionable optimization recommendations for video campaigns.`
   getAnalysisResultsForChat(): any {
     if (!this.analysisResults) return null;
 
-    // Format data for the AI chat component
+    // Extract real ad data for contextual chat
+    const realAdData = this.extractAdDataForAnalysis();
+    
+    // Format data for the AI chat component with real context
     return {
       workflow_id: this.datasetId,
       analysis: {
@@ -682,7 +734,11 @@ Focus on actionable optimization recommendations for video campaigns.`
           'Monitor competitor advertising frequency patterns'
         ],
         analyzed_at: new Date().toISOString(),
-        ai_provider: 'enhanced_mock'
+        ai_provider: 'real_data_analysis',
+        // Include real ad data for AI context
+        real_ads_data: realAdData.slice(0, 20), // Limit to first 20 ads to avoid token limits
+        brands_analyzed: [...new Set(realAdData.map(ad => ad.advertiser_name))],
+        total_real_ads: realAdData.length
       },
       credits_used: 0
     };
