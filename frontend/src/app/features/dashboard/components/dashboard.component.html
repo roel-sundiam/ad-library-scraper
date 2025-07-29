@@ -99,6 +99,146 @@
       </mat-card-content>
     </mat-card>
 
+    <!-- Educational Content - Regular Users -->
+    <div *ngIf="!isSuperAdmin" class="educational-content">
+      <!-- Getting Started Guide -->
+      <mat-card class="guide-card">
+        <mat-card-header>
+          <div class="guide-icon">
+            <mat-icon>school</mat-icon>
+          </div>
+          <mat-card-title>Getting Started with ScrapeIQ</mat-card-title>
+          <mat-card-subtitle>Learn how to analyze your competitors effectively</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="guide-steps">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Find Competitor Pages</h4>
+                <p>Identify your competitors' Facebook business pages to analyze their advertising strategies.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Start Analysis</h4>
+                <p>Use the "Start Competitor Analysis" button above to begin scraping and analyzing competitor ads.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>AI-Powered Insights</h4>
+                <p>Get detailed insights using our AI analysis tools including video content analysis and strategic recommendations.</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Features Overview -->
+      <div class="features-grid">
+        <mat-card class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>analytics</mat-icon>
+          </div>
+          <div class="feature-content">
+            <h3>Ad Library Scraping</h3>
+            <p>Access Facebook's Ad Library to gather comprehensive competitor advertising data including creative content, targeting insights, and campaign performance metrics.</p>
+            <div class="feature-benefits">
+              <span class="benefit-tag">Real-time Data</span>
+              <span class="benefit-tag">Multiple Formats</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>smart_toy</mat-icon>
+          </div>
+          <div class="feature-content">
+            <h3>AI Video Analysis</h3>
+            <p>Leverage advanced AI to analyze competitor video advertisements, extract transcripts, and identify key messaging patterns and creative strategies.</p>
+            <div class="feature-benefits">
+              <span class="benefit-tag">Transcript Analysis</span>
+              <span class="benefit-tag">Content Insights</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>insights</mat-icon>
+          </div>
+          <div class="feature-content">
+            <h3>Strategic Intelligence</h3>
+            <p>Generate actionable insights and strategic recommendations based on competitor analysis to inform your own marketing and advertising decisions.</p>
+            <div class="feature-benefits">
+              <span class="benefit-tag">Market Trends</span>
+              <span class="benefit-tag">Competitive Gaps</span>
+            </div>
+          </div>
+        </mat-card>
+
+        <mat-card class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>chat</mat-icon>
+          </div>
+          <div class="feature-content">
+            <h3>AI Chat Assistant</h3>
+            <p>Interactive AI assistant to help you interpret analysis results, ask follow-up questions, and explore deeper insights from your competitor research.</p>
+            <div class="feature-benefits">
+              <span class="benefit-tag">Interactive Q&A</span>
+              <span class="benefit-tag">Custom Analysis</span>
+            </div>
+          </div>
+        </mat-card>
+      </div>
+
+      <!-- Tips and Best Practices -->
+      <mat-card class="tips-card">
+        <mat-card-header>
+          <div class="tips-icon">
+            <mat-icon>lightbulb</mat-icon>
+          </div>
+          <mat-card-title>Pro Tips for Better Analysis</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="tips-grid">
+            <div class="tip-item">
+              <mat-icon>target</mat-icon>
+              <div class="tip-content">
+                <h4>Focus on Direct Competitors</h4>
+                <p>Analyze businesses that target similar audiences and offer competing products or services for more relevant insights.</p>
+              </div>
+            </div>
+            <div class="tip-item">
+              <mat-icon>schedule</mat-icon>
+              <div class="tip-content">
+                <h4>Regular Monitoring</h4>
+                <p>Perform competitor analysis regularly to track changes in their advertising strategies and stay ahead of market trends.</p>
+              </div>
+            </div>
+            <div class="tip-item">
+              <mat-icon>psychology</mat-icon>
+              <div class="tip-content">
+                <h4>Use AI Analysis</h4>
+                <p>Take advantage of our AI tools to uncover deeper insights that might not be immediately apparent from surface-level data.</p>
+              </div>
+            </div>
+            <div class="tip-item">
+              <mat-icon>download</mat-icon>
+              <div class="tip-content">
+                <h4>Export Results</h4>
+                <p>Download your analysis results and reports to share with your team and incorporate into your marketing strategy planning.</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
     <!-- API Status Card - Super Admin Only -->
     <mat-card class="status-card" *ngIf="isSuperAdmin">
       <mat-card-header>

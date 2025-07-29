@@ -197,7 +197,8 @@ ads-header .header-actions {
 body .cdk-overlay-container .cdk-overlay-connected-position-bounding-box .cdk-overlay-pane .mat-mdc-menu-panel.user-menu-panel,
 .cdk-overlay-container .mat-mdc-menu-panel.user-menu-panel,
 .mat-mdc-menu-panel.user-menu-panel {
-  min-width: 320px !important;
+  min-width: 260px !important;
+  max-width: 280px !important;
   border-radius: 16px !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.15) !important;
   backdrop-filter: blur(20px) !important;
@@ -491,8 +492,8 @@ body .cdk-overlay-container .user-menu-panel .mat-divider,
   .cdk-overlay-container .user-menu-panel,
   .user-menu-panel,
   .mat-mdc-menu-panel.user-menu-panel {
-    min-width: 300px !important;
-    max-width: calc(100vw - 32px) !important;
+    min-width: 240px !important;
+    max-width: calc(100vw - 24px) !important;
   }
 }
 
@@ -531,7 +532,8 @@ body .cdk-overlay-container .user-menu-panel .mat-divider,
   .cdk-overlay-container .user-menu-panel,
   .user-menu-panel,
   .mat-mdc-menu-panel.user-menu-panel {
-    min-width: 280px !important;
+    min-width: 220px !important;
+    max-width: calc(100vw - 16px) !important;
   }
 }
 

@@ -290,11 +290,22 @@ import { UserApprovalDialogComponent } from './user-approval-dialog.component';
     .table-container {
       width: 100%;
       overflow-x: auto;
+      overflow-y: auto;
+      max-height: calc(100vh - 400px);
+      border-radius: 8px;
     }
 
     .users-table {
       width: 100%;
       min-width: 800px;
+    }
+
+    .users-table thead th {
+      position: sticky;
+      top: 0;
+      background: #fafafa;
+      z-index: 10;
+      border-bottom: 2px solid #e0e0e0;
     }
 
     .action-buttons {
@@ -355,6 +366,20 @@ import { UserApprovalDialogComponent } from './user-approval-dialog.component';
       
       .stats-cards {
         grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .table-container {
+        max-height: calc(100vh - 500px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .table-container {
+        max-height: calc(100vh - 550px);
+      }
+      
+      .users-table {
+        min-width: 600px;
       }
     }
   `]
