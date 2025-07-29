@@ -139,6 +139,10 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
       delete chatRequest.workflowId;
     }
 
+    // Debug logging
+    console.log('Chat request payload:', JSON.stringify(chatRequest, null, 2));
+    console.log('Analysis results:', this.analysisResults);
+
     this.apiService.sendChatMessage(chatRequest).subscribe({
       next: (response) => {
         this.isTyping = false;
