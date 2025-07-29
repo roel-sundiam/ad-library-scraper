@@ -89,6 +89,8 @@ export class AuthService {
       tap(response => {
         if (response.success) {
           this.setAuthData(response.data.token, response.data.user);
+          // Track login action
+          this.trackLoginAction();
         }
       }),
       catchError(error => {
@@ -113,6 +115,9 @@ export class AuthService {
 
   logout(): Observable<any> {
     const token = this.getToken();
+    
+    // Track logout action before clearing auth data
+    this.trackLogoutAction();
     
     if (!token) {
       this.clearAuthData();
@@ -223,5 +228,37 @@ export class AuthService {
   hasRole(role: string): boolean {
     const user = this.getCurrentUser();
     return user?.role === role || user?.role === 'super_admin';
+  }
+
+  private trackLoginAction(): void {
+    // Use a setTimeout to avoid circular dependency issues
+    setTimeout(() => {
+      try {
+        this.http.post(`${this.baseUrl}/analytics/user-action`, {
+          action: 'login',
+          timestamp: new Date().toISOString()
+        }).subscribe({
+          next: () => console.log('Login action tracked'),
+          error: (error) => console.error('Failed to track login:', error)
+        });
+      } catch (error) {
+        console.error('Error tracking login action:', error);
+      }
+    }, 100);
+  }
+
+  private trackLogoutAction(): void {
+    // Track logout before clearing auth data
+    try {
+      this.http.post(`${this.baseUrl}/analytics/user-action`, {
+        action: 'logout',
+        timestamp: new Date().toISOString()
+      }).subscribe({
+        next: () => console.log('Logout action tracked'),
+        error: (error) => console.error('Failed to track logout:', error)
+      });
+    } catch (error) {
+      console.error('Error tracking logout action:', error);
+    }
   }
 }

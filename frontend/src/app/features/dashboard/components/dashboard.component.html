@@ -99,8 +99,8 @@
       </mat-card-content>
     </mat-card>
 
-    <!-- API Status Card -->
-    <mat-card class="status-card">
+    <!-- API Status Card - Super Admin Only -->
+    <mat-card class="status-card" *ngIf="isSuperAdmin">
       <mat-card-header>
         <mat-card-title>API Status</mat-card-title>
       </mat-card-header>
@@ -126,8 +126,8 @@
       </mat-card-content>
     </mat-card>
 
-    <!-- Facebook Token Configuration -->
-    <mat-card class="token-config-card">
+    <!-- Facebook Token Configuration - Super Admin Only -->
+    <mat-card class="token-config-card" *ngIf="isSuperAdmin">
       <mat-card-header>
         <mat-card-title>
           <mat-icon>vpn_key</mat-icon>

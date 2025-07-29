@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Environment Setup
 - Copy `.env.example` to `.env` and configure API keys
-- Database will auto-initialize on first run (SQLite in ./data/ads.db)
+- Database will auto-initialize on first run (MongoDB)
 
 ## Architecture
 
@@ -28,7 +28,7 @@ This is an Express.js API server for ad library scraping and analysis:
 
 - **Entry Point**: `src/index.js` - Express server with middleware setup
 - **API Routes**: `src/api/routes.js` - RESTful endpoints for scraping, analysis, export
-- **Database**: `src/database/init.js` - SQLite initialization with schema for ads, advertisers, creatives, sessions
+- **Database**: `src/database/mongodb.js` - MongoDB connection and model initialization
 - **Scrapers**: `src/scrapers/facebook-scraper.js` - Facebook Ad Library API integration with rate limiting
 - **Utilities**: `src/utils/` - Logger (Winston) and rate limiter components
 
@@ -43,10 +43,10 @@ Angular 17 SPA with feature modules:
 ### Key Patterns
 
 **Database Schema**: 
-- Advertisers table with page metadata
-- Ads table with creative content, metrics, targeting data
-- Ad creatives table for media assets
-- Scraping sessions for job tracking
+- User collection with authentication and role data
+- SiteAnalytics collection for page visits and user actions
+- UserActivityLog collection for activity tracking
+- Additional collections for ads, advertisers, and scraping sessions
 
 **API Response Format**:
 ```javascript
@@ -64,21 +64,21 @@ Angular 17 SPA with feature modules:
 **Environment Variables**:
 - `FACEBOOK_ACCESS_TOKEN`, `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` - Facebook API
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` - AI analysis models
-- `DB_PATH` - SQLite database location
+- `MONGODB_URI` - MongoDB connection string
 - `PORT`, `NODE_ENV` - Server configuration
 
 ### Key Files to Understand
 
 - `src/api/routes.js:20-78` - Scraping job creation logic
 - `src/scrapers/facebook-scraper.js:52-108` - Main scraping algorithm
-- `src/database/init.js:33-130` - Database schema definitions
+- `src/database/mongodb.js:92-109` - Database initialization and model registration
 - `frontend/src/app/core/services/api.service.ts` - Frontend API integration
 
 ### Development Notes
 
 - Backend uses CommonJS modules (require/module.exports)
 - Frontend uses TypeScript with Angular 17
-- Database auto-creates tables on first run
+- Database auto-creates collections and indexes on first run
 - **CRITICAL: NO MOCK DATA ALLOWED** - User requires real Facebook ads data only
 - Facebook scraper handles rate limiting and pagination automatically
 - Proxy configuration in `frontend/proxy.conf.json` routes /api to backend

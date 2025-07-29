@@ -4,7 +4,7 @@
       <div class="scrapeiq-icon">
         <img src="assets/images/scrapeiq-logo.png" alt="ScrapeIQ Logo" />
       </div>
-      <span class="app-title">ScrapeIQ</span>
+      <span class="app-title">ScrapeIQ Administrator</span>
     </div>
     
     <div class="header-actions" *ngIf="currentUser">
@@ -17,41 +17,47 @@
         <mat-icon>account_circle</mat-icon>
       </button>
       
-      <mat-menu #menu="matMenu" class="user-menu">
+      <mat-menu #menu="matMenu" class="user-menu" panelClass="user-menu-panel">
         <div class="menu-header">
           <div class="menu-user-info">
-            <span class="menu-user-name">{{ userDisplayName }}</span>
-            <span class="menu-user-email">{{ currentUser.email }}</span>
+            <div class="menu-user-avatar">
+              <mat-icon>account_circle</mat-icon>
+            </div>
+            <div class="menu-user-details">
+              <span class="menu-user-name">{{ userDisplayName }}</span>
+              <span class="menu-user-email">{{ currentUser.email }}</span>
+              <span class="menu-user-role" [class.super-admin]="isSuperAdmin">{{ currentUser.role.replace('_', ' ').toUpperCase() }}</span>
+            </div>
           </div>
         </div>
         
         <mat-divider></mat-divider>
         
-        <button mat-menu-item (click)="navigateToChangePassword()">
-          <mat-icon>lock</mat-icon>
-          <span>Change Password</span>
+        <button mat-menu-item (click)="navigateToChangePassword()" class="menu-item">
+          <mat-icon class="menu-item-icon">lock</mat-icon>
+          <span class="menu-item-text">Change Password</span>
         </button>
         
-        <button mat-menu-item *ngIf="isSuperAdmin" routerLink="/admin">
-          <mat-icon>admin_panel_settings</mat-icon>
-          <span>Admin Panel</span>
+        <button mat-menu-item *ngIf="isSuperAdmin" routerLink="/admin" class="menu-item">
+          <mat-icon class="menu-item-icon">admin_panel_settings</mat-icon>
+          <span class="menu-item-text">Admin Panel</span>
         </button>
         
-        <button mat-menu-item>
-          <mat-icon>settings</mat-icon>
-          <span>Settings</span>
+        <button mat-menu-item class="menu-item">
+          <mat-icon class="menu-item-icon">settings</mat-icon>
+          <span class="menu-item-text">Settings</span>
         </button>
         
-        <button mat-menu-item>
-          <mat-icon>help</mat-icon>
-          <span>Help</span>
+        <button mat-menu-item class="menu-item">
+          <mat-icon class="menu-item-icon">help</mat-icon>
+          <span class="menu-item-text">Help</span>
         </button>
         
         <mat-divider></mat-divider>
         
-        <button mat-menu-item (click)="logout()" class="logout-item">
-          <mat-icon>logout</mat-icon>
-          <span>Logout</span>
+        <button mat-menu-item (click)="logout()" class="menu-item logout-item">
+          <mat-icon class="menu-item-icon">logout</mat-icon>
+          <span class="menu-item-text">Logout</span>
         </button>
       </mat-menu>
     </div>

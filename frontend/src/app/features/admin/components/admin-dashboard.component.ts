@@ -151,7 +151,7 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     ::ng-deep .admin-tabs .mat-tab-body-wrapper {
-      padding: 24px;
+      padding: 16px;
     }
 
     @media (max-width: 768px) {
@@ -176,6 +176,10 @@ import { AuthService } from '../../../core/services/auth.service';
       ::ng-deep .admin-tabs .mat-tab-label {
         min-width: 120px;
         padding: 12px 16px;
+      }
+      
+      ::ng-deep .admin-tabs .mat-tab-body-wrapper {
+        padding: 12px;
       }
     }
   `]

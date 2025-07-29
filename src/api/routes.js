@@ -36,20 +36,6 @@ const {
 const User = require('../models/User');
 const UserSession = require('../models/UserSession');
 
-// Rate limiting for auth endpoints
-const rateLimit = require('express-rate-limit');
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
-  message: {
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many authentication attempts, please try again later'
-    }
-  }
-});
 
 // In-memory job storage (replace with database in production)
 const jobs = new Map();
@@ -74,7 +60,7 @@ router.get('/health', (req, res) => {
 // ===== AUTHENTICATION ENDPOINTS =====
 
 // User registration endpoint
-router.post('/auth/register', authLimiter, async (req, res) => {
+router.post('/auth/register', async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
     
@@ -173,7 +159,7 @@ router.post('/auth/register', authLimiter, async (req, res) => {
 });
 
 // User login endpoint
-router.post('/auth/login', authLimiter, async (req, res) => {
+router.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -3681,5 +3667,86 @@ async function processBulkVideoAnalysis(jobId) {
     jobs.set(jobId, job);
   }
 }
+
+// Client-side analytics endpoints
+router.post('/analytics/page-visit', authenticateToken, async (req, res) => {
+  try {
+    const { pagePath, timestamp } = req.body;
+    
+    if (!pagePath) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Page path is required'
+        }
+      });
+    }
+    
+    // Track the page visit using the analytics middleware function
+    const { trackPageVisit } = require('../middleware/analytics');
+    const analyticsId = await trackPageVisit(req.user.id, pagePath, req);
+    
+    logger.info(`Client-side page visit tracked: ${pagePath} for user ${req.user.id}`);
+    
+    res.json({
+      success: true,
+      data: {
+        analyticsId,
+        message: 'Page visit tracked successfully'
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Client-side page visit tracking error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to track page visit'
+      }
+    });
+  }
+});
+
+router.post('/analytics/user-action', authenticateToken, async (req, res) => {
+  try {
+    const { action, details, timestamp } = req.body;
+    
+    if (!action) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Action is required'
+        }
+      });
+    }
+    
+    // Track the user action using the analytics middleware function
+    const { trackUserAction } = require('../middleware/analytics');
+    const activityId = await trackUserAction(req.user.id, action, details);
+    
+    logger.info(`Client-side user action tracked: ${action} for user ${req.user.id}`);
+    
+    res.json({
+      success: true,
+      data: {
+        activityId,
+        message: 'User action tracked successfully'
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Client-side user action tracking error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to track user action'
+      }
+    });
+  }
+});
 
 module.exports = router;

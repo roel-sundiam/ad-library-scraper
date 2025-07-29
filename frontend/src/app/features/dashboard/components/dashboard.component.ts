@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ApiService } from '@core/services/api.service';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'ads-dashboard',
@@ -21,7 +22,10 @@ export class DashboardComponent implements OnInit {
   // Competitor Analysis Status
   hasExistingAnalysis = false;
 
-  constructor(private apiService: ApiService) {}
+  constructor(
+    private apiService: ApiService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit() {
     this.checkApiHealth();
@@ -160,5 +164,9 @@ export class DashboardComponent implements OnInit {
 
   openFacebookConsole(): void {
     window.open('https://developers.facebook.com/tools/explorer/', '_blank');
+  }
+
+  get isSuperAdmin(): boolean {
+    return this.authService.isSuperAdmin();
   }
 }
