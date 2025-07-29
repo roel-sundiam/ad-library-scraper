@@ -1558,13 +1558,13 @@ async function runCompetitiveAnalysis(pagesData) {
       }
     }
     
-    // If no AI APIs available, return structured mock analysis
-    logger.warn('No AI API keys configured, returning mock analysis');
-    return generateMockAnalysis(yourPageData, competitor1Data, competitor2Data);
+    // If no AI APIs available, return error instead of mock data
+    logger.warn('No AI API keys configured, cannot provide analysis');
+    throw new Error('No Data - Possible Error. AI analysis services are not configured.');
     
   } catch (error) {
-    logger.error('AI analysis failed, falling back to mock:', error);
-    return generateMockAnalysis(yourPageData, competitor1Data, competitor2Data);
+    logger.error('AI analysis failed:', error);
+    throw new Error(`No Data - Possible Error. ${error.message}`);
   }
 }
 
@@ -1741,91 +1741,7 @@ async function callOpenAIAPI(prompt) {
   }
 }
 
-// Generate structured mock analysis when AI APIs are not available
-function generateMockAnalysis(yourPageData, competitor1Data, competitor2Data) {
-  const yourAds = yourPageData?.ads_found || 0;
-  const comp1Ads = competitor1Data?.ads_found || 0;
-  const comp2Ads = competitor2Data?.ads_found || 0;
-  
-  // Calculate relative performance scores
-  const maxAds = Math.max(yourAds, comp1Ads, comp2Ads);
-  const yourScore = maxAds > 0 ? Math.round((yourAds / maxAds) * 100) : 50;
-  const comp1Score = maxAds > 0 ? Math.round((comp1Ads / maxAds) * 100) : 50;
-  const comp2Score = maxAds > 0 ? Math.round((comp2Ads / maxAds) * 100) : 50;
-  
-  return {
-    summary: {
-      your_page: {
-        page_name: yourPageData?.page_name || 'Your Brand',
-        total_ads: yourAds,
-        performance_score: yourScore
-      },
-      competitors: [
-        {
-          page_name: competitor1Data?.page_name || 'Competitor 1',
-          total_ads: comp1Ads,
-          performance_score: comp1Score
-        },
-        {
-          page_name: competitor2Data?.page_name || 'Competitor 2',
-          total_ads: comp2Ads,
-          performance_score: comp2Score
-        }
-      ]
-    },
-    insights: generateInsights(yourAds, comp1Ads, comp2Ads),
-    recommendations: generateRecommendations(yourScore, comp1Score, comp2Score),
-    analyzed_at: new Date().toISOString(),
-    ai_provider: 'mock'
-  };
-}
 
-// Generate insights based on ad volume comparison
-function generateInsights(yourAds, comp1Ads, comp2Ads) {
-  const insights = [];
-  
-  if (comp1Ads > yourAds || comp2Ads > yourAds) {
-    insights.push("Your competitors are running more active ad campaigns than you");
-  }
-  
-  if (comp1Ads > comp2Ads * 1.5) {
-    insights.push("Competitor 1 has a significantly more aggressive advertising strategy");
-  } else if (comp2Ads > comp1Ads * 1.5) {
-    insights.push("Competitor 2 has a significantly more aggressive advertising strategy");
-  }
-  
-  if (yourAds === 0) {
-    insights.push("No ads found for your brand - consider increasing advertising presence");
-  } else if (yourAds < Math.max(comp1Ads, comp2Ads) * 0.5) {
-    insights.push("Your ad volume is significantly lower than top competitors");
-  }
-  
-  insights.push("Regular competitive monitoring will help you stay ahead of market trends");
-  
-  return insights;
-}
-
-// Generate recommendations based on performance comparison
-function generateRecommendations(yourScore, comp1Score, comp2Score) {
-  const recommendations = [];
-  
-  if (yourScore < 70) {
-    recommendations.push("Increase your advertising budget to match competitor activity levels");
-  }
-  
-  if (comp1Score > yourScore) {
-    recommendations.push("Study Competitor 1's ad strategies and test similar approaches");
-  }
-  
-  if (comp2Score > yourScore) {
-    recommendations.push("Analyze Competitor 2's messaging and creative formats for inspiration");
-  }
-  
-  recommendations.push("Test different ad formats (video, carousel, single image) to diversify your approach");
-  recommendations.push("Monitor competitor ad frequency and adjust your campaign scheduling accordingly");
-  
-  return recommendations;
-}
 
 // Generate mock Facebook ads data for development/testing
 function generateMockFacebookAds(brandName, count = 8) {
@@ -2283,10 +2199,15 @@ router.post('/analysis', async (req, res) => {
       }
     }
 
-    // Fallback to enhanced mock analysis (uses actual ad data)
+    // No fallback to mock data - return error if all AI providers fail
     if (!analysisResult) {
-      analysisResult = generateEnhancedMockAnalysis(prompt, adsWithTranscripts);
-      aiProvider = 'enhanced_mock';
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'AI_SERVICE_UNAVAILABLE',
+          message: 'No Data - Possible Error. All AI analysis services are currently unavailable.'
+        }
+      });
     }
 
     res.json({
@@ -2646,11 +2567,15 @@ router.post('/analysis/chat', async (req, res) => {
       }
     }
 
-    // Fallback to mock chat if all AI services fail
+    // No fallback to mock data - return error if all AI providers fail
     if (!chatResult) {
-      const workflow = workflowId ? workflows.get(workflowId) : null;
-      chatResult = generateMockChatResponse(message, workflow);
-      aiProvider = 'mock';
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'AI_SERVICE_UNAVAILABLE',
+          message: 'No Data - Possible Error. All AI chat services are currently unavailable.'
+        }
+      });
     }
 
     res.json({
@@ -2824,97 +2749,7 @@ async function callOllamaForAnalysis(prompt, adsData, filters = {}) {
 }
 
 // Helper function to generate enhanced mock analysis using real ad data
-function generateEnhancedMockAnalysis(prompt, adsData) {
-  // Analyze real ad data to provide meaningful insights
-  const totalAds = adsData.length;
-  const advertisers = [...new Set(adsData.map(ad => ad.advertiser?.page_name).filter(Boolean))];
-  const videoAds = adsData.filter(ad => ad.creative?.video_urls?.length > 0).length;
-  const videoPercentage = Math.round((videoAds / totalAds) * 100);
-  
-  // Analyze ad content themes
-  const commonWords = extractCommonThemes(adsData);
-  const adFormats = analyzeAdFormats(adsData);
-  
-  const mockAnalysis = `## Analysis Results (Data-Driven Response)
 
-**Your Custom Prompt:** "${prompt.substring(0, 100)}..."
-
-**Data Analysis Summary:**
-• Analyzed ${totalAds} real advertisements from ${advertisers.length} brands
-• Video content found in ${videoPercentage}% of ads (${videoAds}/${totalAds})
-• Top advertisers: ${advertisers.slice(0, 3).join(', ')}
-• Ad formats: ${adFormats.join(', ')}
-
-**Key Content Themes Found:**
-${commonWords.slice(0, 5).map(theme => `• ${theme}`).join('\n')}
-
-**Performance Insights:**
-• Video ads typically generate 2-3x higher engagement than static images
-• Brands with consistent messaging show better brand recall
-• Call-to-action phrases vary significantly across competitors
-• Mobile-optimized creatives dominate the landscape
-
-**Competitive Recommendations:**
-• ${getSpecificRecommendation(advertisers, videoPercentage)}
-• Test video content formats to match industry standards
-• Analyze top-performing competitor messaging themes
-• Consider seasonal content timing strategies
-
-**Technical Details:**
-• Analysis based on actual Facebook Ad Library data
-• ${totalAds} ads scraped and processed successfully
-• Real advertiser names and content analyzed
-• Mock AI processing simulates Claude 4 Opus analysis
-
-*Note: This analysis uses your real competitor data but simulated AI processing. For advanced AI insights, add Claude or OpenAI API keys.*`;
-
-  return {
-    analysis: mockAnalysis,
-    metadata: {
-      model: 'enhanced-mock-analysis',
-      tokens_used: 0,
-      ai_provider: 'enhanced_mock',
-      real_data_used: true,
-      ads_analyzed: totalAds
-    }
-  };
-}
-
-// Helper function to generate mock analysis response (legacy)
-function generateMockAnalysis(prompt, adsData) {
-  const mockAnalysis = `## Analysis Results (Mock Response)
-
-**Your Custom Prompt:** "${prompt.substring(0, 100)}..."
-
-**Key Findings:**
-• Analyzed ${adsData.length} advertisements across competitors
-• Video content appears in ${Math.round(Math.random() * 30 + 10)}% of ads
-• Performance varies significantly by creative format
-• Strong correlation between engagement and visual storytelling
-
-**Recommendations:**
-• Increase video content production for better engagement
-• Test different messaging approaches based on competitor insights  
-• Consider expanding ad frequency to match competitor activity
-• Focus on mobile-optimized creative formats
-
-**Competitive Insights:**
-• Your competitors are running more diverse campaign types
-• Social proof and testimonials are common themes
-• Seasonal content timing shows strategic planning
-• Budget allocation suggests focus on high-performing segments
-
-*Note: This is a mock response. Install Ollama or configure Claude/OpenAI API keys for real AI analysis.*`;
-
-  return {
-    analysis: mockAnalysis,
-    metadata: {
-      model: 'mock-analysis',
-      tokens_used: 0,
-      ai_provider: 'mock'
-    }
-  };
-}
 
 // OpenAI chat function for AI assistant
 async function callOpenAIForChat(contextPrompt, adsData) {
@@ -3056,112 +2891,7 @@ Format your response with proper markdown formatting including headers, bullet p
   }
 }
 
-// Helper function to generate mock chat response
-function generateMockChatResponse(message, workflow) {
-  const lowerMessage = message.toLowerCase();
-  
-  let response = '';
-  
-  if (lowerMessage.includes('performance') || lowerMessage.includes('score')) {
-    response = `Based on your competitor analysis, performance differences often come from:
 
-**Creative Strategy:**
-• Video content typically performs 2-3x better than static images
-• User-generated content builds more trust and engagement
-• Clear value propositions in ad copy drive better results
-
-**Targeting & Budget:**
-• Competitors may have more refined audience targeting
-• Higher ad spend can improve reach and frequency
-• A/B testing different audiences shows optimization efforts
-
-**Recommendations:**
-• Analyze your top-performing competitors' creative formats
-• Test video content if you haven't already
-• Consider increasing your advertising budget gradually`;
-    
-  } else if (lowerMessage.includes('creative') || lowerMessage.includes('content')) {
-    response = `For creative strategy improvements:
-
-**Content Types to Test:**
-• Video testimonials and product demonstrations
-• Behind-the-scenes content for authenticity  
-• User-generated content and reviews
-• Seasonal and trending topics
-
-**Design Elements:**
-• Mobile-first creative formats
-• Clear, readable text overlays
-• Strong brand consistency across campaigns
-• Eye-catching thumbnails for video content`;
-    
-  } else {
-    response = `Great question! Based on typical competitor analysis patterns:
-
-**General Insights:**
-• Most successful brands run 3-5 different campaign types simultaneously
-• Video content consistently outperforms static images
-• Regular campaign refreshes prevent ad fatigue
-• Clear call-to-actions improve conversion rates
-
-**Next Steps:**
-• Study your competitors' most engaging content
-• Test different creative formats systematically
-• Monitor their campaign frequency and timing
-• Consider their unique value propositions
-
-*Note: This is a mock response. Install Ollama for real AI-powered analysis.*`;
-  }
-
-  return {
-    response: response,
-    metadata: {
-      model: 'mock-chat',
-      tokens_used: 0,
-      ai_provider: 'mock'
-    }
-  };
-}
-
-// Helper functions for enhanced mock analysis
-function extractCommonThemes(adsData) {
-  const allText = adsData
-    .map(ad => `${ad.creative?.title || ''} ${ad.creative?.body || ''}`)
-    .join(' ')
-    .toLowerCase();
-  
-  // Common advertising themes/keywords
-  const themes = [
-    'limited time offer', 'free shipping', 'new collection', 'best selling',
-    'exclusive deal', 'sale', 'discount', 'premium quality', 'innovative',
-    'trusted brand', 'customer favorite', 'award winning', 'eco friendly'
-  ];
-  
-  return themes.filter(theme => allText.includes(theme.replace(' ', '')) || allText.includes(theme));
-}
-
-function analyzeAdFormats(adsData) {
-  const formats = [];
-  const hasImages = adsData.some(ad => ad.creative?.image_urls?.length > 0);
-  const hasVideos = adsData.some(ad => ad.creative?.video_urls?.length > 0);
-  const hasCarousels = adsData.some(ad => ad.creative?.image_urls?.length > 1);
-  
-  if (hasImages) formats.push('Static Images');
-  if (hasVideos) formats.push('Video Content');
-  if (hasCarousels) formats.push('Carousel Ads');
-  
-  return formats.length > 0 ? formats : ['Mixed Formats'];
-}
-
-function getSpecificRecommendation(advertisers, videoPercentage) {
-  if (videoPercentage > 50) {
-    return 'Video content is dominant in your competitive landscape - prioritize video production';
-  } else if (videoPercentage > 25) {
-    return 'Mixed content strategy detected - test both video and static formats';
-  } else {
-    return 'Static content dominates - opportunity to differentiate with video content';
-  }
-}
 
 // Helper function to test Ollama connection
 async function testOllamaConnection() {

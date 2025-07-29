@@ -1306,9 +1306,8 @@ async function runAICompetitiveAnalysis(processedData, workflow) {
       aiAnalysis = await analyzeWithOpenAI(analysisPrompt, processedData);
       logger.info('Used OpenAI API for competitive analysis');
     } else {
-      // Use enhanced mock analysis with real data
-      aiAnalysis = generateEnhancedMockAnalysis(processedData);
-      logger.info('Used enhanced mock analysis (no API key configured)');
+      // No AI API configured - return error
+      throw new Error('No Data - Possible Error. AI analysis services are not configured.');
     }
     
     return {
@@ -1323,8 +1322,8 @@ async function runAICompetitiveAnalysis(processedData, workflow) {
     };
     
   } catch (error) {
-    logger.error('AI analysis failed, using enhanced mock:', error);
-    return generateEnhancedMockAnalysis(processedData);
+    logger.error('AI analysis failed:', error);
+    throw new Error(`No Data - Possible Error. ${error.message}`);
   }
 }
 
@@ -1427,37 +1426,6 @@ function generateMockAdsForPage(url) {
   return generateMockResults({ query: pageName, limit: Math.floor(Math.random() * 30) + 20, platform: 'facebook' });
 }
 
-function generateEnhancedMockAnalysis(processedData) {
-  const yourScore = processedData.summary.your_page.performance_score;
-  const comp1Score = processedData.summary.competitors[0].performance_score;
-  const comp2Score = processedData.summary.competitors[1].performance_score;
-  
-  const insights = [];
-  const recommendations = [];
-  
-  // Generate insights based on actual data
-  if (comp1Score > yourScore || comp2Score > yourScore) {
-    insights.push("Your competitors are outperforming you in advertising effectiveness");
-    recommendations.push("Analyze your competitors' top-performing ad creatives and messaging");
-  }
-  
-  if (processedData.summary.competitors[0].total_ads > processedData.summary.your_page.total_ads) {
-    insights.push(`${processedData.summary.competitors[0].page_name} is running significantly more ads than you`);
-    recommendations.push("Consider increasing your advertising volume to match competitor activity");
-  }
-  
-  insights.push("Video content appears to be a key differentiator in your industry");
-  recommendations.push("Invest in video ad creative formats to improve engagement");
-  
-  return {
-    insights,
-    recommendations,
-    competitive_gaps: ["Video advertising", "Ad volume", "Targeting diversity"],
-    opportunities: ["Mobile-first creative", "Seasonal campaigns", "User-generated content"],
-    provider: 'enhanced_mock',
-    credits_used: 1
-  };
-}
 
 // OpenAI competitive analysis implementation
 async function analyzeWithOpenAI(analysisPrompt, processedData) {
