@@ -2995,9 +2995,9 @@
 
           .results-content {
             padding: 28px 24px;
-            max-height: 600px; // Set maximum height for scrolling
-            overflow-y: auto; // Enable vertical scrolling
-            overflow-x: hidden; // Hide horizontal scrolling
+            max-height: 600px !important; // Set maximum height for scrolling
+            overflow-y: auto !important; // Enable vertical scrolling
+            overflow-x: hidden !important; // Hide horizontal scrolling
             
             // Custom scrollbar styling
             &::-webkit-scrollbar {
