@@ -505,7 +505,7 @@ Focus on actionable optimization recommendations for video campaigns.`
     };
 
     try {
-      const analysisRequest = {
+      const analysisRequest: any = {
         videos: allVideoAds.map(video => ({
           id: video.id,
           brand: video.brand,
