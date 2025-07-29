@@ -2191,8 +2191,8 @@ router.post('/analysis', async (req, res) => {
 
     let adsData = [];
 
-    // Get ads data from workflow or specific ad IDs
-    if (workflowId) {
+    // Get ads data from workflow, specific ad IDs, or support general questions
+    if (workflowId && workflowId.trim()) {
       const workflow = workflows.get(workflowId);
       if (!workflow) {
         return res.status(404).json({
@@ -2220,25 +2220,9 @@ router.post('/analysis', async (req, res) => {
           message: 'Analysis by specific ad IDs not yet implemented. Please use workflowId.'
         }
       });
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Either workflowId or adIds must be provided'
-        }
-      });
     }
-
-    if (adsData.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'NO_DATA',
-          message: 'No ad data available for analysis'
-        }
-      });
-    }
+    // Support general questions without requiring workflow data
+    // adsData will be empty array for general questions
 
     logger.info('Starting custom AI analysis', {
       prompt: prompt.substring(0, 100) + '...',
