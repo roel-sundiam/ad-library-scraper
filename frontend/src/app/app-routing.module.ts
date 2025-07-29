@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard, SuperAdminGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
   {
@@ -8,28 +9,42 @@ const routes: Routes = [
     pathMatch: 'full'
   },
   {
+    path: 'auth',
+    loadChildren: () => import('./features/auth/auth.module').then(m => m.AuthModule)
+  },
+  {
     path: 'dashboard',
-    loadChildren: () => import('./features/dashboard/dashboard.module').then(m => m.DashboardModule)
+    loadChildren: () => import('./features/dashboard/dashboard.module').then(m => m.DashboardModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'scraping',
-    loadChildren: () => import('./features/scraping/scraping.module').then(m => m.ScrapingModule)
+    loadChildren: () => import('./features/scraping/scraping.module').then(m => m.ScrapingModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'analysis',
-    loadChildren: () => import('./features/analysis/analysis.module').then(m => m.AnalysisModule)
+    loadChildren: () => import('./features/analysis/analysis.module').then(m => m.AnalysisModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'export',
-    loadChildren: () => import('./features/export/export.module').then(m => m.ExportModule)
+    loadChildren: () => import('./features/export/export.module').then(m => m.ExportModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'competitor-analysis',
-    loadChildren: () => import('./features/competitor-analysis/competitor-analysis.module').then(m => m.CompetitorAnalysisModule)
+    loadChildren: () => import('./features/competitor-analysis/competitor-analysis.module').then(m => m.CompetitorAnalysisModule),
+    canActivate: [AuthGuard]
+  },
+  {
+    path: 'admin',
+    loadChildren: () => import('./features/admin/admin.module').then(m => m.AdminModule),
+    canActivate: [SuperAdminGuard]
   },
   {
     path: '**',
-    redirectTo: '/dashboard'
+    redirectTo: '/auth/login'
   }
 ];
 

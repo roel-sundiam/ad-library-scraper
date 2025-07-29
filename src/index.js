@@ -14,6 +14,12 @@ const FacebookAdLibraryAPI = require('./scrapers/facebook-api-client');
 const ApifyScraper = require('./scrapers/apify-scraper');
 const apiRoutes = require('./api/routes');
 
+// Import analytics middleware
+const { analyticsMiddleware } = require('./middleware/analytics');
+
+// Import MongoDB connection
+const { connectDB, initializeDatabase } = require('./database/mongodb');
+
 // OpenAI for AI analysis fallback
 const OpenAI = require('openai');
 
@@ -31,6 +37,9 @@ app.use(cors());
 // Increase request size limit for bulk video analysis
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Add analytics middleware
+app.use(analyticsMiddleware);
 
 // Mount API routes
 app.use('/api', apiRoutes);
@@ -1568,9 +1577,28 @@ function parseOpenAITextResponse(textResponse, processedData) {
   return { insights, recommendations, competitive_gaps, opportunities };
 }
 
-app.listen(PORT, () => {
-  logger.info(`Ad Library Scraper API running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Initialize MongoDB and start server
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await connectDB();
+    
+    // Initialize database models and indexes
+    await initializeDatabase();
+    
+    // Start HTTP server
+    app.listen(PORT, () => {
+      logger.info(`Ad Library Scraper API running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('MongoDB connected and ready');
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 module.exports = app;

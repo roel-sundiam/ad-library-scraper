@@ -14,6 +14,43 @@ const OpenAI = require('openai');
 // Import AI analysis utilities
 const { analyzeWithOpenAI } = require('../utils/ai-analysis');
 
+// Import authentication middleware
+const { 
+  generateToken, 
+  hashPassword, 
+  comparePassword, 
+  storeSession, 
+  removeSession, 
+  authenticateToken, 
+  requireSuperAdmin 
+} = require('../middleware/auth');
+
+// Import analytics middleware
+const { 
+  analyticsMiddleware, 
+  getAnalyticsData, 
+  getUserManagementData 
+} = require('../middleware/analytics');
+
+// Import MongoDB models
+const User = require('../models/User');
+const UserSession = require('../models/UserSession');
+
+// Rate limiting for auth endpoints
+const rateLimit = require('express-rate-limit');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many authentication attempts, please try again later'
+    }
+  }
+});
+
 // In-memory job storage (replace with database in production)
 const jobs = new Map();
 
@@ -32,6 +69,395 @@ router.get('/health', (req, res) => {
       timestamp: new Date().toISOString()
     }
   });
+});
+
+// ===== AUTHENTICATION ENDPOINTS =====
+
+// User registration endpoint
+router.post('/auth/register', authLimiter, async (req, res) => {
+  try {
+    const { email, password, fullName } = req.body;
+    
+    // Validate input
+    if (!email || !password || !fullName) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Email, password, and full name are required'
+        }
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_EMAIL',
+          message: 'Please provide a valid email address'
+        }
+      });
+    }
+    
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'Password must be at least 8 characters long'
+        }
+      });
+    }
+    
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'USER_EXISTS',
+          message: 'User with this email already exists'
+        }
+      });
+    }
+    
+    try {
+      // Hash password
+      const passwordHash = await hashPassword(password);
+      
+      // Create user
+      const newUser = new User({
+        email: email.toLowerCase(),
+        password_hash: passwordHash,
+        full_name: fullName,
+        role: 'user',
+        status: 'pending'
+      });
+      
+      const savedUser = await newUser.save();
+      
+      logger.info(`New user registered: ${email} (ID: ${savedUser._id})`);
+      
+      res.status(201).json({
+        success: true,
+        data: {
+          message: 'Registration successful! Your account is pending approval.',
+          userId: savedUser._id,
+          status: 'pending'
+        }
+      });
+    } catch (error) {
+      logger.error('Registration error:', error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'REGISTRATION_FAILED',
+          message: 'Registration failed'
+        }
+      });
+    }
+  } catch (error) {
+    logger.error('Registration endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Internal server error'
+      }
+    });
+  }
+});
+
+// User login endpoint
+router.post('/auth/login', authLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_CREDENTIALS',
+          message: 'Email and password are required'
+        }
+      });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password'
+        }
+      });
+    }
+    
+    try {
+      // Verify password
+      const isPasswordValid = await comparePassword(password, user.password_hash);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'INVALID_CREDENTIALS',
+            message: 'Invalid email or password'
+          }
+        });
+      }
+      
+      // Check if user is approved
+      if (user.status !== 'approved') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'ACCOUNT_NOT_APPROVED',
+            message: user.status === 'pending' 
+              ? 'Your account is pending approval' 
+              : 'Your account access has been restricted'
+          }
+        });
+      }
+      
+      // Generate JWT token
+      const token = generateToken(user);
+      const tokenHash = require('crypto').createHash('sha256').update(token).digest('hex');
+      
+      // Store session with metadata
+      const ipAddress = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+      const userAgent = req.headers['user-agent'] || '';
+      
+      await storeSession(user._id, tokenHash, {
+        ip_address: ipAddress,
+        user_agent: userAgent
+      });
+      
+      // Update last login
+      await user.updateLastLogin();
+      
+      logger.info(`User logged in: ${user.email} (ID: ${user._id})`);
+      
+      res.json({
+        success: true,
+        data: {
+          token,
+          user: {
+            id: user._id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+            status: user.status
+          }
+        }
+      });
+    } catch (error) {
+      logger.error('Login processing error:', error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'LOGIN_FAILED',
+          message: 'Login failed'
+        }
+      });
+    }
+  } catch (error) {
+    logger.error('Login endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Internal server error'
+      }
+    });
+  }
+});
+
+// User logout endpoint
+router.post('/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      const tokenHash = require('crypto').createHash('sha256').update(token).digest('hex');
+      await removeSession(req.user.id, tokenHash);
+    }
+    
+    logger.info(`User logged out: ${req.user.email} (ID: ${req.user.id})`);
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Logged out successfully'
+      }
+    });
+  } catch (error) {
+    logger.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'LOGOUT_FAILED',
+        message: 'Logout failed'
+      }
+    });
+  }
+});
+
+// Get current user info
+router.get('/auth/me', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        fullName: req.user.full_name,
+        role: req.user.role,
+        status: req.user.status
+      }
+    }
+  });
+});
+
+// ===== ADMIN ENDPOINTS =====
+
+// Get all users (admin only)
+router.get('/admin/users', authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    // Build query
+    let query = {};
+    if (status) {
+      query.status = status;
+    }
+    
+    const users = await User.find(query)
+      .populate('approved_by', 'full_name')
+      .sort({ created_at: -1 })
+      .lean();
+    
+    // Transform data to match expected format
+    const transformedUsers = users.map(user => ({
+      id: user._id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      status: user.status,
+      created_at: user.created_at,
+      approved_at: user.approved_at,
+      last_login: user.last_login,
+      approved_by_name: user.approved_by?.full_name || null
+    }));
+    
+    res.json({
+      success: true,
+      data: { users: transformedUsers }
+    });
+  } catch (error) {
+    logger.error('Admin users endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Internal server error'
+      }
+    });
+  }
+});
+
+// Approve/reject user (admin only)
+router.put('/admin/users/:id/approve', authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+    
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_ACTION',
+          message: 'Action must be either "approve" or "reject"'
+        }
+      });
+    }
+    
+    // Find user that is pending approval
+    const user = await User.findOne({ _id: id, status: 'pending' });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found or not pending approval'
+        }
+      });
+    }
+    
+    // Update user status
+    if (action === 'approve') {
+      await user.approve(req.user.id);
+    } else {
+      await user.reject(req.user.id);
+    }
+    
+    logger.info(`User ${action}d: ID ${id} by admin ${req.user.email}`);
+    
+    res.json({
+      success: true,
+      data: {
+        message: `User ${action}d successfully`,
+        userId: id,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    logger.error('User approval endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Internal server error'
+      }
+    });
+  }
+});
+
+// Get analytics data (admin only)
+router.get('/admin/analytics', authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const { timeframe = '30d' } = req.query;
+    
+    const analyticsData = await getAnalyticsData(timeframe);
+    const userManagementData = await getUserManagementData();
+    
+    res.json({
+      success: true,
+      data: {
+        ...analyticsData,
+        ...userManagementData,
+        timeframe
+      }
+    });
+  } catch (error) {
+    logger.error('Analytics endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'ANALYTICS_ERROR',
+        message: 'Failed to fetch analytics data'
+      }
+    });
+  }
 });
 
 // Debug endpoint to check environment variables

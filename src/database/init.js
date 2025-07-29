@@ -111,8 +111,63 @@ const createTables = async () => {
         completed_at DATETIME,
         error_message TEXT
       )`, (err) => {
+        if (err) logger.error('Error creating scraping_sessions table:', err);
+      });
+
+      // Users table for authentication
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        approved_at DATETIME,
+        approved_by INTEGER,
+        last_login DATETIME,
+        FOREIGN KEY (approved_by) REFERENCES users (id)
+      )`, (err) => {
+        if (err) logger.error('Error creating users table:', err);
+      });
+
+      // User sessions table for JWT token management
+      db.run(`CREATE TABLE IF NOT EXISTS user_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`, (err) => {
+        if (err) logger.error('Error creating user_sessions table:', err);
+      });
+
+      // Site analytics table for tracking page visits and user activity
+      db.run(`CREATE TABLE IF NOT EXISTS site_analytics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        page_path TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`, (err) => {
+        if (err) logger.error('Error creating site_analytics table:', err);
+      });
+
+      // User activity logs table for detailed action tracking
+      db.run(`CREATE TABLE IF NOT EXISTS user_activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        details TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`, (err) => {
         if (err) {
-          logger.error('Error creating scraping_sessions table:', err);
+          logger.error('Error creating user_activity_logs table:', err);
           reject(err);
         } else {
           logger.info('Database tables created successfully');
@@ -125,6 +180,17 @@ const createTables = async () => {
       db.run(`CREATE INDEX IF NOT EXISTS idx_ads_page_id ON ads(page_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_ads_creation_time ON ads(ad_creation_time)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_advertisers_platform ON advertisers(platform)`);
+      
+      // Authentication and analytics indexes
+      db.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_site_analytics_user_id ON site_analytics(user_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_site_analytics_timestamp ON site_analytics(timestamp)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user_id ON user_activity_logs(user_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_user_activity_logs_timestamp ON user_activity_logs(timestamp)`);
     });
   });
 };
