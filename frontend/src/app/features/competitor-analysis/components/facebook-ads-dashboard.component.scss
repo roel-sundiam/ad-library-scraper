@@ -2995,6 +2995,36 @@
 
           .results-content {
             padding: 28px 24px;
+            max-height: 600px; // Set maximum height for scrolling
+            overflow-y: auto; // Enable vertical scrolling
+            overflow-x: hidden; // Hide horizontal scrolling
+            
+            // Custom scrollbar styling
+            &::-webkit-scrollbar {
+              width: 8px;
+            }
+            
+            &::-webkit-scrollbar-track {
+              background: rgba(0, 0, 0, 0.05);
+              border-radius: 4px;
+            }
+            
+            &::-webkit-scrollbar-thumb {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              border-radius: 4px;
+              
+              &:hover {
+                background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+              }
+            }
+            
+            // For Firefox
+            scrollbar-width: thin;
+            scrollbar-color: rgba(102, 126, 234, 0.7) rgba(0, 0, 0, 0.05);
+            
+            // Enhanced scrolling
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
 
             .analysis-output {
               color: #374151;
@@ -3734,6 +3764,17 @@
 
     .ai-analysis-container {
       border-radius: 16px;
+      
+      .modern-analysis-results {
+        .results-content {
+          max-height: 400px; // Smaller height on mobile
+          padding: 20px 16px;
+          
+          &::-webkit-scrollbar {
+            width: 6px; // Thinner scrollbar on mobile
+          }
+        }
+      }
 
       .ai-header .header-content {
         padding: 24px 20px;
@@ -3862,6 +3903,17 @@
     padding: 0 12px 32px;
 
     .ai-analysis-container {
+      .modern-analysis-results {
+        .results-content {
+          max-height: 300px; // Even smaller height on small mobile
+          padding: 16px 12px;
+          
+          &::-webkit-scrollbar {
+            width: 4px; // Very thin scrollbar on small screens
+          }
+        }
+      }
+      
       .ai-content-area {
         padding: 20px 16px;
 
