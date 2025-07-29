@@ -3011,20 +3011,23 @@ async function processBulkVideoAnalysis(jobId) {
     job.progress.percentage = 30;
     jobs.set(jobId, job);
     
-    // Create detailed video data context
-    let videoDataContext = `Analyze ${job.videos.length} video advertisements from ${competitorName}.\n\n**VIDEO DATA:**\n`;
+    // Create detailed video data context (limit to avoid token limits)
+    const maxVideos = Math.min(job.videos.length, 15); // Limit to 15 videos max
+    const videosToAnalyze = job.videos.slice(0, maxVideos);
     
-    job.videos.forEach((video, index) => {
+    let videoDataContext = `Analyze ${videosToAnalyze.length} video advertisements from ${competitorName} (showing first ${maxVideos} of ${job.videos.length} total videos).\n\n**VIDEO DATA:**\n`;
+    
+    videosToAnalyze.forEach((video, index) => {
       videoDataContext += `\nVideo ${index + 1}:\n`;
       videoDataContext += `- Brand: ${video.brand || competitorName}\n`;
-      videoDataContext += `- Ad Text: ${video.text || 'No text content'}\n`;
+      // Limit ad text to 200 characters to reduce tokens
+      const adText = (video.text || 'No text content').substring(0, 200);
+      videoDataContext += `- Ad Text: ${adText}${video.text && video.text.length > 200 ? '...' : ''}\n`;
       if (video.date) {
         videoDataContext += `- Date: ${video.date}\n`;
       }
-      if (video.url) {
-        videoDataContext += `- Video URL: ${video.url}\n`;
-      }
-      videoDataContext += `- Facebook URL: ${video.facebook_url || 'Not available'}\n`;
+      // Skip URLs to save tokens
+      videoDataContext += `- Facebook Ad ID: ${video.id || 'N/A'}\n`;
     });
     
     // Build the analysis request based on custom prompt or selected template

@@ -30,7 +30,7 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo", // Use GPT-3.5 for higher token limits and lower cost
       messages: [
         {
           role: "system",
