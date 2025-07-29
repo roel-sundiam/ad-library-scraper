@@ -130,10 +130,14 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
     };
 
     // Add workflow context if available (contextual mode)
-    if (this.analysisResults?.workflow_id) {
+    if (this.analysisResults?.workflow_id && this.analysisResults.workflow_id.trim()) {
       chatRequest.workflowId = this.analysisResults.workflow_id;
     }
     // Otherwise use general mode (no workflow context required)
+    // Explicitly set workflowId to undefined if not available
+    if (!chatRequest.workflowId) {
+      delete chatRequest.workflowId;
+    }
 
     this.apiService.sendChatMessage(chatRequest).subscribe({
       next: (response) => {
