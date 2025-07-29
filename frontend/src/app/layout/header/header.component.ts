@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'ads-header',
@@ -6,9 +7,9 @@ import { Component, EventEmitter, Output } from '@angular/core';
   styleUrls: ['./header.component.scss']
 })
 export class HeaderComponent {
-  @Output() menuToggle = new EventEmitter<void>();
+  constructor(private router: Router) {}
 
-  onMenuToggle() {
-    this.menuToggle.emit();
+  navigateToHome(): void {
+    this.router.navigate(['/dashboard']);
   }
 }

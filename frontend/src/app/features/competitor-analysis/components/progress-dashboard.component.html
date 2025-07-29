@@ -6,7 +6,24 @@
 
   <!-- Loading State -->
   <div *ngIf="isLoading" class="loading-container">
-    <mat-spinner diameter="60"></mat-spinner>
+    <div class="animated-loader">
+      <div class="running-person">
+        <div class="person-body"></div>
+        <div class="person-legs">
+          <div class="leg leg-1"></div>
+          <div class="leg leg-2"></div>
+        </div>
+        <div class="person-arms">
+          <div class="arm arm-1"></div>
+          <div class="arm arm-2"></div>
+        </div>
+      </div>
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
     <p>Connecting to Facebook ads analysis service...</p>
   </div>
 
@@ -107,7 +124,7 @@
               <span 
                 class="chip"
                 [class]="'status-' + (analysisStatus.progress.current > i ? 'completed' : analysisStatus.progress.current === i ? 'running' : 'pending')">
-                {{ analysisStatus.progress.current > i ? 'completed' : analysisStatus.progress.current === i ? 'processing' : 'pending' }}
+                {{ analysisStatus.progress.current > i ? 'completed' : analysisStatus.progress.current === i ? 'running' : 'pending' }}
               </span>
             </div>
           </mat-card-content>
@@ -119,7 +136,18 @@
     <mat-card class="analysis-card">
       <mat-card-header>
         <mat-card-title>
-          <mat-icon class="header-icon">cloud_download</mat-icon>
+          <div class="scraping-header-icon" [class.running]="analysisStatus.status === 'running' || analysisStatus.status === 'queued'">
+            <mat-icon *ngIf="analysisStatus.status !== 'running' && analysisStatus.status !== 'queued'">cloud_download</mat-icon>
+            <div *ngIf="analysisStatus.status === 'running' || analysisStatus.status === 'queued'" class="scraping-animation">
+              <div class="data-flow">
+                <div class="data-dot" style="animation-delay: 0s;"></div>
+                <div class="data-dot" style="animation-delay: 0.2s;"></div>
+                <div class="data-dot" style="animation-delay: 0.4s;"></div>
+                <div class="data-dot" style="animation-delay: 0.6s;"></div>
+              </div>
+              <mat-icon class="scraping-icon">download</mat-icon>
+            </div>
+          </div>
           Facebook Ads Scraping
         </mat-card-title>
       </mat-card-header>
@@ -134,6 +162,7 @@
               <span 
                 class="chip"
                 [class]="'status-' + analysisStatus.status">
+                <mat-icon *ngIf="analysisStatus.status === 'running' || analysisStatus.status === 'queued'" class="running-icon">speed</mat-icon>
                 {{ analysisStatus.status }}
               </span>
             </div>

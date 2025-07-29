@@ -282,7 +282,7 @@ job.results.forEach(result => {
 - **Code 10**: Insufficient permissions
 - **Code 190**: Invalid/expired token
 - **Network errors**: Timeout or connection issues
-
+git push origin main
 #### HTTP Scraper Fallback (`src/scrapers/facebook-http-advanced.js:347-407`)
 
 When real scraping fails, generates realistic sample data:

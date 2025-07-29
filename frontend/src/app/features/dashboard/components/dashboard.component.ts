@@ -17,6 +17,9 @@ export class DashboardComponent implements OnInit {
   newToken = '';
   isUpdatingToken = false;
   tokenMessage: { type: 'success' | 'error' | 'warning', text: string } | null = null;
+  
+  // Competitor Analysis Status
+  hasExistingAnalysis = false;
 
   constructor(private apiService: ApiService) {}
 

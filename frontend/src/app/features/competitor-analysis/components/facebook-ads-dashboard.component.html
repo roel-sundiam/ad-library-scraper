@@ -1,482 +1,731 @@
-<div class="facebook-ads-dashboard">
+<div class="dashboard-container">
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="loading-container">
-    <mat-spinner diameter="50"></mat-spinner>
-    <p>Loading Facebook Ads Analysis Results...</p>
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="loading-content">
+      <div class="loading-animation">
+        <mat-spinner diameter="60"></mat-spinner>
+      </div>
+      <h2>Analyzing Competitor Data</h2>
+      <p>Processing Facebook ads data with AI-powered insights...</p>
+      <div class="loading-steps">
+        <div class="step active">
+          <mat-icon>data_exploration</mat-icon>
+          <span>Collecting Data</span>
+        </div>
+        <div class="step">
+          <mat-icon>analytics</mat-icon>
+          <span>Processing</span>
+        </div>
+        <div class="step">
+          <mat-icon>insights</mat-icon>
+          <span>Generating Insights</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="errorMessage" class="error-container">
-    <mat-icon class="error-icon">error</mat-icon>
-    <h3>Analysis Results Not Available</h3>
-    <p>{{ errorMessage }}</p>
-    <button mat-raised-button color="primary" routerLink="/competitor-analysis">
-      Start New Analysis
-    </button>
+  <div *ngIf="errorMessage" class="error-state">
+    <div class="error-content">
+      <div class="error-icon">
+        <mat-icon>error_outline</mat-icon>
+      </div>
+      <h2>Analysis Unavailable</h2>
+      <p>{{ errorMessage }}</p>
+      <div class="error-actions">
+        <button mat-flat-button color="primary" routerLink="/competitor-analysis">
+          <mat-icon>refresh</mat-icon>
+          Start New Analysis
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Results Dashboard -->
   <div *ngIf="!isLoading && !errorMessage && analysisResults" class="dashboard-content">
     
-    <!-- Header Section -->
-    <div class="dashboard-header">
+    <!-- Modern Header -->
+    <header class="dashboard-header">
+      <div class="header-background">
+        <div class="gradient-overlay"></div>
+      </div>
       <div class="header-content">
-        <h1>
-          <mat-icon>analytics</mat-icon>
-          Single Competitor Analysis
-        </h1>
-        <p>Analysis of {{ brandComparisons[0]?.brand || 'competitor' }} with {{ totalAds }} total ads found</p>
+        <div class="breadcrumb">
+          <a routerLink="/competitor-analysis">
+            <mat-icon>arrow_back</mat-icon>
+            <span>Back to Analysis</span>
+          </a>
+        </div>
+        <div class="title-section">
+          <div class="competitor-badge">
+            <mat-icon>business</mat-icon>
+            <span>{{ brandComparisons[0]?.brand || 'Competitor' }}</span>
+          </div>
+          <h1>Intelligence Dashboard</h1>
+          <p class="subtitle">Comprehensive analysis of {{ totalAds }} Facebook advertisements with AI-powered insights</p>
+        </div>
+        <div class="header-stats">
+          <div class="stat-chip">
+            <mat-icon>campaign</mat-icon>
+            <span>{{ totalAds }} Ads</span>
+          </div>
+          <div class="stat-chip">
+            <mat-icon>play_circle</mat-icon>
+            <span>{{ totalVideoAds }} Videos</span>
+          </div>
+          <div class="stat-chip">
+            <mat-icon>trending_up</mat-icon>
+            <span>{{ formatPercentage(videoContentRate) }} Video Rate</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button mat-stroked-button (click)="exportData()" class="action-btn">
+            <mat-icon>download</mat-icon>
+            <span>Export</span>
+          </button>
+          <button mat-flat-button color="primary" routerLink="/competitor-analysis" class="action-btn">
+            <mat-icon>add</mat-icon>
+            <span>New Analysis</span>
+          </button>
+        </div>
       </div>
-      <div class="header-actions">
-        <button mat-stroked-button (click)="exportData()">
-          <mat-icon>download</mat-icon>
-          Export Data
-        </button>
-        <button mat-raised-button color="primary" routerLink="/competitor-analysis">
-          <mat-icon>add</mat-icon>
-          New Analysis
-        </button>
+    </header>
+
+    <!-- Modern Metrics Overview -->
+    <section class="metrics-section">
+      <div class="metrics-header">
+        <h2>Performance Overview</h2>
+        <p>Key insights from your competitor analysis</p>
       </div>
-    </div>
-
-    <!-- Key Metrics Cards -->
-    <div class="metrics-grid">
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon ads">campaign</mat-icon>
-            <span class="metric-label">Total Ads Found</span>
+      <div class="metrics-grid">
+        <div class="metric-card primary">
+          <div class="metric-icon">
+            <mat-icon>insights</mat-icon>
           </div>
-          <div class="metric-value">{{ totalAds }}</div>
-          <div class="metric-subtitle">Facebook Ad Library results</div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon">business</mat-icon>
-            <span class="metric-label">Competitor</span>
+          <div class="metric-content">
+            <div class="metric-value">{{ totalAds }}</div>
+            <div class="metric-label">Total Advertisements</div>
+            <div class="metric-trend positive">
+              <mat-icon>trending_up</mat-icon>
+              <span>Active campaign</span>
+            </div>
           </div>
-          <div class="metric-value">{{ brandComparisons[0]?.brand || 'N/A' }}</div>
-          <div class="metric-subtitle">Brand being analyzed</div>
-        </mat-card-content>
-      </mat-card>
+        </div>
 
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon">play_circle</mat-icon>
-            <span class="metric-label">Video Content</span>
+        <div class="metric-card secondary" (click)="showVideoAds()">
+          <div class="metric-icon">
+            <mat-icon>movie_creation</mat-icon>
           </div>
-          <div class="metric-value">{{ formatPercentage(videoContentRate) }}</div>
-          <div class="metric-subtitle">Ads with video content</div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="metric-card">
-        <mat-card-content>
-          <div class="metric-header">
-            <mat-icon class="metric-icon">movie</mat-icon>
-            <span class="metric-label">Video Ads</span>
-          </div>
-          <div class="metric-value">{{ totalVideoAds }}</div>
-          <div class="metric-subtitle">Total video advertisements</div>
-          <div style="margin-top: 12px;">
-            <button mat-raised-button color="primary" (click)="showVideoAds()">
+          <div class="metric-content">
+            <div class="metric-value">{{ totalVideoAds }}</div>
+            <div class="metric-label">Video Content</div>
+            <div class="metric-trend">
               <mat-icon>play_circle</mat-icon>
-              View All Videos
+              <span>{{ formatPercentage(videoContentRate) }} of ads</span>
+            </div>
+          </div>
+          <div class="metric-action">
+            <mat-icon>open_in_new</mat-icon>
+          </div>
+        </div>
+
+        <div class="metric-card accent">
+          <div class="metric-icon">
+            <mat-icon>psychology</mat-icon>
+          </div>
+          <div class="metric-content">
+            <div class="metric-value">AI</div>
+            <div class="metric-label">Analysis Ready</div>
+            <div class="metric-trend">
+              <mat-icon>smart_toy</mat-icon>
+              <span>{{ totalVideoAds }} videos queued</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card highlight">
+          <div class="metric-icon">
+            <mat-icon>business</mat-icon>
+          </div>
+          <div class="metric-content">
+            <div class="metric-value competitor-name">{{ (brandComparisons[0]?.brand || 'Competitor').substring(0, 12) }}</div>
+            <div class="metric-label">Target Competitor</div>
+            <div class="metric-trend">
+              <mat-icon>verified</mat-icon>
+              <span>Analysis complete</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Competitor Intelligence Section -->
+    <section class="intelligence-section">
+      <div class="section-header">
+        <h2>
+          <mat-icon>insights</mat-icon>
+          Competitive Intelligence
+        </h2>
+        <p>Deep dive into {{ brandComparisons[0]?.brand || 'competitor' }}'s advertising strategy</p>
+      </div>
+      
+      <div class="intelligence-grid">
+        <!-- Strategy Overview -->
+        <div class="intelligence-card strategy-card">
+          <div class="card-header">
+            <div class="card-icon">
+              <mat-icon>lightbulb</mat-icon>
+            </div>
+            <h3>Strategy Overview</h3>
+          </div>
+          <div class="card-content">
+            <div class="strategy-stats">
+              <div class="strategy-stat">
+                <span class="stat-number">{{ brandComparisons[0]?.ad_frequency || 0 }}</span>
+                <span class="stat-label">Total Campaigns</span>
+              </div>
+              <div class="strategy-stat">
+                <span class="stat-number">{{ formatPercentage(videoContentRate) }}</span>
+                <span class="stat-label">Video Focus</span>
+              </div>
+              <div class="strategy-stat">
+                <span class="stat-number">{{ brandComparisons[0]?.metrics?.total_spend?.toFixed(0) || 0 }}</span>
+                <span class="stat-label">Avg Text Length</span>
+              </div>
+            </div>
+            <div class="strategy-insight">
+              <mat-icon>info</mat-icon>
+              <span>{{ brandComparisons[0]?.brand || 'Competitor' }} shows {{ videoContentRate > 30 ? 'heavy' : videoContentRate > 15 ? 'moderate' : 'light' }} video content focus</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creative Distribution -->
+        <div class="intelligence-card creative-card">
+          <div class="card-header">
+            <div class="card-icon">
+              <mat-icon>palette</mat-icon>
+            </div>
+            <h3>Creative Mix</h3>
+          </div>
+          <div class="card-content">
+            <div class="creative-breakdown">
+              <div class="creative-type" (click)="showBrandVideos(brandComparisons[0]?.brand || 'Competitor')">
+                <div class="type-icon video">
+                  <mat-icon>play_circle</mat-icon>
+                </div>
+                <div class="type-info">
+                  <span class="type-count">{{ brandComparisons[0]?.creative_types?.video || 0 }}</span>
+                  <span class="type-label">Video Ads</span>
+                </div>
+                <mat-icon class="action-icon">arrow_forward</mat-icon>
+              </div>
+              <div class="creative-type">
+                <div class="type-icon image">
+                  <mat-icon>image</mat-icon>
+                </div>
+                <div class="type-info">
+                  <span class="type-count">{{ brandComparisons[0]?.creative_types?.image || 0 }}</span>
+                  <span class="type-label">Image Ads</span>
+                </div>
+              </div>
+              <div class="creative-type">
+                <div class="type-icon carousel">
+                  <mat-icon>view_carousel</mat-icon>
+                </div>
+                <div class="type-info">
+                  <span class="type-count">{{ brandComparisons[0]?.creative_types?.carousel || 0 }}</span>
+                  <span class="type-label">Carousel Ads</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Position -->
+        <div class="intelligence-card position-card">
+          <div class="card-header">
+            <div class="card-icon">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <h3>Market Position</h3>
+          </div>
+          <div class="card-content">
+            <div class="position-score">
+              <div class="score-circle">
+                <span class="score-value">{{ (brandComparisons[0]?.market_share || 0).toFixed(0) }}%</span>
+              </div>
+              <span class="score-label">Market Share</span>
+            </div>
+            <div class="position-insights">
+              <div class="insight-item">
+                <mat-icon>schedule</mat-icon>
+                <span>Active campaign strategy</span>
+              </div>
+              <div class="insight-item">
+                <mat-icon>trending_up</mat-icon>
+                <span>{{ videoContentRate > 25 ? 'High' : 'Standard' }} video engagement</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Ads Gallery -->
+    <section class="ads-section">
+      <div class="section-header">
+        <h2>
+          <mat-icon>history</mat-icon>
+          Recent Advertisements
+        </h2>
+        <p>Latest ads from {{ brandComparisons[0]?.brand || 'competitor' }}'s campaign</p>
+      </div>
+      
+      <div class="ads-gallery" *ngIf="topPerformingAds.length > 0">
+        <div *ngFor="let ad of topPerformingAds; let i = index" 
+             class="ad-showcase" 
+             (click)="openAdDetails(ad)">
+          <div class="ad-badge">
+            <span class="ad-number">#{{ i + 1 }}</span>
+            <div class="ad-type" [ngClass]="ad.creative.has_video ? 'video' : 'image'">
+              <mat-icon>{{ ad.creative.has_video ? 'play_circle' : 'image' }}</mat-icon>
+            </div>
+          </div>
+          
+          <div class="ad-preview">
+            <div class="advertiser-badge">
+              <mat-icon>business</mat-icon>
+              <span>{{ ad.advertiser.name }}</span>
+              <mat-icon *ngIf="ad.advertiser.verified" class="verified">verified</mat-icon>
+            </div>
+            
+            <div class="ad-content">
+              <p class="ad-text">{{ getAdPreviewText(ad) }}</p>
+            </div>
+            
+            <div class="ad-meta">
+              <div class="meta-item">
+                <mat-icon>calendar_today</mat-icon>
+                <span>{{ ad.dates.start_date | date:'MMM d' }}</span>
+              </div>
+              <div class="meta-item">
+                <mat-icon>text_fields</mat-icon>
+                <span>{{ ad.creative.body?.length || 0 }} chars</span>
+              </div>
+              <div class="meta-item status" [ngClass]="ad.metadata.is_active ? 'active' : 'historical'">
+                <mat-icon>{{ ad.metadata.is_active ? 'radio_button_checked' : 'history' }}</mat-icon>
+                <span>{{ ad.metadata.is_active ? 'Active' : 'Historical' }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ad-actions">
+            <button mat-icon-button class="action-btn" title="View Details">
+              <mat-icon>open_in_new</mat-icon>
             </button>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+        </div>
+      </div>
+      
+      <div *ngIf="topPerformingAds.length === 0" class="no-ads-state">
+        <div class="no-ads-icon">
+          <mat-icon>search_off</mat-icon>
+        </div>
+        <h3>No Recent Ads Found</h3>
+        <p>No advertisement data is available for analysis</p>
+      </div>
+    </section>
 
-    <!-- Brand Comparison Section -->
-    <div class="section-container">
-      <mat-card class="comparison-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>insights</mat-icon>
-            Competitor Insights
-          </mat-card-title>
-          <mat-card-subtitle>Key metrics and advertising patterns for {{ brandComparisons[0]?.brand || 'this competitor' }}</mat-card-subtitle>
-        </mat-card-header>
+    <!-- Brand Deep Dive -->
+    <section class="brand-analysis-section" *ngFor="let brand of brandComparisons; let i = index">
+      <div class="brand-analysis-card">
+        <div class="brand-header">
+          <div class="brand-identity">
+            <div class="brand-avatar" [style.background]="getBrandColor(i)">
+              <span class="brand-initial">{{ (brand.brand || 'C').charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="brand-info">
+              <h3>{{ brand.brand }} Deep Dive</h3>
+              <p>{{ brand.ad_frequency }} campaigns • {{ formatPercentage(brand.market_share) }} market presence</p>
+            </div>
+          </div>
+          <div class="brand-score">
+            <div class="score-ring">
+              <span class="score-value">{{ (brand.market_share || 0).toFixed(0) }}</span>
+            </div>
+            <span class="score-label">Activity Score</span>
+          </div>
+        </div>
         
-        <mat-card-content>
-          <div *ngIf="brandComparisons.length > 0" class="competitor-overview">
-            <div class="competitor-stats-grid">
-              <div class="stat-item">
-                <div class="stat-icon-container impressions">
-                  <mat-icon>play_circle</mat-icon>
-                </div>
-                <div class="stat-details">
-                  <div class="stat-value">{{ formatPercentage(brandComparisons[0].metrics.total_impressions) }}</div>
-                  <div class="stat-label">Video Content Rate</div>
+        <div class="brand-content">
+          <div class="performance-grid">
+            <div class="performance-metric video">
+              <div class="metric-icon">
+                <mat-icon>play_circle</mat-icon>
+              </div>
+              <div class="metric-data">
+                <span class="metric-number">{{ formatPercentage(brand.metrics.total_impressions) }}</span>
+                <span class="metric-label">Video Content Rate</span>
+                <div class="metric-trend positive">
+                  <mat-icon>trending_up</mat-icon>
+                  <span>Strong video focus</span>
                 </div>
               </div>
-
-              <div class="stat-item">
-                <div class="stat-icon-container spend">
+            </div>
+            
+            <div class="performance-metric text">
+              <div class="metric-icon">
+                <mat-icon>article</mat-icon>
+              </div>
+              <div class="metric-data">
+                <span class="metric-number">{{ brand.metrics.total_spend.toFixed(0) }}</span>
+                <span class="metric-label">Avg Text Length</span>
+                <div class="metric-trend">
                   <mat-icon>text_fields</mat-icon>
-                </div>
-                <div class="stat-details">
-                  <div class="stat-value">{{ brandComparisons[0].metrics.total_spend.toFixed(0) }}</div>
-                  <div class="stat-label">Avg Text Length (chars)</div>
-                </div>
-              </div>
-
-              <div class="stat-item">
-                <div class="stat-icon-container cpm">
-                  <mat-icon>movie</mat-icon>
-                </div>
-                <div class="stat-details">
-                  <div class="stat-value">{{ brandComparisons[0].metrics.average_cpm }}</div>
-                  <div class="stat-label">Video Ads</div>
-                </div>
-              </div>
-
-              <div class="stat-item">
-                <div class="stat-icon-container ctr">
-                  <mat-icon>image</mat-icon>
-                </div>
-                <div class="stat-details">
-                  <div class="stat-value">{{ brandComparisons[0].metrics.average_ctr }}</div>
-                  <div class="stat-label">Image Ads</div>
+                  <span>{{ brand.metrics.total_spend > 100 ? 'Detailed' : 'Concise' }}</span>
                 </div>
               </div>
             </div>
-
-            <div class="competitor-summary">
-              <h4>{{ brandComparisons[0].brand }} Summary</h4>
-              <p><strong>{{ brandComparisons[0].ad_frequency }}</strong> total ads found with <strong>{{ formatPercentage(videoContentRate) }}</strong> video content rate</p>
-              <p>Creative mix: <strong>{{ brandComparisons[0].creative_types.image }}</strong> image ads, <strong>{{ brandComparisons[0].creative_types.video }}</strong> video ads</p>
+            
+            <div class="performance-metric content">
+              <div class="metric-icon">
+                <mat-icon>library_books</mat-icon>
+              </div>
+              <div class="metric-data">
+                <span class="metric-number">{{ brand.metrics.average_cpm + brand.metrics.average_ctr }}</span>
+                <span class="metric-label">Total Content</span>
+                <div class="metric-trend">
+                  <mat-icon>inventory</mat-icon>
+                  <span>{{ brand.metrics.average_cpm > 10 ? 'High' : 'Moderate' }} volume</span>
+                </div>
+              </div>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-
-    <!-- Top Performing Ads Section -->
-    <div class="section-container">
-      <mat-card class="top-ads-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>schedule</mat-icon>
-            Recent Ads
-          </mat-card-title>
-          <mat-card-subtitle>Most recently published ads across all brands</mat-card-subtitle>
-        </mat-card-header>
-        
-        <mat-card-content>
-          <div class="ads-grid">
-            <div *ngFor="let ad of topPerformingAds; let i = index" 
-                 class="ad-card" 
-                 (click)="openAdDetails(ad)">
+          
+          <div class="creative-breakdown">
+            <h4>Creative Portfolio</h4>
+            <div class="portfolio-items">
+              <div class="portfolio-item" (click)="showBrandVideos(brand.brand || 'Competitor')">
+                <div class="item-icon video">
+                  <mat-icon>movie_creation</mat-icon>
+                </div>
+                <div class="item-details">
+                  <span class="item-count">{{ brand.creative_types.video }}</span>
+                  <span class="item-label">Video Campaigns</span>
+                </div>
+                <mat-icon class="item-action">launch</mat-icon>
+              </div>
               
-              <div class="ad-header">
-                <div class="advertiser-info">
-                  <span class="advertiser-name">{{ ad.advertiser.name }}</span>
-                  <mat-icon *ngIf="ad.advertiser.verified" class="verified-badge" title="Verified">verified</mat-icon>
+              <div class="portfolio-item">
+                <div class="item-icon image">
+                  <mat-icon>photo_library</mat-icon>
                 </div>
-                <div class="ad-rank">#{{ i + 1 }}</div>
-              </div>
-
-              <div class="ad-content">
-                <div class="ad-text">{{ getAdPreviewText(ad) }}</div>
-                <div *ngIf="ad.creative.images.length > 0" class="ad-media">
-                  <mat-icon>image</mat-icon>
-                  <span>{{ ad.creative.images.length }} image(s)</span>
-                </div>
-                <div *ngIf="ad.creative.has_video" class="ad-media">
-                  <mat-icon>play_circle</mat-icon>
-                  <span>Video content</span>
+                <div class="item-details">
+                  <span class="item-count">{{ brand.creative_types.image }}</span>
+                  <span class="item-label">Image Campaigns</span>
                 </div>
               </div>
-
-              <div class="ad-metrics">
-                <div class="metric-item">
-                  <span class="metric-label">Format</span>
-                  <span class="metric-value">{{ ad.creative.has_video ? 'Video' : 'Image' }}</span>
+              
+              <div class="portfolio-item">
+                <div class="item-icon carousel">
+                  <mat-icon>view_carousel</mat-icon>
                 </div>
-                <div class="metric-item">
-                  <span class="metric-label">Text Length</span>
-                  <span class="metric-value">{{ ad.creative.body?.length || 0 }} chars</span>
-                </div>
-                <div class="metric-item">
-                  <span class="metric-label">Status</span>
-                  <span class="metric-value">{{ ad.metadata.is_active ? 'Active' : 'Historical' }}</span>
-                </div>
-              </div>
-
-              <div class="ad-footer">
-                <div class="ad-source">
-                  <mat-icon>source</mat-icon>
-                  <span>{{ ad.metadata.source }}</span>
-                </div>
-                <div class="ad-date">
-                  {{ ad.dates.start_date | date:'MMM d, y' }}
+                <div class="item-details">
+                  <span class="item-count">{{ brand.creative_types.carousel }}</span>
+                  <span class="item-label">Carousel Campaigns</span>
                 </div>
               </div>
             </div>
           </div>
-
-          <div *ngIf="topPerformingAds.length === 0" class="no-ads-message">
-            <mat-icon>info</mat-icon>
-            <p>No ad performance data available</p>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-
-    <!-- Detailed Brand Analysis -->
-    <div class="section-container" *ngFor="let brand of brandComparisons; let i = index">
-      <mat-card class="brand-detail-card">
-        <mat-card-header>
-          <mat-card-title>
-            <div class="brand-header">
-              <div class="brand-indicator" [style.background-color]="getBrandColor(i)"></div>
-              {{ brand.brand }} Analysis
-            </div>
-          </mat-card-title>
-          <mat-card-subtitle>{{ brand.ad_frequency }} ads found • {{ formatPercentage(brand.market_share) }} market share</mat-card-subtitle>
-        </mat-card-header>
-        
-        <mat-card-content>
-          <div class="brand-metrics-grid">
-            <div class="brand-metric">
-              <div class="metric-icon-container impressions">
-                <mat-icon>play_circle</mat-icon>
-              </div>
-              <div class="metric-details">
-                <div class="metric-value">{{ formatPercentage(brand.metrics.total_impressions) }}</div>
-                <div class="metric-label">Video Content Rate</div>
-              </div>
-            </div>
-
-            <div class="brand-metric">
-              <div class="metric-icon-container spend">
-                <mat-icon>text_fields</mat-icon>
-              </div>
-              <div class="metric-details">
-                <div class="metric-value">{{ brand.metrics.total_spend.toFixed(0) }}</div>
-                <div class="metric-label">Avg Text Length</div>
-              </div>
-            </div>
-
-            <div class="brand-metric">
-              <div class="metric-icon-container cpm">
-                <mat-icon>movie</mat-icon>
-              </div>
-              <div class="metric-details">
-                <div class="metric-value">{{ brand.metrics.average_cpm }}</div>
-                <div class="metric-label">Video Ads</div>
-              </div>
-            </div>
-
-            <div class="brand-metric">
-              <div class="metric-icon-container ctr">
-                <mat-icon>image</mat-icon>
-              </div>
-              <div class="metric-details">
-                <div class="metric-value">{{ brand.metrics.average_ctr }}</div>
-                <div class="metric-label">Image Ads</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Creative Types Distribution -->
-          <div class="creative-types">
-            <h4>Creative Types</h4>
-            <div class="creative-distribution">
-              <div class="creative-type">
-                <mat-icon>image</mat-icon>
-                <span>{{ brand.creative_types.image }} Images</span>
-              </div>
-              <div class="creative-type clickable-video-type" (click)="showBrandVideos(brand.brand)">
-                <mat-icon>play_circle</mat-icon>
-                <span>{{ brand.creative_types.video }} Videos</span>
-                <mat-icon class="click-indicator" style="font-size: 16px; margin-left: 4px;">open_in_new</mat-icon>
-              </div>
-              <div class="creative-type">
-                <mat-icon>view_carousel</mat-icon>
-                <span>{{ brand.creative_types.carousel }} Carousels</span>
-              </div>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+        </div>
+      </div>
+    </section>
 
     <!-- AI Analysis & Chat Section -->
-    <div class="section-container">
-      <mat-card class="ai-analysis-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>smart_toy</mat-icon>
-            AI Analysis & Chat
-          </mat-card-title>
-          <mat-card-subtitle>Get AI-powered insights and ask questions about your competitor analysis</mat-card-subtitle>
-        </mat-card-header>
+    <section class="ai-analysis-section">
+      <div class="ai-analysis-container">
+        <!-- Modern Header -->
+        <div class="ai-header">
+          <div class="header-background">
+            <div class="ai-gradient-overlay"></div>
+          </div>
+          <div class="header-content">
+            <div class="ai-icon-badge">
+              <mat-icon>psychology</mat-icon>
+            </div>
+            <div class="header-text">
+              <h2>AI-Powered Analysis</h2>
+              <p>Get intelligent insights and chat about your competitor analysis with advanced AI</p>
+            </div>
+            <div class="ai-status-indicator">
+              <div class="status-dot active"></div>
+              <span>AI Ready</span>
+            </div>
+          </div>
+        </div>
         
-        <mat-card-content>
+        <!-- Modern Content Area -->
+        <div class="ai-content-area">
           <!-- Analysis Mode Toggle -->
-          <div class="analysis-mode-toggle">
-            <mat-button-toggle-group [(value)]="analysisMode" (change)="switchAnalysisMode($event.value)">
-              <mat-button-toggle value="general">
-                <mat-icon>analytics</mat-icon>
-                General Analysis
-              </mat-button-toggle>
-              <mat-button-toggle value="video">
-                <mat-icon>movie</mat-icon>
-                Bulk Video Analysis
-              </mat-button-toggle>
-            </mat-button-toggle-group>
+          <div class="modern-mode-toggle">
+            <div class="toggle-header">
+              <h3>Choose Analysis Type</h3>
+              <p>Select the type of AI analysis you want to perform</p>
+            </div>
+            <div class="toggle-cards">
+              <div class="mode-card" 
+                   [class.active]="analysisMode === 'general'"
+                   (click)="switchAnalysisMode('general')">
+                <div class="card-icon general">
+                  <mat-icon>analytics</mat-icon>
+                </div>
+                <div class="card-content">
+                  <h4>General Analysis</h4>
+                  <p>Custom AI insights and analysis</p>
+                </div>
+                <div class="card-indicator" *ngIf="analysisMode === 'general'">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+              </div>
+              
+              <div class="mode-card" 
+                   [class.active]="analysisMode === 'video'"
+                   (click)="switchAnalysisMode('video')">
+                <div class="card-icon video">
+                  <mat-icon>movie_creation</mat-icon>
+                </div>
+                <div class="card-content">
+                  <h4>Bulk Video Analysis</h4>
+                  <p>Analyze all {{ totalVideoAds }} videos with AI</p>
+                </div>
+                <div class="card-indicator" *ngIf="analysisMode === 'video'">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- General Analysis Section -->
-          <div *ngIf="analysisMode === 'general'" class="custom-analysis-section">
-            <h4>
-              <mat-icon>psychology</mat-icon>
-              Custom AI Analysis
-            </h4>
-            <p>Ask AI to analyze your competitor data with a custom prompt:</p>
-            
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Enter your analysis prompt...</mat-label>
-              <textarea 
-                matInput 
-                [(ngModel)]="customPrompt" 
-                rows="3"
-                placeholder="e.g., 'Analyze video content strategies across competitors' or 'What messaging themes are most common?'"
-              ></textarea>
-            </mat-form-field>
-            
-            <div class="analysis-actions">
-              <button 
-                mat-raised-button 
-                color="primary" 
-                (click)="runCustomAnalysis()"
-                [disabled]="!customPrompt.trim() || isAnalyzing"
-              >
-                <mat-icon *ngIf="!isAnalyzing">psychology</mat-icon>
-                <mat-spinner *ngIf="isAnalyzing" diameter="20"></mat-spinner>
-                {{ isAnalyzing ? 'Analyzing...' : 'Run AI Analysis' }}
-              </button>
+          <div *ngIf="analysisMode === 'general'" class="modern-analysis-section">
+            <div class="analysis-card">
+              <div class="analysis-card-header">
+                <div class="analysis-icon">
+                  <mat-icon>psychology</mat-icon>
+                </div>
+                <div class="analysis-title">
+                  <h3>Custom AI Analysis</h3>
+                  <p>Ask AI to analyze your competitor data with intelligent insights</p>
+                </div>
+              </div>
               
-              <button mat-stroked-button (click)="showQuickPrompts = !showQuickPrompts">
-                <mat-icon>help_outline</mat-icon>
-                Quick Prompts
-              </button>
+              <div class="analysis-card-content">
+                <div class="prompt-input-section">
+                  <label class="input-label">
+                    <mat-icon>edit</mat-icon>
+                    Your Analysis Prompt
+                  </label>
+                  <div class="modern-textarea-container">
+                    <textarea 
+                      class="modern-textarea"
+                      [(ngModel)]="customPrompt" 
+                      rows="4"
+                      placeholder="e.g., 'Analyze video content strategies across competitors' or 'What messaging themes are most common?'"
+                    ></textarea>
+                    <div class="textarea-actions">
+                      <button class="quick-prompts-btn" (click)="showQuickPrompts = !showQuickPrompts">
+                        <mat-icon>lightbulb</mat-icon>
+                        <span>Quick Ideas</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="analysis-actions">
+                  <button 
+                    class="primary-analysis-btn"
+                    (click)="runCustomAnalysis()"
+                    [disabled]="!customPrompt.trim() || isAnalyzing"
+                  >
+                    <div class="btn-content">
+                      <mat-icon *ngIf="!isAnalyzing">psychology</mat-icon>
+                      <mat-spinner *ngIf="isAnalyzing" diameter="20"></mat-spinner>
+                      <span>{{ isAnalyzing ? 'Analyzing...' : 'Run AI Analysis' }}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Quick Prompt Suggestions -->
-            <div *ngIf="showQuickPrompts" class="quick-prompts">
-              <h5>Quick Prompt Ideas:</h5>
-              <div class="prompt-chips">
+            <div *ngIf="showQuickPrompts" class="modern-quick-prompts">
+              <div class="prompts-header">
+                <mat-icon>auto_awesome</mat-icon>
+                <h4>AI Prompt Suggestions</h4>
+              </div>
+              <div class="prompts-grid">
                 <button 
                   *ngFor="let prompt of quickPrompts" 
-                  mat-stroked-button 
+                  class="prompt-suggestion-card"
                   (click)="useQuickPrompt(prompt)"
-                  class="prompt-chip"
                 >
-                  {{ prompt }}
+                  <mat-icon>spark</mat-icon>
+                  <span>{{ prompt }}</span>
                 </button>
               </div>
             </div>
 
             <!-- Analysis Results -->
-            <div *ngIf="customAnalysisResult" class="analysis-results">
-              <mat-divider></mat-divider>
-              <h5>
-                <mat-icon>insights</mat-icon>
-                Analysis Results
-                <span class="ai-provider">({{ customAnalysisResult.metadata?.ai_provider || 'AI' }})</span>
-              </h5>
-              <div class="analysis-content" [innerHTML]="formatAnalysisResult(customAnalysisResult.analysis)"></div>
+            <div *ngIf="customAnalysisResult" class="modern-analysis-results">
+              <div class="results-header">
+                <div class="results-icon">
+                  <mat-icon>insights</mat-icon>
+                </div>
+                <div class="results-title">
+                  <h3>AI Analysis Results</h3>
+                  <div class="ai-provider-badge">
+                    <mat-icon>smart_toy</mat-icon>
+                    <span>{{ customAnalysisResult.metadata?.ai_provider || 'AI' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="results-content">
+                <div class="analysis-output" [innerHTML]="formatAnalysisResult(customAnalysisResult.analysis)"></div>
+              </div>
             </div>
           </div>
 
           <!-- Bulk Video Analysis Section -->
-          <div *ngIf="analysisMode === 'video'" class="bulk-video-analysis-section">
-            <h4>
-              <mat-icon>movie</mat-icon>
-              Bulk Video Analysis
-            </h4>
-            <p>Analyze ALL competitor videos ({{ totalVideoAds }} videos) with AI-powered insights including transcripts and strategic intelligence:</p>
-            
-            <!-- Video Analysis Options -->
-            <div class="video-analysis-options">
-              <div class="options-row">
-                <mat-checkbox [(ngModel)]="includeTranscripts">
-                  <mat-icon>subtitles</mat-icon>
-                  Include Video Transcripts (OpenAI Whisper)
-                </mat-checkbox>
-                <mat-checkbox [(ngModel)]="includeVisualAnalysis" [disabled]="true">
-                  <mat-icon>visibility</mat-icon>
-                  Include Visual Analysis (Coming Soon)
-                </mat-checkbox>
-              </div>
-            </div>
-
-            <!-- Video Analysis Templates -->
-            <div class="video-templates-section">
-              <div class="template-selector-header">
-                <button mat-stroked-button (click)="showVideoTemplates = !showVideoTemplates">
-                  <mat-icon>template_outline</mat-icon>
-                  Choose Analysis Template
-                  <mat-icon>{{ showVideoTemplates ? 'expand_less' : 'expand_more' }}</mat-icon>
-                </button>
-                <span class="template-count">{{ videoAnalysisTemplates.length }} professional templates</span>
-              </div>
-
-              <div *ngIf="showVideoTemplates" class="video-templates-grid">
-                <div *ngFor="let template of videoAnalysisTemplates" 
-                     class="template-card"
-                     [class.selected]="selectedVideoTemplate === template.id"
-                     (click)="useVideoTemplate(template.id)">
-                  <div class="template-header">
-                    <h5>{{ template.name }}</h5>
-                    <mat-icon *ngIf="selectedVideoTemplate === template.id" class="selected-icon">check_circle</mat-icon>
-                  </div>
-                  <p class="template-description">{{ template.description }}</p>
+          <div *ngIf="analysisMode === 'video'" class="modern-video-analysis-section">
+            <div class="video-analysis-card">
+              <div class="video-analysis-header">
+                <div class="video-icon-badge">
+                  <mat-icon>movie_creation</mat-icon>
+                </div>
+                <div class="video-title">
+                  <h3>Bulk Video Analysis</h3>
+                  <p>Analyze ALL competitor videos ({{ totalVideoAds }} videos) with AI-powered insights</p>
+                </div>
+                <div class="video-count-badge">
+                  <span class="count">{{ totalVideoAds }}</span>
+                  <span class="label">Videos</span>
                 </div>
               </div>
-            </div>
-            
-            <!-- Custom Prompt -->
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Video analysis prompt (customize or use template)...</mat-label>
-              <textarea 
-                matInput 
-                [(ngModel)]="customPrompt" 
-                rows="6"
-                placeholder="Describe what insights you want from the competitor's video content..."
-              ></textarea>
-              <mat-hint>Tip: Use templates above or create your own analysis prompt for {{ totalVideoAds }} videos</mat-hint>
-            </mat-form-field>
-            
-            <!-- Analysis Actions -->
-            <div class="video-analysis-actions">
-              <button 
-                mat-raised-button 
-                color="primary" 
-                (click)="startBulkVideoAnalysis()"
-                [disabled]="!customPrompt.trim() || isBulkAnalyzing || totalVideoAds === 0"
-                class="analyze-button">
-                <mat-icon *ngIf="!isBulkAnalyzing">smart_toy</mat-icon>
-                <mat-spinner *ngIf="isBulkAnalyzing" diameter="20"></mat-spinner>
-                {{ isBulkAnalyzing ? 'Analyzing Videos...' : 'Analyze ' + totalVideoAds + ' Videos' }}
-              </button>
               
-              <button 
-                *ngIf="isBulkAnalyzing"
-                mat-stroked-button 
-                color="warn"
-                (click)="cancelBulkAnalysis()">
-                <mat-icon>cancel</mat-icon>
-                Cancel Analysis
-              </button>
+              <!-- Video Analysis Options -->
+              <div class="modern-analysis-options">
+                <h4>Analysis Options</h4>
+                <div class="options-grid">
+                  <div class="option-card" [class.enabled]="includeTranscripts">
+                    <label class="option-label">
+                      <input type="checkbox" [(ngModel)]="includeTranscripts" class="hidden-checkbox">
+                      <div class="option-content">
+                        <div class="option-icon">
+                          <mat-icon>subtitles</mat-icon>
+                        </div>
+                        <div class="option-text">
+                          <span class="option-title">Video Transcripts</span>
+                          <span class="option-desc">OpenAI Whisper powered</span>
+                        </div>
+                        <div class="option-toggle">
+                          <div class="toggle-indicator"></div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                  
+                  <div class="option-card disabled">
+                    <div class="option-content">
+                      <div class="option-icon">
+                        <mat-icon>visibility</mat-icon>
+                      </div>
+                      <div class="option-text">
+                        <span class="option-title">Visual Analysis</span>
+                        <span class="option-desc">Coming Soon</span>
+                      </div>
+                      <div class="coming-soon-badge">
+                        <mat-icon>schedule</mat-icon>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Video Analysis Templates -->
+              <div class="modern-templates-section">
+                <div class="templates-header">
+                  <div class="templates-title">
+                    <mat-icon>auto_awesome</mat-icon>
+                    <h4>Analysis Templates</h4>
+                  </div>
+                  <button class="templates-toggle-btn" (click)="showVideoTemplates = !showVideoTemplates">
+                    <span>{{ videoAnalysisTemplates.length }} Professional Templates</span>
+                    <mat-icon>{{ showVideoTemplates ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  </button>
+                </div>
+
+                <div *ngIf="showVideoTemplates" class="modern-templates-grid">
+                  <div *ngFor="let template of videoAnalysisTemplates" 
+                       class="modern-template-card"
+                       [class.selected]="selectedVideoTemplate === template.id"
+                       (click)="useVideoTemplate(template.id)">
+                    <div class="template-content">
+                      <div class="template-icon">
+                        <mat-icon>description</mat-icon>
+                      </div>
+                      <div class="template-info">
+                        <h5>{{ template.name }}</h5>
+                        <p>{{ template.description }}</p>
+                      </div>
+                      <div class="template-selector" *ngIf="selectedVideoTemplate === template.id">
+                        <mat-icon>check_circle</mat-icon>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Custom Prompt Section -->
+              <div class="video-prompt-section">
+                <label class="prompt-label">
+                  <mat-icon>edit</mat-icon>
+                  Custom Video Analysis Prompt
+                </label>
+                <div class="video-textarea-container">
+                  <textarea 
+                    class="video-textarea"
+                    [(ngModel)]="customPrompt" 
+                    rows="5"
+                    placeholder="Describe what insights you want from the competitor's video content..."
+                  ></textarea>
+                  <div class="textarea-hint">
+                    <mat-icon>lightbulb</mat-icon>
+                    <span>Tip: Use templates above or create your own analysis prompt for {{ totalVideoAds }} videos</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Analysis Actions -->
+              <div class="video-analysis-actions">
+                <button 
+                  class="video-analyze-btn"
+                  (click)="startBulkVideoAnalysis()"
+                  [disabled]="!customPrompt.trim() || isBulkAnalyzing || totalVideoAds === 0">
+                  <div class="btn-content">
+                    <mat-icon *ngIf="!isBulkAnalyzing">smart_toy</mat-icon>
+                    <mat-spinner *ngIf="isBulkAnalyzing" diameter="22"></mat-spinner>
+                    <span>{{ isBulkAnalyzing ? 'Analyzing Videos...' : 'Analyze ' + totalVideoAds + ' Videos' }}</span>
+                  </div>
+                </button>
+                
+                <button 
+                  *ngIf="isBulkAnalyzing"
+                  class="cancel-btn"
+                  (click)="cancelBulkAnalysis()">
+                  <mat-icon>stop</mat-icon>
+                  <span>Cancel Analysis</span>
+                </button>
+              </div>
             </div>
 
             <!-- Progress Tracking -->
@@ -547,23 +796,39 @@
               </div>
             </div>
           </div>
-
-          <mat-divider class="section-divider"></mat-divider>
-
+          
           <!-- AI Chat Interface -->
-          <div class="ai-chat-section">
-            <h4>
-              <mat-icon>chat</mat-icon>
-              Chat with AI About Your Analysis
-            </h4>
-            <p>Ask follow-up questions about your competitor analysis results:</p>
+          <div class="modern-ai-chat-section">
+            <div class="chat-section-divider">
+              <div class="divider-line"></div>
+              <div class="divider-icon">
+                <mat-icon>forum</mat-icon>
+              </div>
+              <div class="divider-line"></div>
+            </div>
             
-            <!-- Integrate the AI Chat Component -->
-            <app-ai-chat [analysisResults]="getAnalysisResultsForChat()"></app-ai-chat>
+            <div class="chat-header">
+              <div class="chat-icon">
+                <mat-icon>chat</mat-icon>
+              </div>
+              <div class="chat-title">
+                <h3>AI Chat Assistant</h3>
+                <p>Ask follow-up questions about your competitor analysis results</p>
+              </div>
+              <div class="chat-status">
+                <div class="status-indicator online"></div>
+                <span>Online</span>
+              </div>
+            </div>
+            
+            <div class="chat-content">
+              <!-- Integrate the AI Chat Component -->
+              <app-ai-chat [analysisResults]="getAnalysisResultsForChat()"></app-ai-chat>
+            </div>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Analysis Meta Information -->
     <div class="section-container">

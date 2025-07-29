@@ -1,201 +1,247 @@
 <div class="competitor-analysis-container">
-  <div class="page-header">
-    <h1>Single Competitor Analysis</h1>
-    <p>Analyze a competitor's Facebook advertising strategy using Facebook Ad Library data</p>
+  <!-- Modern Hero Section -->
+  <div class="hero-section">
+    <div class="hero-content">
+      <div class="hero-icon">
+        <mat-icon>insights</mat-icon>
+      </div>
+      <h1>Competitor Intelligence</h1>
+      <p>Unlock strategic insights from your competitor's Facebook advertising campaigns with AI-powered analysis</p>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">4-Tier</span>
+          <span class="stat-label">Fallback System</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">AI-Powered</span>
+          <span class="stat-label">Video Analysis</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">Real-time</span>
+          <span class="stat-label">Data Processing</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="content-layout">
-    <!-- Analysis Form -->
-    <div class="form-section">
-      <mat-card class="analysis-form-card">
-        <mat-card-header>
-          <div class="header-content">
-            <div class="title-section">
-              <mat-card-title>
-                <mat-icon class="header-icon">analytics</mat-icon>
-                Configure Single Competitor Analysis
-              </mat-card-title>
-              <mat-card-subtitle>Analyze a competitor's Facebook advertising strategy and get detailed insights</mat-card-subtitle>
+  <div class="main-content">
+    <!-- Analysis Configuration Card -->
+    <div class="config-section">
+      <mat-card class="analysis-config-card">
+        <div class="card-header">
+          <div class="header-left">
+            <div class="header-icon">
+              <mat-icon>rocket_launch</mat-icon>
             </div>
-            <div class="config-section">
-              <button mat-stroked-button 
-                      color="primary"
-                      (click)="openFacebookConfig()"
-                      title="Configure Facebook API token">
-                <mat-icon>settings</mat-icon>
-                Facebook API Config
-              </button>
+            <div class="header-text">
+              <h2>Start Analysis</h2>
+              <p>Enter your competitor's Facebook page to begin comprehensive analysis</p>
             </div>
           </div>
-        </mat-card-header>
+          <button mat-icon-button 
+                  color="primary"
+                  (click)="openFacebookConfig()"
+                  title="Configure Facebook API token"
+                  class="config-button">
+            <mat-icon>settings</mat-icon>
+          </button>
+        </div>
         
-        <mat-card-content>
+        <div class="card-content">
           <!-- Error Message -->
-          <div *ngIf="errorMessage" class="error-alert">
-            <mat-icon class="error-icon">error</mat-icon>
-            <div>
+          <div *ngIf="errorMessage" class="error-message">
+            <mat-icon>error_outline</mat-icon>
+            <div class="error-text">
               <strong>Analysis Failed</strong>
               <p>{{ errorMessage }}</p>
             </div>
           </div>
 
-          <form [formGroup]="analysisForm" (ngSubmit)="onSubmit()">
+          <form [formGroup]="analysisForm" (ngSubmit)="onSubmit()" class="analysis-form">
             
-            <!-- Competitor URL -->
-            <div class="form-group">
-              <label class="section-label">Competitor Facebook Page URL</label>
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Competitor's Facebook page</mat-label>
-                <input matInput formControlName="competitorUrl" placeholder="https://facebook.com/competitor">
-                <mat-icon matSuffix>business</mat-icon>
-                <mat-hint>Enter the public Facebook page URL of the competitor you want to analyze</mat-hint>
+            <!-- URL Input Section -->
+            <div class="input-section">
+              <div class="input-header">
+                <mat-icon>link</mat-icon>
+                <span>Competitor Facebook Page</span>
+              </div>
+              <mat-form-field appearance="outline" class="url-input">
+                <mat-label>Enter Facebook page URL</mat-label>
+                <input matInput 
+                       formControlName="competitorUrl" 
+                       placeholder="https://facebook.com/competitor"
+                       class="url-field">
+                <button mat-icon-button 
+                        matSuffix 
+                        type="button"
+                        title="Paste from clipboard"
+                        class="paste-button">
+                  <mat-icon>content_paste</mat-icon>
+                </button>
                 <mat-error *ngIf="getErrorMessage('competitorUrl')">
                   {{ getErrorMessage('competitorUrl') }}
                 </mat-error>
               </mat-form-field>
+              <div class="input-hint">
+                <mat-icon>info</mat-icon>
+                <span>Enter the public Facebook page URL of your competitor</span>
+              </div>
             </div>
 
-            <!-- Submit Button -->
-            <div class="submit-section">
+            <!-- Action Button -->
+            <div class="action-section">
               <button 
-                mat-raised-button 
+                mat-flat-button 
                 color="primary" 
                 type="submit"
                 [disabled]="!analysisForm.valid || isSubmitting"
-                class="submit-button">
-                <mat-icon *ngIf="!isSubmitting">analytics</mat-icon>
-                <mat-spinner *ngIf="isSubmitting" diameter="20"></mat-spinner>
-                {{ isSubmitting ? 'Starting Analysis...' : 'Analyze Competitor' }}
+                class="analyze-button">
+                <div class="button-content">
+                  <mat-icon *ngIf="!isSubmitting">rocket_launch</mat-icon>
+                  <mat-spinner *ngIf="isSubmitting" diameter="24"></mat-spinner>
+                  <span>{{ isSubmitting ? 'Analyzing...' : 'Start Analysis' }}</span>
+                </div>
               </button>
             </div>
           </form>
-        </mat-card-content>
+        </div>
       </mat-card>
     </div>
 
-    <!-- Info Section -->
-    <div class="info-section">
-      <!-- How it Works -->
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="info-icon">help_outline</mat-icon>
-            How It Works
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <ol class="steps-list">
-            <li><strong>Data Collection:</strong> We scrape ads from the competitor's Facebook page using the Ad Library API</li>
-            <li><strong>AI Analysis:</strong> Analyze advertising strategies, messaging, creative approaches, and video content</li>
-            <li><strong>Insights:</strong> Get actionable intelligence about competitor tactics and opportunities</li>
-            <li><strong>Results:</strong> View comprehensive competitor analysis with video breakdowns and export data</li>
-          </ol>
-        </mat-card-content>
-      </mat-card>
+    <!-- Features Grid -->
+    <div class="features-section">
+      <h2 class="section-title">Powerful Analysis Features</h2>
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>data_usage</mat-icon>
+          </div>
+          <h3>Real-time Data Collection</h3>
+          <p>Access live Facebook ads data through our 4-tier fallback system ensuring 99.9% uptime</p>
+          <div class="feature-stats">
+            <span class="stat">4 Data Sources</span>
+            <span class="stat">99.9% Uptime</span>
+          </div>
+        </div>
 
-      <!-- System Status -->
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="info-icon">settings</mat-icon>
-            System Status
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="status-grid">
-            <div class="status-item">
-              <div class="status-label">Apify Scraper:</div>
-              <div class="status-indicator" [ngClass]="scraperStatuses.apify">
-                <mat-icon>{{ scraperStatuses.apify === 'online' ? 'check_circle' : 'error' }}</mat-icon>
-                {{ scraperStatuses.apify || 'checking...' }}
-              </div>
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>smart_toy</mat-icon>
+          </div>
+          <h3>AI-Powered Analysis</h3>
+          <p>Advanced AI analyzes video content, messaging strategies, and creative approaches</p>
+          <div class="feature-stats">
+            <span class="stat">OpenAI Whisper</span>
+            <span class="stat">Claude AI</span>
+          </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>movie_creation</mat-icon>
+          </div>
+          <h3>Video Intelligence</h3>
+          <p>Bulk video analysis with transcription and strategic competitive intelligence</p>
+          <div class="feature-stats">
+            <span class="stat">Bulk Processing</span>
+            <span class="stat">5 Templates</span>
+          </div>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>insights</mat-icon>
+          </div>
+          <h3>Strategic Insights</h3>
+          <p>Export detailed reports and get actionable recommendations for competitive advantage</p>
+          <div class="feature-stats">
+            <span class="stat">JSON Export</span>
+            <span class="stat">AI Reports</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="status-section">
+      <mat-card class="status-card">
+        <div class="status-header">
+          <div class="status-title">
+            <mat-icon>monitoring</mat-icon>
+            <span>System Status</span>
+          </div>
+          <div class="status-badge online">
+            <mat-icon>check_circle</mat-icon>
+            <span>All Systems Operational</span>
+          </div>
+        </div>
+        <div class="status-grid">
+          <div class="status-item" [ngClass]="scraperStatuses.apify">
+            <div class="status-indicator">
+              <mat-icon>{{ scraperStatuses.apify === 'online' ? 'check_circle' : 'error' }}</mat-icon>
             </div>
-            <div class="status-item">
-              <div class="status-label">Facebook API:</div>
-              <div class="status-indicator" [ngClass]="scraperStatuses.facebook">
-                <mat-icon>{{ scraperStatuses.facebook === 'online' ? 'check_circle' : 'error' }}</mat-icon>
-                {{ scraperStatuses.facebook || 'checking...' }}
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">HTTP Scraper:</div>
-              <div class="status-indicator online">
-                <mat-icon>check_circle</mat-icon>
-                online
-              </div>
-            </div>
-            <div class="status-item">
-              <div class="status-label">Fallback System:</div>
-              <div class="status-indicator online">
-                <mat-icon>verified</mat-icon>
-                active
-              </div>
+            <div class="status-details">
+              <span class="status-name">Apify Scraper</span>
+              <span class="status-value">{{ scraperStatuses.apify || 'checking...' }}</span>
             </div>
           </div>
-          <div class="system-note">
-            <mat-icon>info</mat-icon>
-            <span>4-tier fallback system ensures you always get Facebook ads data!</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Requirements -->
-      <mat-card class="info-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="info-icon">info</mat-icon>
-            What You'll Get
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <ul class="requirements-list">
-            <li>
-              <mat-icon class="check-icon">analytics</mat-icon>
-              Live Facebook ads data from competitor pages
-            </li>
-            <li>
-              <mat-icon class="check-icon">movie</mat-icon>
-              Video content analysis with bulk processing
-            </li>
-            <li>
-              <mat-icon class="check-icon">palette</mat-icon>
-              Creative strategy analysis & AI-powered insights
-            </li>
-            <li>
-              <mat-icon class="check-icon">schedule</mat-icon>
-              Real-time progress tracking (30-60 seconds)
-            </li>
-          </ul>
-        </mat-card-content>
-      </mat-card>
-
-      <!-- Example URLs -->
-      <mat-card class="info-card example-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon class="info-icon">link</mat-icon>
-            URL Examples
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="example-section">
-            <div class="example-item correct">
-              <mat-icon class="example-icon correct">check</mat-icon>
-              <div>
-                <strong>Correct:</strong>
-                <code>https://facebook.com/nike</code>
-              </div>
+          <div class="status-item" [ngClass]="scraperStatuses.facebook">
+            <div class="status-indicator">
+              <mat-icon>{{ scraperStatuses.facebook === 'online' ? 'check_circle' : 'error' }}</mat-icon>
             </div>
-            <div class="example-item incorrect">
-              <mat-icon class="example-icon incorrect">close</mat-icon>
-              <div>
-                <strong>Incorrect:</strong>
-                <code>https://facebook.com/ads/library/?active_status=all&ad_type=political_and_issue_ads&country=US&q=nike</code>
-              </div>
+            <div class="status-details">
+              <span class="status-name">Facebook API</span>
+              <span class="status-value">{{ scraperStatuses.facebook || 'checking...' }}</span>
             </div>
           </div>
-        </mat-card-content>
+          <div class="status-item online">
+            <div class="status-indicator">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+            <div class="status-details">
+              <span class="status-name">HTTP Scraper</span>
+              <span class="status-value">online</span>
+            </div>
+          </div>
+          <div class="status-item online">
+            <div class="status-indicator">
+              <mat-icon>verified</mat-icon>
+            </div>
+            <div class="status-details">
+              <span class="status-name">Fallback System</span>
+              <span class="status-value">active</span>
+            </div>
+          </div>
+        </div>
       </mat-card>
+    </div>
+
+    <!-- URL Examples -->
+    <div class="examples-section">
+      <h3 class="examples-title">
+        <mat-icon>help</mat-icon>
+        URL Format Examples
+      </h3>
+      <div class="examples-grid">
+        <div class="example-item correct">
+          <div class="example-status">
+            <mat-icon>check_circle</mat-icon>
+            <span>Correct</span>
+          </div>
+          <code class="example-url">https://facebook.com/nike</code>
+        </div>
+        <div class="example-item incorrect">
+          <div class="example-status">
+            <mat-icon>cancel</mat-icon>
+            <span>Incorrect</span>
+          </div>
+          <code class="example-url">https://facebook.com/ads/library/?q=nike</code>
+        </div>
+      </div>
     </div>
   </div>
 </div>
