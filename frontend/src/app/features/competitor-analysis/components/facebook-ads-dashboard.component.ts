@@ -430,17 +430,20 @@ Focus on actionable optimization recommendations for video campaigns.`
     this.isAnalyzing = true;
     this.customAnalysisResult = null;
 
-    // Use the workflow ID from the analysis results
-    const workflowId = this.datasetId; // Use datasetId as workflow identifier
-
-    const analysisRequest = {
+    const analysisRequest: any = {
       prompt: this.customPrompt,
-      workflowId: workflowId,
       filters: {
         analysis_type: 'custom_competitor_analysis',
         dashboard_context: true
       }
     };
+
+    // Only add workflowId if we have real analysis results (not mock data)
+    if (this.analysisResults?.analysis?.ai_provider !== 'enhanced_mock' && 
+        this.analysisResults?.analysis?.ai_provider !== 'mock' &&
+        this.datasetId) {
+      analysisRequest.workflowId = this.datasetId;
+    }
 
     this.apiService.startAnalysis(analysisRequest).subscribe({
       next: (response) => {
@@ -519,8 +522,14 @@ Focus on actionable optimization recommendations for video campaigns.`
           includeVisualAnalysis: this.includeVisualAnalysis,
           analysisType: this.selectedVideoTemplate || 'custom',
           competitorName: (this.brandComparisons[0]?.brand || 'Competitor').substring(0, 100)
-        },
-        workflowId: this.datasetId
+        }
+      };
+
+      // Only add workflowId if we have real analysis results (not mock data)
+      if (this.analysisResults?.analysis?.ai_provider !== 'enhanced_mock' && 
+          this.analysisResults?.analysis?.ai_provider !== 'mock' &&
+          this.datasetId) {
+        analysisRequest.workflowId = this.datasetId;
       };
 
       // Log request size for debugging
