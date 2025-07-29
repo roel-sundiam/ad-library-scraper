@@ -8,6 +8,9 @@ const ApifyScraper = require('../scrapers/apify-scraper');
 const FacebookPlaywrightScraper = require('../scrapers/facebook-playwright-scraper');
 const FacebookAdvancedHTTPScraper = require('../scrapers/facebook-http-advanced');
 
+// OpenAI for chat functionality
+const OpenAI = require('openai');
+
 // In-memory job storage (replace with database in production)
 const jobs = new Map();
 
@@ -2607,7 +2610,7 @@ router.post('/analysis/chat', async (req, res) => {
     // Process video transcripts if needed (skip for now to avoid OpenAI costs)
     const adsWithTranscripts = adsData; // Skip video transcription until OpenAI key is available
 
-    // Try AI chat with fallback priority: Ollama → Claude → Mock
+    // Try AI chat with fallback priority: Ollama → Claude → OpenAI → Mock
     let chatResult;
     let aiProvider = 'mock';
 
@@ -2628,7 +2631,17 @@ router.post('/analysis/chat', async (req, res) => {
           aiProvider = 'anthropic';
         }
       } catch (claudeError) {
-        logger.warn('Claude chat failed, using mock response...', claudeError.message);
+        logger.warn('Claude chat failed, trying OpenAI...', claudeError.message);
+        
+        try {
+          // Fallback to OpenAI if available
+          if (process.env.OPENAI_API_KEY) {
+            chatResult = await callOpenAIForChat(contextPrompt, adsWithTranscripts);
+            aiProvider = 'openai';
+          }
+        } catch (openaiError) {
+          logger.warn('OpenAI chat failed, using mock response...', openaiError.message);
+        }
       }
     }
 
@@ -2880,6 +2893,62 @@ function generateMockAnalysis(prompt, adsData) {
       ai_provider: 'mock'
     }
   };
+}
+
+// OpenAI chat function for AI assistant
+async function callOpenAIForChat(contextPrompt, adsData) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not configured');
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    logger.info('Starting OpenAI chat analysis');
+
+    const systemPrompt = `You are an AI assistant helping with Facebook advertising competitive analysis and marketing strategy. You provide helpful, conversational responses about advertising data and competitive insights.
+
+Your responses should be:
+- Conversational and helpful
+- Specific to the data provided
+- Focused on actionable insights
+- Professional but friendly
+- Comprehensive but concise
+
+Answer the user's question based on the competitive analysis context provided.`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: contextPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const result = {
+      response: response.choices[0].message.content,
+      metadata: {
+        model: 'gpt-4',
+        tokens_used: response.usage?.total_tokens || 0,
+        ai_provider: 'openai'
+      }
+    };
+
+    logger.info('OpenAI chat analysis completed', {
+      tokensUsed: response.usage?.total_tokens,
+      responseLength: result.response.length
+    });
+
+    return result;
+
+  } catch (error) {
+    logger.error('OpenAI chat analysis failed:', error);
+    throw new Error(`OpenAI chat failed: ${error.message}`);
+  }
 }
 
 // Helper function to generate mock chat response
