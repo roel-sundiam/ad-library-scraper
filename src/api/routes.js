@@ -11,6 +11,9 @@ const FacebookAdvancedHTTPScraper = require('../scrapers/facebook-http-advanced'
 // OpenAI for chat functionality
 const OpenAI = require('openai');
 
+// Import AI analysis utilities
+const { analyzeWithOpenAI } = require('../utils/ai-analysis');
+
 // In-memory job storage (replace with database in production)
 const jobs = new Map();
 

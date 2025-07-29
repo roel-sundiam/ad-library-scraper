@@ -4,6 +4,7 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const logger = require('./utils/logger');
+const { analyzeCompetitiveDataWithOpenAI } = require('./utils/ai-analysis');
 const ClaudeService = require('./services/claude-service');
 const VideoTranscriptService = require('./services/video-transcript-service');
 const MockAnalysisService = require('./services/mock-analysis-service');
@@ -1303,7 +1304,7 @@ async function runAICompetitiveAnalysis(processedData, workflow) {
       logger.info('Used Claude API for competitive analysis');
     } else if (process.env.OPENAI_API_KEY) {
       // Use OpenAI as fallback
-      aiAnalysis = await analyzeWithOpenAI(analysisPrompt, processedData);
+      aiAnalysis = await analyzeCompetitiveDataWithOpenAI(analysisPrompt, processedData);
       logger.info('Used OpenAI API for competitive analysis');
     } else {
       // No AI API configured - return error
