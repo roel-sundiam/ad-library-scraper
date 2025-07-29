@@ -120,7 +120,38 @@
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  
+  .user-info {
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    
+    @media (min-width: 768px) {
+      display: flex;
+    }
+    
+    .user-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    
+    .user-role {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      
+      &.super-admin {
+        color: #fbbf24;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+    }
+  }
   
   .user-menu-btn {
     color: white;
@@ -163,11 +194,33 @@
 // User Menu Dropdown Styling
 ::ng-deep .user-menu {
   .mat-mdc-menu-panel {
-    min-width: 180px;
+    min-width: 240px;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .menu-header {
+      padding: 16px 12px 8px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      
+      .menu-user-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        
+        .menu-user-name {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+        
+        .menu-user-email {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+      }
+    }
     
     .mat-mdc-menu-item {
       height: 48px;
@@ -180,15 +233,36 @@
         transform: translateX(4px);
       }
       
+      &.logout-item {
+        &:hover {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+          
+          mat-icon {
+            color: #dc2626;
+          }
+          
+          span {
+            color: #dc2626;
+          }
+        }
+      }
+      
       mat-icon {
         color: #667eea;
         margin-right: 12px;
+        transition: color 0.3s ease;
       }
       
       span {
         font-weight: 500;
         color: #374151;
+        transition: color 0.3s ease;
       }
+    }
+    
+    mat-divider {
+      margin: 8px 0;
+      opacity: 0.3;
     }
   }
 }

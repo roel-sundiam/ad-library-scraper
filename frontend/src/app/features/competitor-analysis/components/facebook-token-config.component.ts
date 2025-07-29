@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-facebook-token-config',
@@ -17,7 +19,9 @@ export class FacebookTokenConfigComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private authService: AuthService,
+    private router: Router
   ) {
     this.tokenForm = this.fb.group({
       accessToken: ['', [Validators.required, Validators.minLength(50)]]
@@ -25,6 +29,14 @@ export class FacebookTokenConfigComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Check if user is super admin
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || currentUser.role !== 'super_admin') {
+      this.errorMessage = 'Access denied. Only super administrators can configure Facebook API settings.';
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+    
     this.loadTokenStatus();
   }
 

@@ -327,6 +327,86 @@ router.get('/auth/me', authenticateToken, (req, res) => {
   });
 });
 
+// Change password endpoint
+router.post('/auth/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Current password and new password are required'
+        }
+      });
+    }
+    
+    // Validate new password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'New password must be at least 8 characters long'
+        }
+      });
+    }
+    
+    // Get user from database
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found'
+        }
+      });
+    }
+    
+    // Verify current password
+    const isCurrentPasswordValid = await comparePassword(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_CURRENT_PASSWORD',
+          message: 'Current password is incorrect'
+        }
+      });
+    }
+    
+    // Hash new password
+    const newPasswordHash = await hashPassword(newPassword);
+    
+    // Update password in database
+    user.password_hash = newPasswordHash;
+    user.updated_at = new Date();
+    await user.save();
+    
+    logger.info(`Password changed for user: ${user.email} (ID: ${user.id})`);
+    
+    res.json({
+      success: true,
+      data: {
+        message: 'Password changed successfully'
+      }
+    });
+    
+  } catch (error) {
+    logger.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'Failed to change password'
+      }
+    });
+  }
+});
+
 // ===== ADMIN ENDPOINTS =====
 
 // Get all users (admin only)

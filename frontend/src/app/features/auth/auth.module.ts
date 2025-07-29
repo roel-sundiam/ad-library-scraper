@@ -12,6 +12,7 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { LoginComponent } from './components/login.component';
 import { RegisterComponent } from './components/register.component';
+import { ChangePasswordComponent } from './components/change-password.component';
 
 const routes: Routes = [
   {
@@ -26,13 +27,18 @@ const routes: Routes = [
   {
     path: 'register',
     component: RegisterComponent
+  },
+  {
+    path: 'change-password',
+    component: ChangePasswordComponent
   }
 ];
 
 @NgModule({
   declarations: [
     LoginComponent,
-    RegisterComponent
+    RegisterComponent,
+    ChangePasswordComponent
   ],
   imports: [
     CommonModule,

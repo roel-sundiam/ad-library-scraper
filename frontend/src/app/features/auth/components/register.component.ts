@@ -51,7 +51,10 @@ import { AuthService } from '../../../core/services/auth.service';
                   Email is required
                 </mat-error>
                 <mat-error *ngIf="registerForm.get('email')?.hasError('email')">
-                  Please enter a valid email
+                  Please enter a valid email address
+                </mat-error>
+                <mat-error *ngIf="registerForm.get('email')?.hasError('emailExists')">
+                  This email is already registered. Please use a different email or try logging in.
                 </mat-error>
               </mat-form-field>
 
@@ -74,7 +77,10 @@ import { AuthService } from '../../../core/services/auth.service';
                   Password is required
                 </mat-error>
                 <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">
-                  Password must be at least 8 characters
+                  Password must be at least 8 characters long
+                </mat-error>
+                <mat-error *ngIf="registerForm.get('password')?.hasError('weakPassword')">
+                  Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character
                 </mat-error>
               </mat-form-field>
 
@@ -120,7 +126,21 @@ import { AuthService } from '../../../core/services/auth.service';
                 <mat-icon class="info-icon">info</mat-icon>
                 <div class="info-content">
                   <h4>Account Approval Required</h4>
-                  <p>Your account will be reviewed by an administrator before you can access the system. You'll receive an email notification once approved.</p>
+                  <p>Your account will be reviewed by a system administrator before you can access the platform.</p>
+                  <div class="approval-steps">
+                    <div class="step">
+                      <mat-icon class="step-icon">check_circle</mat-icon>
+                      <span>Submit registration form</span>
+                    </div>
+                    <div class="step">
+                      <mat-icon class="step-icon">review</mat-icon>
+                      <span>Admin reviews your request</span>
+                    </div>
+                    <div class="step">
+                      <mat-icon class="step-icon">email</mat-icon>
+                      <span>You'll receive approval notification</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,10 +243,31 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     .info-content p {
-      margin: 0;
+      margin: 0 0 12px 0;
       color: #0d47a1;
       font-size: 13px;
       line-height: 1.4;
+    }
+
+    .approval-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .approval-steps .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #546e7a;
+    }
+
+    .approval-steps .step-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: #2196f3;
     }
 
     .login-link {
@@ -285,7 +326,7 @@ export class RegisterComponent implements OnInit {
     this.registerForm = this.formBuilder.group({
       fullName: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      password: ['', [Validators.required, Validators.minLength(8), this.passwordStrengthValidator]],
       confirmPassword: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
   }
@@ -295,6 +336,22 @@ export class RegisterComponent implements OnInit {
     if (this.authService.isAuthenticated()) {
       this.router.navigate(['/dashboard']);
     }
+  }
+
+  passwordStrengthValidator(control: any) {
+    const password = control.value;
+    if (!password) return null;
+    
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumeric = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    if (hasUpperCase && hasLowerCase && hasNumeric && hasSpecialChar) {
+      return null; // Valid
+    }
+    
+    return { weakPassword: true };
   }
 
   passwordMatchValidator(form: FormGroup) {
@@ -346,6 +403,12 @@ export class RegisterComponent implements OnInit {
         
         if (error.error?.error?.message) {
           errorMessage = error.error.error.message;
+          
+          // Handle duplicate email error
+          if (errorMessage.toLowerCase().includes('email') && errorMessage.toLowerCase().includes('exists')) {
+            this.registerForm.get('email')?.setErrors({ emailExists: true });
+            return;
+          }
         } else if (error.message) {
           errorMessage = error.message;
         }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { RouterModule, Routes } from '@angular/router';
 import { SharedModule } from '@shared/shared.module';
+import { SuperAdminGuard } from '../../core/guards/super-admin.guard';
 
 import { CompetitorAnalysisComponent } from './components/competitor-analysis.component';
 import { ProgressDashboardComponent } from './components/progress-dashboard.component';
@@ -32,6 +33,7 @@ const routes: Routes = [
   {
     path: 'facebook-config',
     component: FacebookTokenConfigComponent,
+    canActivate: [SuperAdminGuard],
     data: { title: 'Facebook API Configuration' }
   }
 ];

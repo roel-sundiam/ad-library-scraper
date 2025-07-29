@@ -27,6 +27,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatDividerModule } from '@angular/material/divider';
 
 @NgModule({
   declarations: [],
@@ -59,7 +60,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
     MatListModule,
     MatRadioModule,
     MatExpansionModule,
-    MatButtonToggleModule
+    MatButtonToggleModule,
+    MatDividerModule
   ],
   exports: [
     CommonModule,
@@ -90,7 +92,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
     MatListModule,
     MatRadioModule,
     MatExpansionModule,
-    MatButtonToggleModule
+    MatButtonToggleModule,
+    MatDividerModule
   ]
 })
 export class SharedModule { }

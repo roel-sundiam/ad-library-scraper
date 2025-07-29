@@ -162,6 +162,18 @@ export class AuthService {
     );
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/auth/change-password`, {
+      currentPassword,
+      newPassword
+    }).pipe(
+      catchError(error => {
+        console.error('Change password error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   private setAuthData(token: string, user: User): void {
     localStorage.setItem(this.tokenKey, token);
     localStorage.setItem(this.userKey, JSON.stringify(user));
