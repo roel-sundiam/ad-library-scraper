@@ -3,6 +3,9 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0;
+  height: calc(100vh - 64px); // Account for header
+  overflow-y: auto;
+  overflow-x: hidden;
   
   // Mobile scrollbar styling
   @media (max-width: 768px) {
@@ -10,29 +13,29 @@
     overflow-y: auto;
     overflow-x: hidden;
     
-    // Custom scrollbar for mobile webkit browsers
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0.05);
-      border-radius: 3px;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 3px;
-      
-      &:hover {
-        background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-      }
-    }
-    
-    // For Firefox mobile
-    scrollbar-width: thin;
-    scrollbar-color: rgba(102, 126, 234, 0.7) rgba(0, 0, 0, 0.05);
+  
+  // Custom scrollbar styling for all screen sizes
+  &::-webkit-scrollbar {
+    width: 8px;
   }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+    
+    &:hover {
+      background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    }
+  }
+  
+  // For Firefox
+  scrollbar-width: thin;
+  scrollbar-color: rgba(102, 126, 234, 0.7) rgba(0, 0, 0, 0.05);
   
   @media (min-width: 1024px) {
     padding: 0 16px;
