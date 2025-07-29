@@ -137,7 +137,7 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
                            this.analysisResults.analysis?.ai_provider !== 'mock';
     
     if (isValidWorkflow) {
-      chatRequest.workflowId = this.analysisResults.workflow_id;
+      chatRequest.workflowId = this.analysisResults!.workflow_id;
     }
     // Otherwise use general mode (no workflow context required)
     // Explicitly set workflowId to undefined if not available

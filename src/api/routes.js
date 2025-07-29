@@ -2250,7 +2250,23 @@ router.post('/analysis', async (req, res) => {
       logger.warn('Ollama analysis failed, trying Claude...', ollamaError.message);
     }
 
-    // Try Claude if Ollama failed or not available
+    // Try OpenAI if Ollama failed or not available
+    if (!analysisResult) {
+      try {
+        if (process.env.OPENAI_API_KEY) {
+          const openaiResult = await callOpenAIForAnalysis(prompt, adsWithTranscripts, filters);
+          analysisResult = {
+            analysis: openaiResult.analysis,
+            metadata: openaiResult.metadata
+          };
+          aiProvider = 'openai';
+        }
+      } catch (openaiError) {
+        logger.warn('OpenAI analysis failed, trying Claude...', openaiError.message);
+      }
+    }
+
+    // Try Claude if OpenAI failed or not available
     if (!analysisResult) {
       try {
         const claude = getClaudeService();
@@ -2953,6 +2969,90 @@ Answer the user's question based on the competitive analysis context provided.`;
   } catch (error) {
     logger.error('OpenAI chat analysis failed:', error);
     throw new Error(`OpenAI chat failed: ${error.message}`);
+  }
+}
+
+// OpenAI analysis function for custom analysis prompts
+async function callOpenAIForAnalysis(prompt, adsData, filters) {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not configured');
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    logger.info('Starting OpenAI custom analysis');
+
+    const systemPrompt = `You are an AI assistant specialized in Facebook advertising competitive analysis. Analyze the provided ad data and answer the user's custom analysis prompt.
+
+Your responses should be:
+- Detailed and comprehensive
+- Based on the actual ad data provided
+- Structured with clear sections and insights
+- Actionable and strategic
+- Professional and analytical
+
+Format your response with proper markdown formatting including headers, bullet points, and emphasis where appropriate.`;
+
+    // Build context from ads data
+    let contextData = '';
+    if (adsData && adsData.length > 0) {
+      contextData = `\n\nAd Data Analysis Context:\n`;
+      contextData += `Total ads analyzed: ${adsData.length}\n\n`;
+      
+      // Sample some ads for context (limit to avoid token limits)
+      const sampleAds = adsData.slice(0, 10);
+      sampleAds.forEach((ad, index) => {
+        contextData += `Ad ${index + 1}:\n`;
+        contextData += `- Advertiser: ${ad.advertiser_name || 'Unknown'}\n`;
+        contextData += `- Text: ${ad.ad_creative_body || ad.ad_text || 'No text'}\n`;
+        if (ad.creative && ad.creative.image_url) {
+          contextData += `- Has Image: Yes\n`;
+        }
+        if (ad.creative && ad.creative.video_transcripts) {
+          contextData += `- Video Transcript: ${ad.creative.video_transcripts.join(' ')}\n`;
+        }
+        contextData += '\n';
+      });
+    } else {
+      contextData = '\n\nNo specific ad data provided. Please provide a general analysis based on Facebook advertising best practices.\n';
+    }
+
+    const fullPrompt = `${prompt}${contextData}`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: fullPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const result = {
+      analysis: response.choices[0].message.content,
+      metadata: {
+        model: 'gpt-4',
+        tokens_used: response.usage?.total_tokens || 0,
+        ai_provider: 'openai',
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    logger.info('OpenAI custom analysis completed', {
+      tokensUsed: response.usage?.total_tokens,
+      responseLength: result.analysis.length,
+      adsAnalyzed: adsData.length
+    });
+
+    return result;
+
+  } catch (error) {
+    logger.error('OpenAI custom analysis failed:', error);
+    throw new Error(`OpenAI analysis failed: ${error.message}`);
   }
 }
 
