@@ -2390,6 +2390,36 @@
 
     .ai-content-area {
       padding: 40px 32px;
+      max-height: 800px; // Set maximum height for AI panel scrolling
+      overflow-y: auto; // Enable vertical scrolling
+      overflow-x: hidden; // Hide horizontal scrolling
+      
+      // Custom scrollbar styling
+      &::-webkit-scrollbar {
+        width: 10px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 5px;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 5px;
+        
+        &:hover {
+          background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+      }
+      
+      // For Firefox
+      scrollbar-width: thin;
+      scrollbar-color: rgba(102, 126, 234, 0.7) rgba(0, 0, 0, 0.05);
+      
+      // Enhanced scrolling
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
 
       .modern-mode-toggle {
         margin-bottom: 40px;
@@ -3816,6 +3846,11 @@
 
       .ai-content-area {
         padding: 24px 20px;
+        max-height: 600px; // Smaller height on mobile
+        
+        &::-webkit-scrollbar {
+          width: 8px; // Thinner scrollbar on mobile
+        }
 
         .modern-mode-toggle {
           .toggle-header {
@@ -3916,6 +3951,11 @@
       
       .ai-content-area {
         padding: 20px 16px;
+        max-height: 450px; // Even smaller height on small mobile
+        
+        &::-webkit-scrollbar {
+          width: 6px; // Very thin scrollbar on small screens
+        }
 
         .prompts-grid {
           grid-template-columns: 1fr;
