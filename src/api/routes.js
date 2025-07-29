@@ -2366,10 +2366,22 @@ router.post('/videos/bulk-analysis', async (req, res) => {
     });
     
     // Start bulk video analysis asynchronously
-    logger.info(`[MOCK] About to start processBulkVideoAnalysis for jobId: ${jobId}`);
+    logger.info(`About to start processBulkVideoAnalysis for jobId: ${jobId}`);
     setImmediate(() => {
-      logger.info(`[MOCK] setImmediate callback executing for jobId: ${jobId}`);
-      processBulkVideoAnalysis(jobId);
+      logger.info(`Starting processBulkVideoAnalysis for jobId: ${jobId}`);
+      processBulkVideoAnalysis(jobId).catch(error => {
+        logger.error(`Unhandled error in processBulkVideoAnalysis for jobId ${jobId}:`, error);
+        // Update job with error if it fails completely
+        const job = jobs.get(jobId);
+        if (job) {
+          job.status = 'failed';
+          job.completed_at = new Date().toISOString();
+          job.error = `Processing failed: ${error.message}`;
+          job.progress.stage = 'failed';
+          job.progress.message = `Analysis failed: ${error.message}`;
+          jobs.set(jobId, job);
+        }
+      });
     });
     
     res.json({
@@ -3002,8 +3014,16 @@ async function processBulkVideoAnalysis(jobId) {
     job.progress.message = 'Preparing video data for analysis...';
     jobs.set(jobId, job);
     
+    logger.info(`Stage 1: Preparation completed for job ${jobId}`);
+    
     const competitorName = job.options.competitorName || 'Competitor';
     const analysisType = job.options.analysisType || 'custom';
+    
+    logger.info(`Extracted job parameters for ${jobId}:`, {
+      competitorName,
+      analysisType,
+      videoCount: job.videos.length
+    });
     
     // Stage 2: Build analysis prompt with real video data
     job.progress.stage = 'analyzing';
@@ -3040,15 +3060,34 @@ async function processBulkVideoAnalysis(jobId) {
       analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\nProvide a comprehensive competitive analysis of these ${job.videos.length} video advertisements from ${competitorName}. Include:\n\n1. **Content Strategy Analysis**: What messaging themes, value propositions, and storytelling techniques are used?\n2. **Creative Approach**: What visual styles, formats, and creative elements are prevalent?\n3. **Competitive Intelligence**: What market positioning and strategic advantages are showcased?\n4. **Strategic Recommendations**: What opportunities exist for differentiation and competitive advantage?\n\nFocus on specific insights from the actual video data provided, not generic advice.`;
     }
     
+    // Update progress after building prompt
+    job.progress.current = 5;
+    job.progress.percentage = 25;
+    job.progress.message = 'Analysis prompt prepared, calling AI service...';
+    jobs.set(jobId, job);
+    
+    logger.info(`Analysis prompt built for job ${jobId}`, {
+      promptLength: analysisPrompt.length,
+      videosAnalyzed: videosToAnalyze.length
+    });
+    
     // Stage 3: Call OpenAI for analysis
     job.progress.percentage = 50;
     job.progress.message = 'Running AI analysis...';
     jobs.set(jobId, job);
     
+    logger.info(`Starting OpenAI analysis for job ${jobId}`, {
+      promptLength: analysisPrompt.length,
+      videoCount: job.videos.length,
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY
+    });
+    
     let aiAnalysis;
     try {
       aiAnalysis = await analyzeWithOpenAI(analysisPrompt, { videos: job.videos });
-      logger.info(`OpenAI analysis completed for job ${jobId}`);
+      logger.info(`OpenAI analysis completed for job ${jobId}`, {
+        responseLength: aiAnalysis ? aiAnalysis.length : 0
+      });
     } catch (aiError) {
       logger.error(`OpenAI analysis failed for job ${jobId}:`, aiError);
       throw new Error(`AI analysis failed: ${aiError.message}`);

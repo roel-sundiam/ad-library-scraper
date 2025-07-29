@@ -1028,4 +1028,38 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     
     window.URL.revokeObjectURL(url);
   }
+
+  // Helper methods for the new progress display
+  getStageStatus(stage: string): boolean {
+    if (!this.bulkAnalysisProgress) return false;
+    
+    const stageOrder = ['initializing', 'transcribing', 'analyzing', 'completed'];
+    const currentIndex = stageOrder.indexOf(this.bulkAnalysisProgress.stage);
+    const targetIndex = stageOrder.indexOf(stage);
+    
+    return currentIndex > targetIndex || (currentIndex === targetIndex && this.bulkAnalysisProgress.stage === 'completed');
+  }
+
+  getStageIcon(stage: string): string {
+    const currentStage = this.bulkAnalysisProgress?.stage;
+    const isCompleted = this.getStageStatus(stage);
+    const isActive = currentStage === stage;
+    
+    if (isCompleted && stage !== 'completed') {
+      return 'check_circle';
+    }
+    
+    switch (stage) {
+      case 'initializing':
+        return isActive ? 'hourglass_top' : 'radio_button_unchecked';
+      case 'transcribing':
+        return isActive ? 'autorenew' : 'radio_button_unchecked';
+      case 'analyzing':
+        return isActive ? 'psychology' : 'radio_button_unchecked';
+      case 'completed':
+        return isCompleted ? 'check_circle' : 'radio_button_unchecked';
+      default:
+        return 'radio_button_unchecked';
+    }
+  }
 }

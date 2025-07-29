@@ -729,36 +729,81 @@
             </div>
 
             <!-- Progress Tracking -->
-            <div *ngIf="bulkAnalysisProgress" class="analysis-progress">
-              <div class="progress-header">
-                <h5>
-                  <mat-icon>hourglass_empty</mat-icon>
-                  {{ bulkAnalysisProgress.message }}
-                </h5>
-                <span class="progress-stats">{{ bulkAnalysisProgress.current || 0 }}/{{ bulkAnalysisProgress.total || 0 }}</span>
-              </div>
-              
-              <mat-progress-bar 
-                mode="determinate" 
-                [value]="bulkAnalysisProgress.percentage || 0">
-              </mat-progress-bar>
-              
-              <div class="progress-stages">
-                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'initializing'">
-                  <mat-icon>start</mat-icon>
-                  <span>Initializing</span>
+            <div *ngIf="bulkAnalysisProgress" class="video-analysis-progress">
+              <div class="progress-card">
+                <div class="progress-header">
+                  <div class="progress-title">
+                    <mat-icon class="progress-icon">smart_toy</mat-icon>
+                    <h5>{{ bulkAnalysisProgress.message || 'Processing video analysis...' }}</h5>
+                  </div>
+                  <div class="progress-stats">
+                    <span class="current-count">{{ bulkAnalysisProgress.current || 0 }}</span>
+                    <span class="separator">/</span>
+                    <span class="total-count">{{ bulkAnalysisProgress.total || 0 }}</span>
+                  </div>
                 </div>
-                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'transcribing'">
-                  <mat-icon>subtitles</mat-icon>
-                  <span>Transcribing</span>
+                
+                <div class="progress-bar-container">
+                  <mat-progress-bar 
+                    mode="determinate" 
+                    [value]="bulkAnalysisProgress.percentage || 0"
+                    class="themed-progress-bar">
+                  </mat-progress-bar>
+                  <span class="progress-percentage">{{ bulkAnalysisProgress.percentage || 0 }}%</span>
                 </div>
-                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'analyzing'">
-                  <mat-icon>psychology</mat-icon>
-                  <span>AI Analysis</span>
+                
+                <div class="progress-stages">
+                  <div class="stage-item" 
+                       [class.active]="bulkAnalysisProgress.stage === 'initializing'"
+                       [class.completed]="getStageStatus('initializing')">
+                    <div class="stage-icon">
+                      <mat-icon>{{ getStageIcon('initializing') }}</mat-icon>
+                    </div>
+                    <span class="stage-label">Initializing</span>
+                  </div>
+                  
+                  <div class="stage-connector" 
+                       [class.completed]="getStageStatus('transcribing') || getStageStatus('analyzing') || getStageStatus('completed')"></div>
+                  
+                  <div class="stage-item" 
+                       [class.active]="bulkAnalysisProgress.stage === 'transcribing'"
+                       [class.completed]="getStageStatus('transcribing')">
+                    <div class="stage-icon">
+                      <mat-icon>{{ getStageIcon('transcribing') }}</mat-icon>
+                    </div>
+                    <span class="stage-label">Processing</span>
+                  </div>
+                  
+                  <div class="stage-connector" 
+                       [class.completed]="getStageStatus('analyzing') || getStageStatus('completed')"></div>
+                  
+                  <div class="stage-item" 
+                       [class.active]="bulkAnalysisProgress.stage === 'analyzing'"
+                       [class.completed]="getStageStatus('analyzing')">
+                    <div class="stage-icon">
+                      <mat-icon>{{ getStageIcon('analyzing') }}</mat-icon>
+                    </div>
+                    <span class="stage-label">AI Analysis</span>
+                  </div>
+                  
+                  <div class="stage-connector" 
+                       [class.completed]="getStageStatus('completed')"></div>
+                  
+                  <div class="stage-item" 
+                       [class.active]="bulkAnalysisProgress.stage === 'completed'"
+                       [class.completed]="getStageStatus('completed')">
+                    <div class="stage-icon">
+                      <mat-icon>{{ getStageIcon('completed') }}</mat-icon>
+                    </div>
+                    <span class="stage-label">Complete</span>
+                  </div>
                 </div>
-                <div class="stage" [class.active]="bulkAnalysisProgress.stage === 'completed'">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Complete</span>
+                
+                <div class="progress-details" *ngIf="bulkAnalysisProgress.stage !== 'completed'">
+                  <small class="progress-note">
+                    <mat-icon class="info-icon">info</mat-icon>
+                    Analyzing {{ bulkAnalysisProgress.total || 0 }} video advertisements with AI-powered insights
+                  </small>
                 </div>
               </div>
             </div>

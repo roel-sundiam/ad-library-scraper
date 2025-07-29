@@ -338,6 +338,174 @@ Real-time workflow progress updates:
 - `GET /api/status/:runId` - Get job status
 - `GET /api/results/:runId` - Get job results
 
+## AI Analysis System
+
+### Overview
+The system provides comprehensive AI-powered analysis of scraped Facebook ad data using OpenAI GPT models. All AI interfaces use **real scraped data** to provide brand-specific insights instead of generic advice.
+
+### AI Analysis Components
+
+#### 1. Custom AI Analysis (`/api/analysis`)
+**Purpose**: Contextual analysis of competitor advertising strategies  
+**Data Source**: Real scraped Facebook ads data  
+**AI Model**: GPT-3.5-Turbo (optimized for bulk operations)
+
+```javascript
+// Request Format
+{
+  "prompt": "Why is my performance score lower than competitors?",
+  "adsData": [
+    {
+      "advertiser_name": "KneadCats",
+      "ad_creative_body": "Get your cat the perfect meal...",
+      "creative": { "has_video": true, "images": [...] },
+      "metrics": { "impressions": 1500, "clicks": 45 }
+    }
+  ]
+}
+```
+
+**Key Features**:
+- Brand-specific analysis (e.g., "Based on KneadCats' 15 analyzed ads...")
+- Real ad content analysis instead of generic Facebook best practices
+- Contextual recommendations based on actual competitive data
+
+#### 2. AI Chat Assistant (`/api/analysis/chat`)
+**Purpose**: Interactive Q&A about competitive analysis  
+**Data Flow**: Frontend → Real ads data → OpenAI → Brand-specific responses
+
+```javascript
+// Backend Implementation (src/api/routes.js:2496-2600)
+const { adsData: providedAdsData, brandsAnalyzed } = req.body;
+if (providedAdsData && providedAdsData.length > 0) {
+  contextPrompt = buildGeneralChatPrompt(message, adsData, brandsAnalyzed);
+}
+```
+
+**Priority Logic**:
+1. **Priority 1**: Use real ads data (preferred)
+2. **Priority 2**: Fall back to workflow data
+3. **Priority 3**: General mode (no context)
+
+#### 3. Bulk Video Analysis (`/videos/bulk-analysis`)
+**Purpose**: AI analysis of video ad content at scale  
+**Implementation**: `src/api/routes.js:2291-2386` + `processBulkVideoAnalysis()`
+
+**Token Optimization Features**:
+- **Video Limit**: Maximum 15 videos per analysis to prevent token overflow
+- **Text Truncation**: Ad text limited to 200 characters per video
+- **Model Selection**: GPT-3.5-Turbo for higher rate limits (90K TPM vs 10K for GPT-4)
+
+```javascript
+// Backend Implementation (src/api/routes.js:3014-3031)
+const maxVideos = Math.min(job.videos.length, 15);
+const adText = (video.text || 'No text content').substring(0, 200);
+```
+
+### AI Utilities Module (`src/utils/ai-analysis.js`)
+
+#### Functions
+1. **`analyzeWithOpenAI(prompt, data)`**
+   - Returns: Plain text analysis
+   - Used by: Bulk video analysis
+   - Purpose: Flexible text-based analysis
+
+2. **`analyzeCompetitiveDataWithOpenAI(prompt, data)`**  
+   - Returns: Structured JSON object
+   - Used by: Competitive analysis workflows
+   - Purpose: Formatted insights/recommendations
+
+#### Configuration
+```javascript
+// Environment Variables Required
+OPENAI_API_KEY=sk-... // Required for AI analysis
+
+// Model Configuration
+model: "gpt-3.5-turbo"  // Optimized for bulk operations
+max_tokens: 2000        // Response length limit
+temperature: 0.7        // Creativity level
+```
+
+### Token Management & Rate Limits
+
+#### OpenAI Rate Limits
+| Model | Context Window | Rate Limit (TPM) | Cost | Use Case |
+|-------|---------------|------------------|------|----------|
+| GPT-4 | 8K tokens | 10,000 TPM | High | Premium analysis |
+| GPT-3.5-Turbo | 4K tokens | 90,000 TPM | Low | Bulk operations |
+
+#### Error Handling
+**429 Rate Limit Error**: "Request too large for gpt-4"
+- **Solution**: Implemented data limiting and model optimization
+- **Prevention**: Max 15 videos, 200 chars per ad text, GPT-3.5-Turbo model
+
+```javascript
+// Error Example
+"429 Request too large for gpt-4 in organization [...] on tokens per min (TPM): 
+Limit 10000, Requested 10670"
+
+// Fix Applied
+const maxVideos = Math.min(job.videos.length, 15); // Limit videos
+const adText = video.text.substring(0, 200);       // Limit text
+model: "gpt-3.5-turbo"                            // Higher limits
+```
+
+### Data Flow: Real Ads → AI Analysis
+
+#### Frontend Data Extraction (`facebook-ads-dashboard.component.ts:426-461`)
+```typescript
+private extractAdDataForAnalysis(): any[] {
+  const allAds: any[] = [];
+  // Extract real KneadCats data from scraped results
+  Object.values(this.analysisResults.data).forEach(brandData => {
+    brandData.ads_data.forEach(ad => {
+      allAds.push({
+        advertiser_name: brandData.page_name,
+        ad_creative_body: ad.creative?.body || ad.creative?.title,
+        creative: { has_video: ad.creative?.has_video, ... }
+      });
+    });
+  });
+  return allAds;
+}
+```
+
+#### Backend AI Prompt Building (`src/utils/ai-analysis.js:21-61`)  
+```javascript
+// Contextual prompt with real data
+let contextText = `You have access to real advertising data:
+- Total ads analyzed: ${adsData.length}
+- Brands analyzed: ${brandsAnalyzed.join(', ')}
+
+**Sample Ad Data:**
+Ad 1:
+- Advertiser: KneadCats
+- Content: Get your cat the perfect meal with our premium...
+- Format: Video ad`;
+```
+
+### Response Quality Examples
+
+#### Before (Generic Response)
+```
+"Performance score is a measure of an ad's performance based on Facebook 
+advertising best practices..."
+```
+
+#### After (Brand-Specific Response)  
+```
+"Based on KneadCats' 15 analyzed ads, your performance score might be lower 
+because a significant portion of your ads (Ads 6 to 10) feature identical content. 
+This repetition could contribute to ad fatigue..."
+```
+
+### Implementation Status
+- ✅ **Custom AI Analysis**: Uses real KneadCats data
+- ✅ **AI Chat Assistant**: Prioritizes real ads data over workflow data  
+- ✅ **Bulk Video Analysis**: Real video content analysis with token optimization
+- ✅ **Error Handling**: 429 rate limit prevention through data limiting
+- ✅ **Model Optimization**: GPT-3.5-Turbo for bulk operations
+
 ## Frontend Integration
 
 ### Angular Components
@@ -455,6 +623,34 @@ For **basic functionality** (sample data):
 #### 3. Scraper Fallback Not Working
 **Symptom**: All scrapers fail, no sample data generated
 **Solution**: Check HTTP scraper fallback logic, verify error propagation
+
+#### 4. AI Analysis 429 Rate Limit Error
+**Symptom**: "Bulk video analysis failed: Request too large for gpt-4... Limit 10000, Requested 10670"
+**Root Cause**: Too many videos or long ad text exceeding OpenAI token limits
+**Solution**: System now automatically:
+- Limits analysis to 15 videos maximum
+- Truncates ad text to 200 characters
+- Uses GPT-3.5-Turbo (90K TPM vs 10K for GPT-4)
+
+**Manual Fix** (if error persists):
+```javascript
+// In src/api/routes.js, reduce limits further:
+const maxVideos = Math.min(job.videos.length, 10); // Reduce to 10 videos
+const adText = video.text.substring(0, 150);       // Reduce to 150 chars
+```
+
+#### 5. AI Analysis Returns Generic Responses
+**Symptom**: AI Chat returns "Facebook advertising best practices" instead of brand-specific insights
+**Root Cause**: AI interface not receiving real scraped data
+**Solution**: Check data flow:
+1. Verify `extractAdDataForAnalysis()` extracts real ads
+2. Check `analysisResults.analysis.real_ads_data` is populated
+3. Confirm AI Chat priority logic uses real data first
+
+```typescript
+// Debug: Check if real data is being extracted
+console.log('Real ads data:', this.getAnalysisResultsForChat()?.analysis?.real_ads_data);
+```
 
 ### Debug Commands
 
