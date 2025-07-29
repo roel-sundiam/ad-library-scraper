@@ -438,10 +438,8 @@ Focus on actionable optimization recommendations for video campaigns.`
       }
     };
 
-    // Only add workflowId if we have real analysis results (not mock data)
-    if (this.analysisResults?.analysis?.ai_provider !== 'enhanced_mock' && 
-        this.analysisResults?.analysis?.ai_provider !== 'mock' &&
-        this.datasetId) {
+    // Only add workflowId if we have valid datasetId and it's not a mock dataset
+    if (this.datasetId && !this.datasetId.startsWith('dataset_')) {
       analysisRequest.workflowId = this.datasetId;
     }
 
@@ -525,12 +523,10 @@ Focus on actionable optimization recommendations for video campaigns.`
         }
       };
 
-      // Only add workflowId if we have real analysis results (not mock data)
-      if (this.analysisResults?.analysis?.ai_provider !== 'enhanced_mock' && 
-          this.analysisResults?.analysis?.ai_provider !== 'mock' &&
-          this.datasetId) {
+      // Only add workflowId if we have valid datasetId and it's not a mock dataset
+      if (this.datasetId && !this.datasetId.startsWith('dataset_')) {
         analysisRequest.workflowId = this.datasetId;
-      };
+      }
 
       // Log request size for debugging
       const requestSize = JSON.stringify(analysisRequest).length;
