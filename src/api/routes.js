@@ -2568,37 +2568,36 @@ router.post('/analysis/chat', async (req, res) => {
       });
     }
 
-    if (!workflowId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Workflow ID is required for context'
-        }
-      });
-    }
-
-    const workflow = workflows.get(workflowId);
-    if (!workflow) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: 'WORKFLOW_NOT_FOUND',
-          message: 'Workflow not found'
-        }
-      });
-    }
-
-    // Build context from workflow data
-    const contextPrompt = buildChatContextPrompt(workflow, message, conversationHistory);
-
-    // Get ads data for context
+    // Handle both contextual (with workflow) and general chat modes
+    let contextPrompt = message;
     let adsData = [];
-    Object.values(workflow.pages).forEach(page => {
-      if (page.data && page.data.ads) {
-        adsData = adsData.concat(page.data.ads);
+    
+    if (workflowId) {
+      // Contextual mode - use workflow data for analysis context
+      const workflow = workflows.get(workflowId);
+      if (!workflow) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'WORKFLOW_NOT_FOUND',
+            message: 'Workflow not found'
+          }
+        });
       }
-    });
+
+      // Build context from workflow data
+      contextPrompt = buildChatContextPrompt(workflow, message, conversationHistory);
+
+      // Get ads data for context
+      Object.values(workflow.pages).forEach(page => {
+        if (page.data && page.data.ads) {
+          adsData = adsData.concat(page.data.ads);
+        }
+      });
+    } else {
+      // General mode - build simple conversational prompt
+      contextPrompt = buildGeneralChatPrompt(message, conversationHistory);
+    }
 
     logger.info('Processing AI chat message', {
       message: message.substring(0, 100) + '...',
@@ -2629,6 +2628,8 @@ router.post('/analysis/chat', async (req, res) => {
         if (claude) {
           chatResult = await claude.analyzeAds(contextPrompt, adsWithTranscripts);
           aiProvider = 'anthropic';
+        } else {
+          throw new Error('Claude not available');
         }
       } catch (claudeError) {
         logger.warn('Claude chat failed, trying OpenAI...', claudeError.message);
@@ -2647,6 +2648,7 @@ router.post('/analysis/chat', async (req, res) => {
 
     // Fallback to mock chat if all AI services fail
     if (!chatResult) {
+      const workflow = workflowId ? workflows.get(workflowId) : null;
       chatResult = generateMockChatResponse(message, workflow);
       aiProvider = 'mock';
     }
@@ -2749,6 +2751,25 @@ ${conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n')}
 
 Please provide a helpful, specific response based on the analysis data and conversation context. Focus on actionable insights and recommendations.`;
 
+  return contextText;
+}
+
+// Helper function to build general chat prompt (no workflow context)
+function buildGeneralChatPrompt(userMessage, conversationHistory) {
+  let contextText = `You are a helpful AI assistant. Please answer the user's question directly and conversationally.`;
+  
+  // Add conversation history if available
+  if (conversationHistory && conversationHistory.length > 0) {
+    contextText += `\n\nConversation History:\n`;
+    conversationHistory.forEach((msg, index) => {
+      if (index < 5) { // Limit to last 5 messages for context
+        contextText += `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}\n`;
+      }
+    });
+  }
+  
+  contextText += `\nUser: ${userMessage}\n\nPlease provide a helpful response.`;
+  
   return contextText;
 }
 

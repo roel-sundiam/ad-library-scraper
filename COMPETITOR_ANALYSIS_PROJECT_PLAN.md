@@ -32,7 +32,7 @@
 
 #### Key Features
 - **URL Validation**: Facebook page URL verification and parsing
-- **Parallel Processing**: Simultaneous analysis of 3 Facebook pages
+- **Single Competitor Analysis**: Focused analysis of 1 competitor page
 - **Progress Tracking**: 4-step workflow with percentage completion
 - **Error Handling**: Graceful failure recovery and user feedback
 - **Credits System**: Usage tracking and billing integration
@@ -86,11 +86,11 @@
 ## Data Flow Architecture
 
 ```
-User Input (3 Facebook URLs)
+User Input (1 Competitor Facebook URL)
     ↓
 URL Validation & Page Name Extraction
     ↓
-Parallel Facebook Ad Library Queries
+Facebook Ad Library Query
     ↓
 Data Aggregation & Preprocessing
     ↓
@@ -131,7 +131,7 @@ Results Presentation & Export
 
 ### 1. Input Phase
 - User navigates to "Competitor Analysis" from sidebar
-- Enters 3 Facebook page URLs with validation
+- Enters 1 competitor Facebook page URL with validation
 - Submits form to initiate workflow
 
 ### 2. Processing Phase  

@@ -116,14 +116,6 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
   }
 
   private sendToAI(message: string): void {
-    // Check if we have analysis results with workflow ID
-    if (!this.analysisResults?.workflow_id) {
-      this.addErrorMessage('Please run a competitor analysis first to start chatting with AI.');
-      this.isTyping = false;
-      this.isSending = false;
-      return;
-    }
-
     // Prepare conversation history
     const conversationHistory = this.messages.map(msg => ({
       sender: msg.sender,
@@ -131,11 +123,17 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
       timestamp: msg.timestamp
     }));
 
-    const chatRequest = {
+    // Prepare chat request - support both contextual and general modes
+    const chatRequest: any = {
       message: message,
-      workflowId: this.analysisResults.workflow_id,
       conversationHistory: conversationHistory
     };
+
+    // Add workflow context if available (contextual mode)
+    if (this.analysisResults?.workflow_id) {
+      chatRequest.workflowId = this.analysisResults.workflow_id;
+    }
+    // Otherwise use general mode (no workflow context required)
 
     this.apiService.sendChatMessage(chatRequest).subscribe({
       next: (response) => {
