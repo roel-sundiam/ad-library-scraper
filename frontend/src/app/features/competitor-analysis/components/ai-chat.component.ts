@@ -156,8 +156,15 @@ export class AiChatComponent implements OnInit, AfterViewChecked {
         this.isTyping = false;
         this.isSending = false;
         
-        // Provide mock response for development
-        this.provideMockResponse(message);
+        // Show actual error message instead of mock response
+        let errorMessage = 'Sorry, I encountered an error processing your question.';
+        if (error.error?.error?.message) {
+          errorMessage = `Error: ${error.error.error.message}`;
+        } else if (error.status === 404) {
+          errorMessage = 'AI service is currently unavailable. Please try again later.';
+        }
+        
+        this.addErrorMessage(errorMessage);
       }
     });
   }
@@ -193,87 +200,6 @@ Please provide a helpful, specific answer about Facebook advertising strategy an
     return contextPrompt;
   }
 
-  private provideMockResponse(userMessage: string): void {
-    setTimeout(() => {
-      this.isTyping = false;
-      this.isSending = false;
-
-      let response = '';
-
-      // Generate contextual mock responses
-      const lowerMessage = userMessage.toLowerCase();
-      
-      if (lowerMessage.includes('performance') || lowerMessage.includes('score')) {
-        response = `Based on your analysis results, your performance score might be lower due to several factors:
-
-<strong>Key factors affecting performance:</strong>
-• Ad frequency and consistency - competitors may be running more campaigns
-• Creative variety - video content and engaging visuals tend to perform better  
-• Targeting optimization - competitors might have more refined audience targeting
-• Budget allocation - higher ad spend can improve reach and engagement
-
-<strong>Quick wins to improve:</strong>
-• Increase video content in your ad creatives
-• Test different messaging approaches
-• Analyze your competitors' most engaging ads
-• Consider expanding your advertising budget`;
-
-      } else if (lowerMessage.includes('creative') || lowerMessage.includes('strategy')) {
-        response = `Here are some creative strategies based on competitive analysis:
-
-<strong>Content recommendations:</strong>
-• Focus on video content - it typically has 2-3x higher engagement
-• Use user-generated content and testimonials
-• Test seasonal and trending topics
-• Create mobile-first creative formats
-
-<strong>Messaging strategies:</strong>
-• Analyze your competitors' top-performing ad copy
-• Test emotional vs. rational messaging approaches
-• Use clear, action-oriented call-to-actions
-• Personalize content for different audience segments`;
-
-      } else if (lowerMessage.includes('improve') || lowerMessage.includes('better')) {
-        response = `To improve your campaign performance:
-
-<strong>Immediate actions:</strong>
-• Increase your ad volume to match competitor activity
-• A/B test different creative formats
-• Optimize your targeting based on competitor insights
-• Set up proper conversion tracking
-
-<strong>Long-term strategy:</strong>
-• Develop a content calendar for consistent posting
-• Build a library of high-performing creative assets
-• Monitor competitor campaigns regularly
-• Invest in video production capabilities`;
-
-      } else {
-        response = `Great question! Based on your competitor analysis, here are some key insights:
-
-<strong>Current competitive landscape:</strong>
-• Your competitors are running more active campaigns
-• Video content appears to be a major differentiator
-• Performance scores vary significantly across brands
-
-<strong>Opportunities for improvement:</strong>
-• Increase advertising frequency and consistency
-• Diversify your creative formats
-• Study competitor messaging and positioning
-• Test new audience targeting approaches
-
-Would you like me to elaborate on any of these points?`;
-      }
-
-      const aiMessage: ChatMessage = {
-        sender: 'ai',
-        text: response,
-        timestamp: new Date()
-      };
-
-      this.messages.push(aiMessage);
-    }, 1500 + Math.random() * 1000); // Random delay for realistic typing simulation
-  }
 
   private addErrorMessage(errorText: string): void {
     const errorMessage: ChatMessage = {
