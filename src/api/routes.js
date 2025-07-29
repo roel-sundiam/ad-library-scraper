@@ -2572,7 +2572,7 @@ router.post('/analysis/chat', async (req, res) => {
     let contextPrompt = message;
     let adsData = [];
     
-    if (workflowId) {
+    if (workflowId && workflowId.trim()) {
       // Contextual mode - use workflow data for analysis context
       const workflow = workflows.get(workflowId);
       if (!workflow) {
