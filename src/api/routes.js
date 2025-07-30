@@ -1099,11 +1099,114 @@ router.get('/export/analysis-results', authenticateToken, async (req, res) => {
       dateFrom,
       dateTo,
       brand,
-      analysisType 
+      analysisType,
+      jobId
     } = req.query;
 
-    // For now, return sample export structure since we don't have persistent storage
-    // In production, this would query the database for user's analysis results
+    // Get real analysis data from jobs store
+    let analysisResults = [];
+    
+    if (jobId) {
+      // Export specific job
+      const job = jobs.get(jobId);
+      if (job && job.status === 'completed') {
+        analysisResults.push(job);
+      }
+    } else {
+      // Export all completed analysis jobs
+      for (const [id, job] of jobs.entries()) {
+        if (job.status === 'completed' && job.type === 'bulk_video_analysis') {
+          // Apply filters
+          let includeJob = true;
+          
+          if (dateFrom) {
+            const jobDate = new Date(job.created_at);
+            const filterDate = new Date(dateFrom);
+            if (jobDate < filterDate) includeJob = false;
+          }
+          
+          if (dateTo) {
+            const jobDate = new Date(job.created_at);
+            const filterDate = new Date(dateTo);
+            if (jobDate > filterDate) includeJob = false;
+          }
+          
+          if (brand && job.options?.competitorName && 
+              !job.options.competitorName.toLowerCase().includes(brand.toLowerCase())) {
+            includeJob = false;
+          }
+          
+          if (analysisType && job.options?.analysisType && 
+              job.options.analysisType !== analysisType) {
+            includeJob = false;
+          }
+          
+          if (includeJob) {
+            analysisResults.push(job);
+          }
+        }
+      }
+    }
+
+    // Extract real transcript data from jobs
+    const processedResults = analysisResults.map(job => {
+      const transcripts = [];
+      
+      if (includeTranscripts === 'true' && job.videos) {
+        job.videos.forEach((video, index) => {
+          if (video.transcript) {
+            transcripts.push({
+              videoIndex: index + 1,
+              videoUrl: video.video_urls?.[0] || video.url || 'Unknown',
+              advertiser: video.brand || job.options?.competitorName || 'Unknown',
+              adId: video.id || `video_${index + 1}`,
+              transcript: {
+                text: video.transcript,
+                language: video.transcript_metadata?.language || 'en',
+                duration: video.transcript_metadata?.duration || 0,
+                confidence: video.transcript_metadata?.confidence || 0,
+                segments: video.transcript_metadata?.segments || [],
+                model: video.transcript_metadata?.model || 'whisper-1',
+                processingTime: video.transcript_metadata?.processing_time_ms || 0,
+                costEstimate: video.transcript_metadata?.cost_estimate?.estimated_cost_usd || 0,
+                transcribedAt: video.transcript_metadata?.transcribed_at || job.created_at
+              },
+              videoMetadata: {
+                brand: video.brand,
+                text: video.text,
+                facebookId: video.id,
+                dateRange: video.dates
+              }
+            });
+          }
+        });
+      }
+      
+      return {
+        jobId: job.job_id,
+        analysisType: job.options?.analysisType || 'bulk_video_analysis',
+        competitorName: job.options?.competitorName || 'Unknown',
+        createdAt: job.created_at,
+        completedAt: job.completed_at,
+        totalVideos: job.videos?.length || 0,
+        transcriptionStats: job.results?.transcription_stats || {},
+        transcripts: transcripts,
+        analysis: {
+          summary: job.results?.summary || '',
+          detailedAnalysis: job.results?.analysis || '',
+          recommendations: job.results?.recommendations || '',
+          rawAnalysis: job.results?.raw_analysis || '',
+          metadata: job.results?.metadata || {}
+        },
+        settings: {
+          includeTranscripts: job.options?.includeTranscripts || false,
+          includeVisualAnalysis: job.options?.includeVisualAnalysis || false,
+          prompt: job.prompt || '',
+          templates: job.templates || []
+        }
+      };
+    });
+
     const exportData = {
       metadata: {
         exportedAt: new Date().toISOString(),
@@ -1117,79 +1220,23 @@ router.get('/export/analysis-results', authenticateToken, async (req, res) => {
           analysisType: analysisType || null
         }
       },
-      analysisResults: [
-        // Sample structure - in production this would come from database
-        {
-          id: 'sample-analysis-1',
-          createdAt: new Date().toISOString(),
-          analysisType: 'competitive',
-          videoData: {
-            url: 'https://example.com/video1.mp4',
-            platform: 'facebook',
-            adId: 'ad_123456',
-            advertiser: 'Sample Brand'
-          },
-          transcript: includeTranscripts === 'true' ? {
-            text: 'Sample transcript text...',
-            language: 'en',
-            duration: 30.5,
-            confidence: 92.3,
-            segments: [
-              {
-                start: 0,
-                end: 10.2,
-                text: 'Sample segment 1...',
-                confidence: 95.1
-              }
-            ],
-            model: 'whisper-1',
-            transcribedAt: new Date().toISOString()
-          } : null,
-          analysis: {
-            prompt: 'Analyze this video transcript for competitive insights and marketing effectiveness...',
-            response: 'Based on the transcript analysis, this video demonstrates strong emotional appeal through storytelling techniques. The messaging focuses on premium quality and customer satisfaction, which aligns with current market trends...',
-            insights: [
-              'Strong emotional storytelling approach increases engagement',
-              'Premium positioning strategy evident throughout messaging',
-              'Clear call-to-action drives conversion potential'
-            ],
-            recommendations: [
-              'Consider adopting similar emotional narrative techniques',
-              'Test premium positioning in your own campaigns',
-              'Implement stronger CTAs based on competitor approach'
-            ],
-            competitiveGaps: [
-              'Competitor has stronger brand storytelling',
-              'More sophisticated video production quality'
-            ],
-            opportunities: [
-              'Differentiate through authentic user testimonials',
-              'Leverage competitor\'s premium pricing to position as value alternative'
-            ],
-            keyMessages: [
-              'Premium quality promise',
-              'Customer satisfaction guarantee',
-              'Limited-time exclusivity'
-            ],
-            targetAudience: 'Health-conscious consumers aged 25-45 with premium buying power',
-            sentimentAnalysis: {
-              overall: 'positive',
-              confidence: 87.5,
-              emotions: ['trust', 'excitement', 'urgency']
-            },
-            provider: 'openai',
-            model: 'gpt-3.5-turbo',
-            tokensUsed: 1500,
-            analyzedAt: new Date().toISOString()
-          }
-        }
-      ],
+      analysisResults: processedResults,
       summary: {
-        totalResults: 1,
-        withTranscripts: includeTranscripts === 'true' ? 1 : 0,
+        totalResults: processedResults.length,
+        withTranscripts: processedResults.reduce((count, result) => 
+          count + (result.transcripts.length > 0 ? 1 : 0), 0),
+        totalTranscripts: processedResults.reduce((count, result) => 
+          count + result.transcripts.length, 0),
+        totalVideos: processedResults.reduce((count, result) => 
+          count + result.totalVideos, 0),
         dateRange: {
           from: dateFrom || null,
           to: dateTo || null
+        },
+        filterApplied: {
+          brand: brand || null,
+          analysisType: analysisType || null,
+          specificJob: jobId || null
         }
       }
     };
@@ -1223,10 +1270,120 @@ router.get('/export/transcripts', authenticateToken, async (req, res) => {
       dateFrom,
       dateTo,
       brand,
-      format = 'json'
+      format = 'json',
+      jobId
     } = req.query;
 
-    // Sample transcript export structure
+    // Get real transcript data from jobs store
+    let transcriptData = [];
+    
+    if (jobId) {
+      // Export specific job transcripts
+      const job = jobs.get(jobId);
+      if (job && job.status === 'completed' && job.videos) {
+        job.videos.forEach((video, index) => {
+          if (video.transcript) {
+            transcriptData.push({
+              jobId: job.job_id,
+              videoIndex: index + 1,
+              videoUrl: video.video_urls?.[0] || video.url || 'Unknown',
+              platform: 'facebook',
+              adId: video.id || `video_${index + 1}`,
+              advertiser: video.brand || job.options?.competitorName || 'Unknown',
+              transcribedAt: video.transcript_metadata?.transcribed_at || job.created_at,
+              transcript: {
+                text: video.transcript,
+                language: video.transcript_metadata?.language || 'en',
+                duration: video.transcript_metadata?.duration || 0,
+                confidence: video.transcript_metadata?.confidence || 0,
+                segments: video.transcript_metadata?.segments || [],
+                model: video.transcript_metadata?.model || 'whisper-1',
+                fileSizeMB: video.transcript_metadata?.file_size_mb || 'Unknown',
+                processingTimeMs: video.transcript_metadata?.processing_time_ms || 0,
+                costEstimate: video.transcript_metadata?.cost_estimate?.estimated_cost_usd || 0
+              },
+              analysisFromTranscript: {
+                prompt: job.prompt || 'Default video analysis prompt',
+                competitorAnalysis: job.results?.analysis || 'Analysis not available',
+                includedInBulkAnalysis: true,
+                transcriptionEnabled: job.options?.includeTranscripts || false
+              },
+              videoMetadata: {
+                brand: video.brand,
+                text: video.text,
+                facebookId: video.id,
+                dateRange: video.dates
+              }
+            });
+          }
+        });
+      }
+    } else {
+      // Export all completed analysis job transcripts
+      for (const [id, job] of jobs.entries()) {
+        if (job.status === 'completed' && job.type === 'bulk_video_analysis' && job.videos) {
+          // Apply filters
+          let includeJob = true;
+          
+          if (dateFrom) {
+            const jobDate = new Date(job.created_at);
+            const filterDate = new Date(dateFrom);
+            if (jobDate < filterDate) includeJob = false;
+          }
+          
+          if (dateTo) {
+            const jobDate = new Date(job.created_at);
+            const filterDate = new Date(dateTo);
+            if (jobDate > filterDate) includeJob = false;
+          }
+          
+          if (brand && job.options?.competitorName && 
+              !job.options.competitorName.toLowerCase().includes(brand.toLowerCase())) {
+            includeJob = false;
+          }
+          
+          if (includeJob) {
+            job.videos.forEach((video, index) => {
+              if (video.transcript) {
+                transcriptData.push({
+                  jobId: job.job_id,
+                  videoIndex: index + 1,
+                  videoUrl: video.video_urls?.[0] || video.url || 'Unknown',
+                  platform: 'facebook',
+                  adId: video.id || `video_${index + 1}`,
+                  advertiser: video.brand || job.options?.competitorName || 'Unknown',
+                  transcribedAt: video.transcript_metadata?.transcribed_at || job.created_at,
+                  transcript: {
+                    text: video.transcript,
+                    language: video.transcript_metadata?.language || 'en',
+                    duration: video.transcript_metadata?.duration || 0,
+                    confidence: video.transcript_metadata?.confidence || 0,
+                    segments: video.transcript_metadata?.segments || [],
+                    model: video.transcript_metadata?.model || 'whisper-1',
+                    fileSizeMB: video.transcript_metadata?.file_size_mb || 'Unknown',
+                    processingTimeMs: video.transcript_metadata?.processing_time_ms || 0,
+                    costEstimate: video.transcript_metadata?.cost_estimate?.estimated_cost_usd || 0
+                  },
+                  analysisFromTranscript: {
+                    prompt: job.prompt || 'Default video analysis prompt',
+                    competitorAnalysis: job.results?.analysis || 'Analysis not available',
+                    includedInBulkAnalysis: true,
+                    transcriptionEnabled: job.options?.includeTranscripts || false
+                  },
+                  videoMetadata: {
+                    brand: video.brand,
+                    text: video.text,
+                    facebookId: video.id,
+                    dateRange: video.dates
+                  }
+                });
+              }
+            });
+          }
+        }
+      }
+    }
+
     const exportData = {
       metadata: {
         exportedAt: new Date().toISOString(),
@@ -1238,77 +1395,24 @@ router.get('/export/transcripts', authenticateToken, async (req, res) => {
           brand: brand || null
         }
       },
-      transcripts: [
-        // Sample structure - in production this would come from database
-        {
-          id: 'transcript-1',
-          videoUrl: 'https://example.com/video1.mp4',
-          platform: 'facebook',
-          adId: 'ad_123456',
-          advertiser: 'Sample Brand',
-          transcribedAt: new Date().toISOString(),
-          transcript: {
-            text: 'Discover the amazing benefits of our premium health supplements. Join thousands of satisfied customers who trust our scientifically-backed formulas for optimal wellness.',
-            language: 'en',
-            duration: 30.5,
-            confidence: 92.3,
-            segments: [
-              {
-                start: 0,
-                end: 10.2,
-                text: 'Discover the amazing benefits of our premium health supplements.',
-                confidence: 95.1
-              },
-              {
-                start: 10.2,
-                end: 20.8,
-                text: 'Join thousands of satisfied customers who trust our scientifically-backed formulas.',
-                confidence: 89.7
-              },
-              {
-                start: 20.8,
-                end: 30.5,
-                text: 'Order now for optimal wellness and transform your health journey.',
-                confidence: 93.2
-              }
-            ],
-            model: 'whisper-1',
-            fileSizeMB: '2.5',
-            processingTimeMs: 3450
-          },
-          analysisFromTranscript: {
-            prompt: 'Analyze this health supplement advertisement transcript for marketing strategies and key messaging...',
-            response: 'This transcript demonstrates effective health supplement marketing through social proof ("thousands of satisfied customers"), scientific credibility ("scientifically-backed formulas"), and clear benefit positioning ("premium health supplements", "optimal wellness").',
-            keyMessages: [
-              'Premium product positioning',
-              'Scientific credibility emphasis',
-              'Social proof through customer testimonials'
-            ],
-            marketingTactics: [
-              'Social proof strategy',
-              'Authority positioning through science',
-              'Benefit-focused messaging',
-              'Urgency through direct CTA'
-            ],
-            targetAudience: 'Health-conscious consumers seeking premium supplements',
-            sentimentAnalysis: {
-              overall: 'positive',
-              confidence: 91.2,
-              emotions: ['trust', 'aspiration', 'urgency']
-            },
-            competitiveElements: [
-              'Premium positioning vs competitors',
-              'Scientific backing as differentiator',
-              'Customer testimonial approach'
-            ]
-          }
-        }
-      ],
+      transcripts: transcriptData,
       summary: {
-        totalTranscripts: 1,
-        totalDuration: 30.5,
-        averageConfidence: 92.3,
-        languages: ['en']
+        totalTranscripts: transcriptData.length,
+        totalDuration: transcriptData.reduce((sum, t) => sum + (t.transcript.duration || 0), 0),
+        averageConfidence: transcriptData.length > 0 ? 
+          transcriptData.reduce((sum, t) => sum + (t.transcript.confidence || 0), 0) / transcriptData.length : 0,
+        languages: [...new Set(transcriptData.map(t => t.transcript.language))],
+        totalCost: transcriptData.reduce((sum, t) => sum + (t.transcript.costEstimate || 0), 0),
+        jobsIncluded: [...new Set(transcriptData.map(t => t.jobId))].length,
+        advertisers: [...new Set(transcriptData.map(t => t.advertiser))],
+        dateRange: {
+          from: dateFrom || null,
+          to: dateTo || null
+        },
+        filterApplied: {
+          brand: brand || null,
+          specificJob: jobId || null
+        }
       }
     };
 
