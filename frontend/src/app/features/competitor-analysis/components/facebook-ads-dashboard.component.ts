@@ -1219,67 +1219,70 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
   exportTranscriptResults(): void {
     this.isExporting = true;
     
-    try {
-      // Create export data from bulk analysis results
-      const exportData = {
-        metadata: {
-          exportedAt: new Date().toISOString(),
-          exportType: 'transcript_results',
-          datasetId: this.datasetId,
-          source: 'facebook_ads_dashboard'
-        },
-        transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {},
-        transcripts: this.extractTranscriptData(),
-        summary: {
-          totalVideos: this.bulkAnalysisResult?.transcription_stats?.total || 0,
-          successfulTranscriptions: this.bulkAnalysisResult?.transcription_stats?.successful || 0,
-          failedTranscriptions: this.bulkAnalysisResult?.transcription_stats?.failed || 0,
-          totalCost: this.bulkAnalysisResult?.transcription_stats?.totalCost || 0
-        }
-      };
-
-      this.downloadFile(exportData, 'transcript-results');
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    } finally {
+    const jobId = this.bulkAnalysisProgress?.jobId || this.datasetId;
+    
+    if (!jobId) {
+      alert('No analysis job ID found. Please run an analysis first.');
       this.isExporting = false;
+      return;
     }
+
+    // Use the API endpoint to get real transcript data
+    const params = {
+      format: 'json',
+      jobId: jobId
+    };
+
+    this.apiService.exportTranscripts(params).subscribe({
+      next: (response: any) => {
+        if (response.success) {
+          this.downloadFileFromResponse(response.data, 'transcript-results');
+        } else {
+          alert('Export failed: ' + (response.error?.message || 'Unknown error'));
+        }
+        this.isExporting = false;
+      },
+      error: (error: any) => {
+        console.error('Export failed:', error);
+        alert('Export failed: ' + (error.error?.error?.message || 'Please try again'));
+        this.isExporting = false;
+      }
+    });
   }
 
   exportAnalysisResults(): void {
     this.isExporting = true;
     
-    try {
-      // Create export data from complete analysis results
-      const exportData = {
-        metadata: {
-          exportedAt: new Date().toISOString(),
-          exportType: 'full_analysis_results',
-          datasetId: this.datasetId,
-          source: 'facebook_ads_dashboard'
-        },
-        transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {},
-        transcripts: this.extractTranscriptData(),
-        analysis: {
-          summary: this.bulkAnalysisResult?.summary || '',
-          detailedAnalysis: this.bulkAnalysisResult?.analysis || '',
-          processedAt: new Date().toISOString()
-        },
-        videoAnalysisSettings: {
-          includeTranscripts: this.includeTranscripts,
-          includeVisualAnalysis: this.includeVisualAnalysis,
-          template: this.selectedVideoTemplate
-        }
-      };
-
-      this.downloadFile(exportData, 'full-analysis-results');
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    } finally {
+    const jobId = this.bulkAnalysisProgress?.jobId || this.datasetId;
+    
+    if (!jobId) {
+      alert('No analysis job ID found. Please run an analysis first.');
       this.isExporting = false;
+      return;
     }
+
+    // Use the API endpoint to get real analysis and transcript data
+    const params = {
+      format: 'json',
+      includeTranscripts: 'true',
+      jobId: jobId
+    };
+
+    this.apiService.exportAnalysisResults(params).subscribe({
+      next: (response: any) => {
+        if (response.success) {
+          this.downloadFileFromResponse(response.data, 'full-analysis-results');
+        } else {
+          alert('Export failed: ' + (response.error?.message || 'Unknown error'));
+        }
+        this.isExporting = false;
+      },
+      error: (error: any) => {
+        console.error('Export failed:', error);
+        alert('Export failed: ' + (error.error?.error?.message || 'Please try again'));
+        this.isExporting = false;
+      }
+    });
   }
 
   exportDebugTranscriptions(): void {
@@ -1316,7 +1319,7 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
         }))
       };
 
-      this.downloadFile(exportData, 'debug-transcriptions');
+      this.downloadFileFromResponse(exportData, 'debug-transcriptions');
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');
@@ -1325,22 +1328,7 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     }
   }
 
-  private extractTranscriptData(): any[] {
-    // Extract transcript data from bulk analysis results
-    // This would need to be adapted based on how transcript data is stored
-    if (this.bulkAnalysisResult?.transcripts) {
-      return this.bulkAnalysisResult.transcripts;
-    }
-    
-    // If no direct transcript data, create from analysis result
-    return [{
-      note: 'Transcript data structure may vary - this is extracted from available analysis results',
-      analysisIncludedTranscripts: this.includeTranscripts,
-      transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {}
-    }];
-  }
-
-  private downloadFile(data: any, type: string): void {
+  private downloadFileFromResponse(data: any, type: string): void {
     const jsonString = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
