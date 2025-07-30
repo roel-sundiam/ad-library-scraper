@@ -3596,21 +3596,53 @@ async function processBulkVideoAnalysis(jobId) {
     let recommendations = '';
     
     if (aiAnalysis) {
-      const sections = aiAnalysis.split(/\*\*.*?RECOMMENDATIONS.*?\*\*/i);
-      if (sections.length >= 2) {
-        const beforeRecommendations = sections[0];
-        recommendations = sections[1].trim();
-        
-        const summaryMatch = beforeRecommendations.match(/\*\*.*?SUMMARY.*?\*\*([\s\S]*?)(?=\*\*|$)/i);
-        const analysisMatch = beforeRecommendations.match(/\*\*.*?ANALYSIS.*?\*\*([\s\S]*?)(?=\*\*|$)/i);
-        
-        summary = summaryMatch ? summaryMatch[1].trim() : beforeRecommendations.substring(0, 500).trim();
-        analysis = analysisMatch ? analysisMatch[1].trim() : beforeRecommendations.substring(500).trim();
+      // Look for the recommendations section (various formats)
+      const recommendationsMatch = aiAnalysis.match(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*([\s\S]*?)$/i);
+      if (recommendationsMatch) {
+        recommendations = recommendationsMatch[1].trim();
+        // Remove the recommendations section from the main content
+        analysis = aiAnalysis.replace(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*[\s\S]*$/i, '').trim();
       } else {
-        // Fallback: use first part as summary, rest as analysis
-        const parts = aiAnalysis.split('\n\n');
-        summary = parts[0] || '';
-        analysis = parts.slice(1).join('\n\n') || aiAnalysis;
+        // No recommendations section found, use all as analysis
+        analysis = aiAnalysis;
+      }
+      
+      // Create a comprehensive summary from the first section or first ~1000 chars
+      if (analysis) {
+        // Look for the first major section to use as summary
+        const firstSectionMatch = analysis.match(/^([\s\S]*?)(?=###?\s*\*\*[^*]+\*\*|$)/);
+        if (firstSectionMatch && firstSectionMatch[1].length > 100) {
+          // Use first section as summary, rest as detailed analysis
+          summary = firstSectionMatch[1].trim();
+          analysis = analysis.substring(firstSectionMatch[1].length).trim();
+        } else {
+          // Fallback: use first ~1000 characters as summary
+          if (analysis.length > 1000) {
+            // Find a good break point around 1000 characters
+            const breakPoint = analysis.lastIndexOf('\n', 1000);
+            if (breakPoint > 500) {
+              summary = analysis.substring(0, breakPoint).trim();
+              analysis = analysis.substring(breakPoint).trim();
+            } else {
+              // No good break point, just split at 1000
+              summary = analysis.substring(0, 1000).trim() + '...';
+              analysis = analysis.substring(1000).trim();
+            }
+          } else {
+            // Short response, use first paragraph as summary
+            const paragraphs = analysis.split('\n\n');
+            summary = paragraphs[0] || analysis;
+            analysis = paragraphs.slice(1).join('\n\n') || analysis;
+          }
+        }
+      }
+      
+      // Ensure we have content for all sections
+      if (!summary && analysis) {
+        summary = analysis.substring(0, Math.min(500, analysis.length));
+      }
+      if (!analysis) {
+        analysis = aiAnalysis;
       }
     }
     

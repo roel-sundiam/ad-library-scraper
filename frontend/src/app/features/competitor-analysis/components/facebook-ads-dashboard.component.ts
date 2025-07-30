@@ -1129,4 +1129,43 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     if (!content) return false;
     return this.formatAnalysisResult(content).length > maxLength;
   }
+
+  // Get analysis content with fallback to raw_analysis if needed
+  getAnalysisContent(field: 'summary' | 'analysis' | 'recommendations'): string {
+    if (!this.bulkAnalysisResult) return '';
+    
+    let content = this.bulkAnalysisResult[field];
+    
+    // If the field is empty, just a dash, or very short, try to extract from raw_analysis
+    if (!content || content === '-' || content.trim().length < 50) {
+      const rawAnalysis = this.bulkAnalysisResult.raw_analysis;
+      if (rawAnalysis) {
+        if (field === 'summary') {
+          // Extract first section as summary
+          const firstSectionMatch = rawAnalysis.match(/^([\s\S]*?)(?=###?\s*\*\*[^*]+\*\*|$)/);
+          if (firstSectionMatch && firstSectionMatch[1].length > 100) {
+            content = firstSectionMatch[1].trim();
+          } else {
+            // Use first 1000 characters
+            const breakPoint = rawAnalysis.lastIndexOf('\n', 1000);
+            content = breakPoint > 500 ? rawAnalysis.substring(0, breakPoint) : rawAnalysis.substring(0, 1000);
+          }
+        } else if (field === 'analysis') {
+          // Use full raw analysis or extract main content
+          const recommendationsMatch = rawAnalysis.match(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*([\s\S]*?)$/i);
+          if (recommendationsMatch) {
+            content = rawAnalysis.replace(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*[\s\S]*$/i, '').trim();
+          } else {
+            content = rawAnalysis;
+          }
+        } else if (field === 'recommendations') {
+          // Extract recommendations section
+          const recommendationsMatch = rawAnalysis.match(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*([\s\S]*?)$/i);
+          content = recommendationsMatch ? recommendationsMatch[1].trim() : '';
+        }
+      }
+    }
+    
+    return content || '';
+  }
 }
