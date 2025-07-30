@@ -3599,11 +3599,13 @@ async function processBulkVideoAnalysis(jobId) {
           job.progress.percentage = 20 + (i / videosToTranscribe.length) * 10;
           jobs.set(jobId, job);
           
-          // Check if video has URLs to transcribe
-          if (video.video_urls && video.video_urls.length > 0) {
+          // Check if video has URLs to transcribe (handle both formats)
+          const videoUrls = video.video_urls || (video.url ? [video.url] : []);
+          
+          if (videoUrls && videoUrls.length > 0) {
             try {
               // Transcribe first video URL only
-              const videoUrl = video.video_urls[0];
+              const videoUrl = videoUrls[0];
               const transcriptResult = await videoService.transcribeVideo(videoUrl);
               
               // Add transcript to video object
@@ -3637,7 +3639,15 @@ async function processBulkVideoAnalysis(jobId) {
               transcriptionStats.failed++;
             }
           } else {
-            logger.debug(`No video URLs found for video ${i + 1} in job ${jobId}`);
+            logger.warn(`No video URLs found for video ${i + 1} in job ${jobId}`, {
+              videoData: {
+                id: video.id,
+                hasVideoUrls: !!video.video_urls,
+                hasUrl: !!video.url,
+                videoUrlsLength: video.video_urls?.length || 0,
+                urlValue: video.url || 'not set'
+              }
+            });
             video.transcript = null;
           }
           
