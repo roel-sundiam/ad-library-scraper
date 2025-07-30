@@ -171,8 +171,8 @@ interface ExportOptions {
                   <li>Format: JSON (structured data)</li>
                   <li>Transcription: OpenAI Whisper-1 model</li>
                   <li>Analysis: GPT-3.5-turbo & GPT-4 models</li>
-                  <li>Max file size: {{exportOptions?.limits.maxFileSize || 'Loading...'}}</li>
-                  <li>Max results: {{exportOptions?.limits.maxResults || 'Loading...'}}</li>
+                  <li>Max file size: {{exportOptions?.limits?.maxFileSize || 'Loading...'}}</li>
+                  <li>Max results: {{exportOptions?.limits?.maxResults || 'Loading...'}}</li>
                 </ul>
               </div>
             </div>
