@@ -1088,14 +1088,285 @@ router.get('/usage', (req, res) => {
   });
 });
 
-// Export endpoint (placeholder)
-router.get('/export', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      message: 'Export functionality coming soon!'
-    }
-  });
+// ===== EXPORT ENDPOINTS =====
+
+// Export analysis results and transcripts
+router.get('/export/analysis-results', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      format = 'json',
+      includeTranscripts = 'true',
+      dateFrom,
+      dateTo,
+      brand,
+      analysisType 
+    } = req.query;
+
+    // For now, return sample export structure since we don't have persistent storage
+    // In production, this would query the database for user's analysis results
+    const exportData = {
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        exportedBy: req.user.email,
+        format: format,
+        includeTranscripts: includeTranscripts === 'true',
+        filters: {
+          dateFrom: dateFrom || null,
+          dateTo: dateTo || null,
+          brand: brand || null,
+          analysisType: analysisType || null
+        }
+      },
+      analysisResults: [
+        // Sample structure - in production this would come from database
+        {
+          id: 'sample-analysis-1',
+          createdAt: new Date().toISOString(),
+          analysisType: 'competitive',
+          videoData: {
+            url: 'https://example.com/video1.mp4',
+            platform: 'facebook',
+            adId: 'ad_123456',
+            advertiser: 'Sample Brand'
+          },
+          transcript: includeTranscripts === 'true' ? {
+            text: 'Sample transcript text...',
+            language: 'en',
+            duration: 30.5,
+            confidence: 92.3,
+            segments: [
+              {
+                start: 0,
+                end: 10.2,
+                text: 'Sample segment 1...',
+                confidence: 95.1
+              }
+            ],
+            model: 'whisper-1',
+            transcribedAt: new Date().toISOString()
+          } : null,
+          analysis: {
+            prompt: 'Analyze this video transcript for competitive insights and marketing effectiveness...',
+            response: 'Based on the transcript analysis, this video demonstrates strong emotional appeal through storytelling techniques. The messaging focuses on premium quality and customer satisfaction, which aligns with current market trends...',
+            insights: [
+              'Strong emotional storytelling approach increases engagement',
+              'Premium positioning strategy evident throughout messaging',
+              'Clear call-to-action drives conversion potential'
+            ],
+            recommendations: [
+              'Consider adopting similar emotional narrative techniques',
+              'Test premium positioning in your own campaigns',
+              'Implement stronger CTAs based on competitor approach'
+            ],
+            competitiveGaps: [
+              'Competitor has stronger brand storytelling',
+              'More sophisticated video production quality'
+            ],
+            opportunities: [
+              'Differentiate through authentic user testimonials',
+              'Leverage competitor\'s premium pricing to position as value alternative'
+            ],
+            keyMessages: [
+              'Premium quality promise',
+              'Customer satisfaction guarantee',
+              'Limited-time exclusivity'
+            ],
+            targetAudience: 'Health-conscious consumers aged 25-45 with premium buying power',
+            sentimentAnalysis: {
+              overall: 'positive',
+              confidence: 87.5,
+              emotions: ['trust', 'excitement', 'urgency']
+            },
+            provider: 'openai',
+            model: 'gpt-3.5-turbo',
+            tokensUsed: 1500,
+            analyzedAt: new Date().toISOString()
+          }
+        }
+      ],
+      summary: {
+        totalResults: 1,
+        withTranscripts: includeTranscripts === 'true' ? 1 : 0,
+        dateRange: {
+          from: dateFrom || null,
+          to: dateTo || null
+        }
+      }
+    };
+
+    // Set appropriate headers for download
+    const filename = `analysis-export-${new Date().toISOString().split('T')[0]}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+
+    res.json({
+      success: true,
+      data: exportData
+    });
+
+  } catch (error) {
+    logger.error('Export analysis results failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'EXPORT_FAILED',
+        message: 'Failed to export analysis results'
+      }
+    });
+  }
+});
+
+// Export transcripts only
+router.get('/export/transcripts', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      dateFrom,
+      dateTo,
+      brand,
+      format = 'json'
+    } = req.query;
+
+    // Sample transcript export structure
+    const exportData = {
+      metadata: {
+        exportedAt: new Date().toISOString(),
+        exportedBy: req.user.email,
+        type: 'transcripts',
+        filters: {
+          dateFrom: dateFrom || null,
+          dateTo: dateTo || null,
+          brand: brand || null
+        }
+      },
+      transcripts: [
+        // Sample structure - in production this would come from database
+        {
+          id: 'transcript-1',
+          videoUrl: 'https://example.com/video1.mp4',
+          platform: 'facebook',
+          adId: 'ad_123456',
+          advertiser: 'Sample Brand',
+          transcribedAt: new Date().toISOString(),
+          transcript: {
+            text: 'Discover the amazing benefits of our premium health supplements. Join thousands of satisfied customers who trust our scientifically-backed formulas for optimal wellness.',
+            language: 'en',
+            duration: 30.5,
+            confidence: 92.3,
+            segments: [
+              {
+                start: 0,
+                end: 10.2,
+                text: 'Discover the amazing benefits of our premium health supplements.',
+                confidence: 95.1
+              },
+              {
+                start: 10.2,
+                end: 20.8,
+                text: 'Join thousands of satisfied customers who trust our scientifically-backed formulas.',
+                confidence: 89.7
+              },
+              {
+                start: 20.8,
+                end: 30.5,
+                text: 'Order now for optimal wellness and transform your health journey.',
+                confidence: 93.2
+              }
+            ],
+            model: 'whisper-1',
+            fileSizeMB: '2.5',
+            processingTimeMs: 3450
+          },
+          analysisFromTranscript: {
+            prompt: 'Analyze this health supplement advertisement transcript for marketing strategies and key messaging...',
+            response: 'This transcript demonstrates effective health supplement marketing through social proof ("thousands of satisfied customers"), scientific credibility ("scientifically-backed formulas"), and clear benefit positioning ("premium health supplements", "optimal wellness").',
+            keyMessages: [
+              'Premium product positioning',
+              'Scientific credibility emphasis',
+              'Social proof through customer testimonials'
+            ],
+            marketingTactics: [
+              'Social proof strategy',
+              'Authority positioning through science',
+              'Benefit-focused messaging',
+              'Urgency through direct CTA'
+            ],
+            targetAudience: 'Health-conscious consumers seeking premium supplements',
+            sentimentAnalysis: {
+              overall: 'positive',
+              confidence: 91.2,
+              emotions: ['trust', 'aspiration', 'urgency']
+            },
+            competitiveElements: [
+              'Premium positioning vs competitors',
+              'Scientific backing as differentiator',
+              'Customer testimonial approach'
+            ]
+          }
+        }
+      ],
+      summary: {
+        totalTranscripts: 1,
+        totalDuration: 30.5,
+        averageConfidence: 92.3,
+        languages: ['en']
+      }
+    };
+
+    // Set appropriate headers for download
+    const filename = `transcripts-export-${new Date().toISOString().split('T')[0]}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+
+    res.json({
+      success: true,
+      data: exportData
+    });
+
+  } catch (error) {
+    logger.error('Export transcripts failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'EXPORT_FAILED',
+        message: 'Failed to export transcripts'
+      }
+    });
+  }
+});
+
+// Get export options/filters
+router.get('/export/options', authenticateToken, async (req, res) => {
+  try {
+    // In production, this would query the database for available options
+    const options = {
+      formats: ['json'],
+      availableBrands: ['Sample Brand', 'Competitor A', 'Competitor B'],
+      availableAnalysisTypes: ['competitive', 'content', 'visual', 'technical'],
+      dateRange: {
+        earliest: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 90 days ago
+        latest: new Date().toISOString().split('T')[0]
+      },
+      limits: {
+        maxResults: 1000,
+        maxFileSize: '50MB'
+      }
+    };
+
+    res.json({
+      success: true,
+      data: options
+    });
+
+  } catch (error) {
+    logger.error('Get export options failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'EXPORT_OPTIONS_FAILED',
+        message: 'Failed to get export options'
+      }
+    });
+  }
 });
 
 // Start Analysis endpoint - triggers Apify actor for competitor analysis
