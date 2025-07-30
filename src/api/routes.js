@@ -1438,6 +1438,173 @@ router.get('/export/transcripts', authenticateToken, async (req, res) => {
   }
 });
 
+// Export Facebook ads analysis data with video transcripts
+router.get('/export/facebook-analysis/:datasetId', authenticateToken, async (req, res) => {
+  try {
+    const { datasetId } = req.params;
+    const { includeTranscripts = 'true' } = req.query;
+    
+    logger.info('Facebook analysis export request', { 
+      datasetId, 
+      includeTranscripts,
+      userId: req.user.id 
+    });
+
+    // Find the workflow/analysis data
+    const workflow = workflows.get(datasetId);
+    if (!workflow) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'DATASET_NOT_FOUND',
+          message: `Analysis dataset ${datasetId} not found`
+        }
+      });
+    }
+
+    // Extract analysis results
+    const analysisData = workflow.analysis?.data || workflow.pages;
+    if (!analysisData) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NO_ANALYSIS_DATA',
+          message: 'No analysis data found for this dataset'
+        }
+      });
+    }
+
+    // Process brands and collect video ads
+    const brands = Object.keys(analysisData);
+    let totalAds = 0;
+    let totalVideoAds = 0;
+    let allVideoAds = [];
+    
+    const brandComparisons = brands.map(brandKey => {
+      const brandData = analysisData[brandKey];
+      const ads = brandData.ads_data || brandData.ads || [];
+      const videoAds = ads.filter(ad => ad.creative?.has_video);
+      
+      totalAds += ads.length;
+      totalVideoAds += videoAds.length;
+      allVideoAds.push(...videoAds.map(ad => ({ ...ad, brand: brandData.page_name })));
+      
+      return {
+        brand: brandData.page_name,
+        total_ads: ads.length,
+        video_ads: videoAds.length,
+        video_rate: ads.length > 0 ? (videoAds.length / ads.length) * 100 : 0
+      };
+    });
+
+    // Limit video processing to 15 videos for cost control
+    const videosToProcess = allVideoAds.slice(0, 15);
+    let processedTranscripts = [];
+    
+    if (includeTranscripts === 'true' && videosToProcess.length > 0) {
+      logger.info('Processing video transcripts for export', { 
+        totalVideos: allVideoAds.length, 
+        processing: videosToProcess.length 
+      });
+      
+      // Process video transcripts
+      for (const videoAd of videosToProcess) {
+        if (videoAd.creative?.video_urls?.length > 0) {
+          const videoUrl = videoAd.creative.video_urls[0]; // Process first video URL
+          
+          try {
+            const videoTranscriptService = require('../services/video-transcript-service');
+            const transcript = await videoTranscriptService.transcribeVideo(videoUrl);
+            
+            processedTranscripts.push({
+              ad_id: videoAd.id,
+              advertiser: videoAd.brand,
+              video_url: videoUrl,
+              transcript_text: transcript.transcript || transcript.text || '',
+              duration: transcript.duration || 0,
+              model: transcript.model || 'whisper-1',
+              success: true,
+              confidence: transcript.confidence || null,
+              language: transcript.language || 'en',
+              processing_time_ms: transcript.processing_time_ms || null
+            });
+            
+          } catch (error) {
+            logger.warn('Video transcription failed during export', { 
+              videoUrl, 
+              adId: videoAd.id, 
+              error: error.message 
+            });
+            
+            processedTranscripts.push({
+              ad_id: videoAd.id,
+              advertiser: videoAd.brand,
+              video_url: videoUrl,
+              transcript_text: '',
+              success: false,
+              error: error.message
+            });
+          }
+        }
+      }
+    }
+
+    // Build export data structure
+    const exportData = {
+      analysis_summary: {
+        total_ads: totalAds,
+        total_advertisers: brands.length,
+        total_video_ads: totalVideoAds,
+        video_content_rate: totalAds > 0 ? (totalVideoAds / totalAds) * 100 : 0,
+        brands_analyzed: brands.length,
+        exported_at: new Date().toISOString(),
+        dataset_id: datasetId
+      },
+      brand_comparisons: brandComparisons,
+      recent_ads: allVideoAds.slice(0, 5), // Recent 5 ads for preview
+      video_transcripts: {
+        total_videos_found: totalVideoAds,
+        videos_processed: processedTranscripts.length,
+        processing_limit: 15,
+        transcription_enabled: includeTranscripts === 'true',
+        transcripts: processedTranscripts,
+        note: processedTranscripts.length === 0 ? 
+          "No video transcripts processed. Enable transcription or check video URLs." : 
+          `${processedTranscripts.length} video transcripts included in export.`
+      },
+      raw_data: analysisData
+    };
+
+    // Set download headers
+    const filename = `facebook-ads-analysis-dataset_${datasetId}_with-transcripts.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+
+    logger.info('Facebook analysis export completed', { 
+      datasetId, 
+      totalAds, 
+      totalVideoAds, 
+      processedTranscripts: processedTranscripts.length 
+    });
+
+    res.json({
+      success: true,
+      data: exportData
+    });
+
+  } catch (error) {
+    logger.error('Facebook analysis export failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'EXPORT_FAILED',
+        message: 'Failed to export Facebook analysis data',
+        details: error.message
+      }
+    });
+  }
+});
+
 // Get export options/filters
 router.get('/export/options', authenticateToken, async (req, res) => {
   try {

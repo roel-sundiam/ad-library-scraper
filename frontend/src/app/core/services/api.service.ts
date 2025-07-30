@@ -80,6 +80,15 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/export/options`);
   }
 
+  exportFacebookAnalysis(datasetId: string, options?: { includeTranscripts?: boolean }): Observable<any> {
+    let params = new HttpParams();
+    if (options?.includeTranscripts !== undefined) {
+      params = params.set('includeTranscripts', options.includeTranscripts.toString());
+    }
+    
+    return this.http.get(`${this.baseUrl}/export/facebook-analysis/${datasetId}`, { params });
+  }
+
   // Facebook Ads Analysis endpoints (NEW - Live System)
   startFacebookAnalysis(request: { pageUrls: string[] }): Observable<any> {
     return this.http.post(`${this.baseUrl}/start-analysis`, request);

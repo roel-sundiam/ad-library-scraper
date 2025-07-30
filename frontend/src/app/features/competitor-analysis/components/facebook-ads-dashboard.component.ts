@@ -384,44 +384,81 @@ Focus on actionable optimization recommendations for video campaigns.`
   }
 
   exportData(): void {
-    if (!this.analysisResults) return;
+    if (!this.analysisResults || !this.datasetId) return;
 
-    const videoTranscripts = this.extractAllVideoTranscripts();
+    this.isExporting = true;
     
-    const dataToExport = {
-      analysis_summary: {
-        total_ads: this.totalAds,
-        total_advertisers: this.totalAdvertisers,
-        total_video_ads: this.totalVideoAds,
-        video_content_rate: this.videoContentRate,
-        brands_analyzed: this.brandComparisons.length
+    // Call backend API to export with video transcripts
+    this.apiService.exportFacebookAnalysis(this.datasetId, { includeTranscripts: true }).subscribe({
+      next: (response: any) => {
+        if (response.success) {
+          // Create and download the file
+          const blob = new Blob([JSON.stringify(response.data, null, 2)], {
+            type: 'application/json'
+          });
+          
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `facebook-ads-analysis-dataset_${this.datasetId}_with-transcripts.json`;
+          link.click();
+          
+          window.URL.revokeObjectURL(url);
+          
+          // Show success message if transcripts were processed
+          const transcriptCount = response.data.video_transcripts?.transcripts?.length || 0;
+          if (transcriptCount > 0) {
+            alert(`Export completed with ${transcriptCount} video transcripts included!`);
+          } else {
+            alert('Export completed. Note: No video transcripts were generated. Check video URLs or try again.');
+          }
+        } else {
+          alert('Export failed: ' + (response.error?.message || 'Unknown error'));
+        }
+        this.isExporting = false;
       },
-      brand_comparisons: this.brandComparisons,
-      recent_ads: this.topPerformingAds,
-      video_transcripts: {
-        total_videos_found: this.totalVideoAds,
-        videos_processed: videoTranscripts.length,
-        processing_limit: 15,
-        transcription_enabled: this.includeTranscripts,
-        transcripts: videoTranscripts,
-        note: videoTranscripts.length === 0 ? 
-          "No video transcripts found. Run 'Bulk Video Analysis' with transcription enabled to generate transcripts." : 
-          `${videoTranscripts.length} video transcripts included in export.`
-      },
-      raw_data: this.analysisResults.data
-    };
+      error: (error: any) => {
+        console.error('Export failed:', error);
+        this.isExporting = false;
+        
+        // Fallback to client-side export if API fails
+        const videoTranscripts = this.extractAllVideoTranscripts();
+        
+        const dataToExport = {
+          analysis_summary: {
+            total_ads: this.totalAds,
+            total_advertisers: this.totalAdvertisers,
+            total_video_ads: this.totalVideoAds,
+            video_content_rate: this.videoContentRate,
+            brands_analyzed: this.brandComparisons.length
+          },
+          brand_comparisons: this.brandComparisons,
+          recent_ads: this.topPerformingAds,
+          video_transcripts: {
+            total_videos_found: this.totalVideoAds,
+            videos_processed: videoTranscripts.length,
+            processing_limit: 15,
+            transcription_enabled: this.includeTranscripts,
+            transcripts: videoTranscripts,
+            note: "Fallback export - no new transcripts generated. Server-side transcription failed."
+          },
+          raw_data: this.analysisResults.data
+        };
 
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-      type: 'application/json'
+        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+          type: 'application/json'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `facebook-ads-analysis-dataset_${this.datasetId}_with-transcripts.json`;
+        link.click();
+        
+        window.URL.revokeObjectURL(url);
+        alert('Export completed using fallback method. Video transcripts may not be generated.');
+      }
     });
-    
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `facebook-ads-analysis-dataset_${this.datasetId}_with-transcripts.json`;
-    link.click();
-    
-    window.URL.revokeObjectURL(url);
   }
 
   getMetricValue(brand: CompetitorComparison, metric: string): number {
