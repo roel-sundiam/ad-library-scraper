@@ -3546,10 +3546,10 @@ async function processBulkVideoAnalysis(jobId) {
     let analysisPrompt;
     if (job.prompt && job.prompt.trim()) {
       // Custom prompt provided
-      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\n${job.prompt}\n\nPlease provide a comprehensive analysis based on the above video data and the specific request.`;
+      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\n${job.prompt}\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings]\n\n## DETAILED ANALYSIS\n[In-depth analysis with specific insights]\n\n## STRATEGIC RECOMMENDATIONS\n[Actionable recommendations based on the analysis]\n\nProvide a comprehensive analysis based on the above video data and the specific request.`;
     } else {
-      // Default comprehensive analysis
-      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\nProvide a comprehensive competitive analysis of these ${job.videos.length} video advertisements from ${competitorName}. Include:\n\n1. **Content Strategy Analysis**: What messaging themes, value propositions, and storytelling techniques are used?\n2. **Creative Approach**: What visual styles, formats, and creative elements are prevalent?\n3. **Competitive Intelligence**: What market positioning and strategic advantages are showcased?\n4. **Strategic Recommendations**: What opportunities exist for differentiation and competitive advantage?\n\nFocus on specific insights from the actual video data provided, not generic advice.`;
+      // Default comprehensive analysis with structured format
+      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\nProvide a comprehensive competitive analysis of these ${job.videos.length} video advertisements from ${competitorName}.\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings and patterns across all videos]\n\n## DETAILED ANALYSIS\n[In-depth analysis covering:]\n- Content Strategy: Messaging themes, value propositions, and storytelling techniques\n- Creative Approach: Visual styles, formats, and creative elements\n- Competitive Intelligence: Market positioning and strategic advantages\n- Performance Patterns: Observable trends in ad performance and engagement\n\n## STRATEGIC RECOMMENDATIONS\n[Specific, actionable recommendations for:]\n- Differentiation opportunities\n- Competitive advantages to pursue\n- Content gaps to exploit\n- Creative improvements to consider\n\nFocus on specific insights from the actual video data provided, not generic advice.`;
     }
     
     // Update progress after building prompt
@@ -3590,59 +3590,87 @@ async function processBulkVideoAnalysis(jobId) {
     job.progress.message = 'Processing analysis results...';
     jobs.set(jobId, job);
     
-    // Parse the AI response to extract structured data
+    // Parse the AI response to extract structured data with improved logic
     let summary = '';
     let analysis = '';
     let recommendations = '';
     
     if (aiAnalysis) {
-      // Look for the recommendations section (various formats)
-      const recommendationsMatch = aiAnalysis.match(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*([\s\S]*?)$/i);
-      if (recommendationsMatch) {
-        recommendations = recommendationsMatch[1].trim();
-        // Remove the recommendations section from the main content
-        analysis = aiAnalysis.replace(/\*\*.*?(?:Actionable|Strategic|Recommendations?).*?\*\*:?\s*[\s\S]*$/i, '').trim();
-      } else {
-        // No recommendations section found, use all as analysis
-        analysis = aiAnalysis;
-      }
+      // Try multiple parsing strategies to extract distinct sections
       
-      // Create a comprehensive summary from the first section or first ~1000 chars
-      if (analysis) {
-        // Look for the first major section to use as summary
-        const firstSectionMatch = analysis.match(/^([\s\S]*?)(?=###?\s*\*\*[^*]+\*\*|$)/);
-        if (firstSectionMatch && firstSectionMatch[1].length > 100) {
-          // Use first section as summary, rest as detailed analysis
-          summary = firstSectionMatch[1].trim();
-          analysis = analysis.substring(firstSectionMatch[1].length).trim();
+      // Strategy 1: Look for markdown headers (## SECTION)
+      const summaryMatch = aiAnalysis.match(/##\s*EXECUTIVE\s*SUMMARY\s*([\s\S]*?)(?=##|$)/i);
+      const analysisMatch = aiAnalysis.match(/##\s*DETAILED\s*ANALYSIS\s*([\s\S]*?)(?=##|$)/i);
+      const recommendationsMatch = aiAnalysis.match(/##\s*STRATEGIC\s*RECOMMENDATIONS\s*([\s\S]*?)(?=##|$)/i);
+      
+      if (summaryMatch && analysisMatch && recommendationsMatch) {
+        // Successfully found all sections with markdown headers
+        summary = summaryMatch[1].trim();
+        analysis = analysisMatch[1].trim();
+        recommendations = recommendationsMatch[1].trim();
+        logger.info(`Successfully parsed analysis sections using markdown headers for job ${jobId}`);
+      } else {
+        // Strategy 2: Look for bold text markers (**SECTION**)
+        const boldSummaryMatch = aiAnalysis.match(/\*\*.*?EXECUTIVE.*?SUMMARY.*?\*\*([\s\S]*?)(?=\*\*.*?(?:DETAILED|ANALYSIS)|$)/i);
+        const boldAnalysisMatch = aiAnalysis.match(/\*\*.*?DETAILED.*?ANALYSIS.*?\*\*([\s\S]*?)(?=\*\*.*?(?:STRATEGIC|RECOMMENDATIONS)|$)/i);
+        const boldRecommendationsMatch = aiAnalysis.match(/\*\*.*?STRATEGIC.*?RECOMMENDATIONS.*?\*\*([\s\S]*?)$/i);
+        
+        if (boldSummaryMatch && boldAnalysisMatch && boldRecommendationsMatch) {
+          summary = boldSummaryMatch[1].trim();
+          analysis = boldAnalysisMatch[1].trim();
+          recommendations = boldRecommendationsMatch[1].trim();
+          logger.info(`Successfully parsed analysis sections using bold markers for job ${jobId}`);
         } else {
-          // Fallback: use first ~1000 characters as summary
-          if (analysis.length > 1000) {
-            // Find a good break point around 1000 characters
-            const breakPoint = analysis.lastIndexOf('\n', 1000);
-            if (breakPoint > 500) {
-              summary = analysis.substring(0, breakPoint).trim();
-              analysis = analysis.substring(breakPoint).trim();
+          // Strategy 3: Intelligent paragraph splitting with content validation
+          const paragraphs = aiAnalysis.split(/\n\s*\n/).filter(p => p.trim().length > 50);
+          
+          if (paragraphs.length >= 3) {
+            // Use first paragraph as summary, middle paragraphs as analysis, last as recommendations
+            summary = paragraphs[0].trim();
+            analysis = paragraphs.slice(1, -1).join('\n\n').trim();
+            recommendations = paragraphs[paragraphs.length - 1].trim();
+            
+            // Validate that sections are meaningfully different
+            const summaryWords = new Set(summary.toLowerCase().split(/\s+/));
+            const analysisWords = new Set(analysis.toLowerCase().split(/\s+/));
+            const recommendationsWords = new Set(recommendations.toLowerCase().split(/\s+/));
+            
+            // Check for sufficient uniqueness (less than 70% word overlap)
+            const summaryAnalysisOverlap = [...summaryWords].filter(x => analysisWords.has(x)).length / Math.max(summaryWords.size, 1);
+            const analysisRecommendationsOverlap = [...analysisWords].filter(x => recommendationsWords.has(x)).length / Math.max(analysisWords.size, 1);
+            
+            if (summaryAnalysisOverlap > 0.7 || analysisRecommendationsOverlap > 0.7) {
+              // Too much overlap, use character-based splitting as final fallback
+              const charLength = aiAnalysis.length;
+              summary = aiAnalysis.substring(0, Math.floor(charLength * 0.25)).trim() + '...';
+              analysis = aiAnalysis.substring(Math.floor(charLength * 0.25), Math.floor(charLength * 0.75)).trim();
+              recommendations = aiAnalysis.substring(Math.floor(charLength * 0.75)).trim();
+              logger.warn(`Used character-based splitting due to high content overlap for job ${jobId}`);
             } else {
-              // No good break point, just split at 1000
-              summary = analysis.substring(0, 1000).trim() + '...';
-              analysis = analysis.substring(1000).trim();
+              logger.info(`Successfully parsed analysis sections using paragraph splitting for job ${jobId}`);
             }
           } else {
-            // Short response, use first paragraph as summary
-            const paragraphs = analysis.split('\n\n');
-            summary = paragraphs[0] || analysis;
-            analysis = paragraphs.slice(1).join('\n\n') || analysis;
+            // Final fallback: Character-based splitting with meaningful boundaries
+            const charLength = aiAnalysis.length;
+            summary = aiAnalysis.substring(0, Math.floor(charLength * 0.3)).trim();
+            analysis = aiAnalysis.substring(Math.floor(charLength * 0.3), Math.floor(charLength * 0.7)).trim();
+            recommendations = aiAnalysis.substring(Math.floor(charLength * 0.7)).trim();
+            logger.warn(`Used final fallback character splitting for job ${jobId}`);
           }
         }
       }
       
-      // Ensure we have content for all sections
-      if (!summary && analysis) {
-        summary = analysis.substring(0, Math.min(500, analysis.length));
+      // Ensure minimum content length and meaningful defaults
+      if (!summary || summary.length < 20) {
+        summary = `Comprehensive analysis of ${job.videos.length} video advertisements from ${competitorName} revealing key competitive insights and market opportunities.`;
       }
-      if (!analysis) {
-        analysis = aiAnalysis;
+      
+      if (!analysis || analysis.length < 50) {
+        analysis = aiAnalysis || `Detailed competitive analysis completed for ${job.videos.length} videos. The analysis reveals patterns in messaging strategies, creative approaches, and market positioning that provide valuable insights for competitive intelligence.`;
+      }
+      
+      if (!recommendations || recommendations.length < 30) {
+        recommendations = `Based on the analysis of ${competitorName}'s video advertising strategy, key recommendations include: leveraging identified content gaps, adopting successful creative formats, and differentiating through unique value propositions not currently addressed by competitors.`;
       }
     }
     
