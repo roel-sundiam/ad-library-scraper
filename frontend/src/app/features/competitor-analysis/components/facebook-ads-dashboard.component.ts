@@ -442,7 +442,7 @@ Focus on actionable optimization recommendations for video campaigns.`
             transcripts: videoTranscripts,
             note: "Fallback export - no new transcripts generated. Server-side transcription failed."
           },
-          raw_data: this.analysisResults.data
+          raw_data: this.analysisResults?.data || {}
         };
 
         const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
