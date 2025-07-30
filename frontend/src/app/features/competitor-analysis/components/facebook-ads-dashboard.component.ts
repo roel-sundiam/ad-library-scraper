@@ -1091,12 +1091,35 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
       return formattedContent;
     }
     
-    // Truncate at last complete sentence or paragraph break before maxLength
+    // Find good truncation points in order of preference
     const truncated = formattedContent.substring(0, maxLength);
-    const lastBreak = Math.max(truncated.lastIndexOf('<br>'), truncated.lastIndexOf('.'));
+    const searchStart = Math.max(0, maxLength * 0.7); // Look in last 30% of truncated content
     
-    if (lastBreak > maxLength * 0.8) { // If break is reasonably close to maxLength
-      return truncated.substring(0, lastBreak + 1) + '...';
+    // Look for paragraph breaks first
+    let lastBreak = truncated.lastIndexOf('<br><br>', searchStart);
+    if (lastBreak === -1) {
+      // Look for single line breaks
+      lastBreak = truncated.lastIndexOf('<br>', searchStart);
+    }
+    if (lastBreak === -1) {
+      // Look for sentence endings
+      lastBreak = truncated.lastIndexOf('. ', searchStart);
+      if (lastBreak !== -1) lastBreak += 1; // Include the period
+    }
+    if (lastBreak === -1) {
+      // Look for any period
+      lastBreak = truncated.lastIndexOf('.', searchStart);
+      if (lastBreak !== -1) lastBreak += 1; // Include the period
+    }
+    
+    if (lastBreak > searchStart) {
+      return truncated.substring(0, lastBreak + 1) + (lastBreak < maxLength - 10 ? '...' : '');
+    }
+    
+    // Fallback: truncate at word boundary
+    const lastSpace = truncated.lastIndexOf(' ', maxLength - 50);
+    if (lastSpace > searchStart) {
+      return truncated.substring(0, lastSpace) + '...';
     }
     
     return truncated + '...';

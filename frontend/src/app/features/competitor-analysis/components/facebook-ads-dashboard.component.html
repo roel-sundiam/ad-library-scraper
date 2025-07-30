@@ -822,7 +822,7 @@
                 <div class="analysis-summary" *ngIf="bulkAnalysisResult.summary">
                   <div class="section-header">
                     <h6>Executive Summary</h6>
-                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.summary)" 
+                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.summary, 2000)" 
                             mat-icon-button 
                             (click)="toggleSummaryExpansion()"
                             class="expand-button"
@@ -830,8 +830,8 @@
                       <mat-icon>{{ isSummaryExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
                     </button>
                   </div>
-                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.summary, isSummaryExpanded)" class="content-section"></div>
-                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.summary) && !isSummaryExpanded" class="show-more-hint">
+                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.summary, isSummaryExpanded, 2000)" class="content-section"></div>
+                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.summary, 2000) && !isSummaryExpanded" class="show-more-hint">
                     <button mat-stroked-button (click)="toggleSummaryExpansion()" class="show-more-btn">
                       <mat-icon>expand_more</mat-icon>
                       Show More Content
@@ -842,7 +842,7 @@
                 <div class="detailed-analysis" *ngIf="bulkAnalysisResult.analysis">
                   <div class="section-header">
                     <h6>Detailed Analysis</h6>
-                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.analysis)" 
+                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.analysis, 3000)" 
                             mat-icon-button 
                             (click)="toggleAnalysisExpansion()"
                             class="expand-button"
@@ -850,8 +850,8 @@
                       <mat-icon>{{ isAnalysisExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
                     </button>
                   </div>
-                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.analysis, isAnalysisExpanded)" class="content-section"></div>
-                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.analysis) && !isAnalysisExpanded" class="show-more-hint">
+                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.analysis, isAnalysisExpanded, 3000)" class="content-section"></div>
+                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.analysis, 3000) && !isAnalysisExpanded" class="show-more-hint">
                     <button mat-stroked-button (click)="toggleAnalysisExpansion()" class="show-more-btn">
                       <mat-icon>expand_more</mat-icon>
                       Show More Content
@@ -862,7 +862,7 @@
                 <div class="recommendations" *ngIf="bulkAnalysisResult.recommendations">
                   <div class="section-header">
                     <h6>Strategic Recommendations</h6>
-                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.recommendations)" 
+                    <button *ngIf="shouldShowExpandButton(bulkAnalysisResult.recommendations, 1500)" 
                             mat-icon-button 
                             (click)="toggleRecommendationsExpansion()"
                             class="expand-button"
@@ -870,8 +870,8 @@
                       <mat-icon>{{ isRecommendationsExpanded ? 'expand_less' : 'expand_more' }}</mat-icon>
                     </button>
                   </div>
-                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.recommendations, isRecommendationsExpanded)" class="content-section"></div>
-                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.recommendations) && !isRecommendationsExpanded" class="show-more-hint">
+                  <div [innerHTML]="getDisplayContent(bulkAnalysisResult.recommendations, isRecommendationsExpanded, 1500)" class="content-section"></div>
+                  <div *ngIf="shouldShowExpandButton(bulkAnalysisResult.recommendations, 1500) && !isRecommendationsExpanded" class="show-more-hint">
                     <button mat-stroked-button (click)="toggleRecommendationsExpansion()" class="show-more-btn">
                       <mat-icon>expand_more</mat-icon>
                       Show More Content
