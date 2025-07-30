@@ -3470,6 +3470,52 @@ async function testOllamaConnection() {
   }
 }
 
+// Helper function to calculate analysis quality score
+function calculateAnalysisQuality(aiAnalysis, competitorName) {
+  if (!aiAnalysis || aiAnalysis.length < 50) {
+    return 0.1; // Very low quality - no or minimal analysis
+  }
+  
+  let qualityScore = 0.5; // Base score
+  
+  // Check for suspicious/mock content
+  const suspiciousPatterns = [
+    'cat', 'arthritis', 'if your cat', 'knead therapeutic', 
+    'generic example', 'placeholder', 'lorem ipsum'
+  ];
+  
+  const hasSuspiciousContent = suspiciousPatterns.some(pattern => 
+    aiAnalysis.toLowerCase().includes(pattern.toLowerCase())
+  );
+  
+  if (hasSuspiciousContent) {
+    return 0.2; // Very low quality - contains mock content
+  }
+  
+  // Check for competitor name usage (indicates personalized analysis)
+  if (competitorName && aiAnalysis.toLowerCase().includes(competitorName.toLowerCase())) {
+    qualityScore += 0.2;
+  }
+  
+  // Check for marketing/advertising specific terms
+  const marketingTerms = [
+    'advertising', 'marketing', 'campaign', 'creative', 'strategy',
+    'competitive', 'analysis', 'recommendation', 'insights', 'brand'
+  ];
+  
+  const marketingTermCount = marketingTerms.filter(term => 
+    aiAnalysis.toLowerCase().includes(term.toLowerCase())
+  ).length;
+  
+  qualityScore += Math.min(marketingTermCount * 0.05, 0.2);
+  
+  // Length bonus (longer analysis generally indicates more detail)
+  if (aiAnalysis.length > 500) qualityScore += 0.1;
+  if (aiAnalysis.length > 1000) qualityScore += 0.1;
+  
+  return Math.min(qualityScore, 1.0);
+}
+
 // Process bulk video analysis with real AI analysis using OpenAI
 async function processBulkVideoAnalysis(jobId) {
   logger.info(`Processing bulk video analysis with jobId: ${jobId}`);
@@ -3517,7 +3563,101 @@ async function processBulkVideoAnalysis(jobId) {
       videoCount: job.videos.length
     });
     
-    // Stage 2: Build analysis prompt with real video data
+    // Stage 2: Process video transcripts (if enabled)
+    job.progress.stage = 'transcribing';
+    job.progress.message = 'Processing video transcripts...';
+    job.progress.percentage = 20;
+    jobs.set(jobId, job);
+    
+    const enableTranscription = job.options.includeTranscripts === true;
+    let transcriptionStats = {
+      attempted: 0,
+      successful: 0,
+      failed: 0,
+      skipped: 0,
+      totalCost: 0
+    };
+    
+    if (enableTranscription) {
+      const videoService = getVideoTranscriptService();
+      if (videoService) {
+        logger.info(`Starting video transcription for job ${jobId}`, {
+          videoCount: job.videos.length,
+          transcriptionEnabled: true
+        });
+        
+        // Limit transcription to first 10 videos for cost control
+        const videosToTranscribe = job.videos.slice(0, 10);
+        transcriptionStats.attempted = videosToTranscribe.length;
+        transcriptionStats.skipped = job.videos.length - videosToTranscribe.length;
+        
+        for (let i = 0; i < videosToTranscribe.length; i++) {
+          const video = videosToTranscribe[i];
+          
+          // Update progress
+          job.progress.message = `Transcribing video ${i + 1}/${videosToTranscribe.length}...`;
+          job.progress.percentage = 20 + (i / videosToTranscribe.length) * 10;
+          jobs.set(jobId, job);
+          
+          // Check if video has URLs to transcribe
+          if (video.video_urls && video.video_urls.length > 0) {
+            try {
+              // Transcribe first video URL only
+              const videoUrl = video.video_urls[0];
+              const transcriptResult = await videoService.transcribeVideo(videoUrl);
+              
+              // Add transcript to video object
+              video.transcript = transcriptResult.transcript;
+              video.transcript_metadata = {
+                confidence: transcriptResult.confidence,
+                duration: transcriptResult.duration,
+                language: transcriptResult.language,
+                cost_estimate: await videoService.getTranscriptionCost(transcriptResult.duration || 30)
+              };
+              
+              transcriptionStats.successful++;
+              transcriptionStats.totalCost += video.transcript_metadata.cost_estimate.estimated_cost_usd || 0.01;
+              
+              logger.info(`Video transcription successful for job ${jobId}`, {
+                videoIndex: i + 1,
+                videoUrl: videoUrl.substring(0, 50) + '...',
+                transcriptLength: transcriptResult.transcript?.length || 0,
+                duration: transcriptResult.duration
+              });
+              
+            } catch (transcriptionError) {
+              logger.warn(`Video transcription failed for job ${jobId}`, {
+                videoIndex: i + 1,
+                error: transcriptionError.message,
+                videoUrls: video.video_urls?.slice(0, 1)
+              });
+              
+              video.transcript = null;
+              video.transcript_error = transcriptionError.message;
+              transcriptionStats.failed++;
+            }
+          } else {
+            logger.debug(`No video URLs found for video ${i + 1} in job ${jobId}`);
+            video.transcript = null;
+          }
+          
+          // Small delay to avoid rate limiting
+          if (i < videosToTranscribe.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        logger.info(`Video transcription completed for job ${jobId}`, transcriptionStats);
+      } else {
+        logger.warn(`Video transcription requested but service not available for job ${jobId}`);
+        transcriptionStats.skipped = job.videos.length;
+      }
+    } else {
+      logger.info(`Video transcription skipped for job ${jobId} (not enabled)`);
+      transcriptionStats.skipped = job.videos.length;
+    }
+    
+    // Stage 3: Build analysis prompt with video data and transcripts
     job.progress.stage = 'analyzing';
     job.progress.message = 'Analyzing video content with AI...';
     job.progress.percentage = 30;
@@ -3532,24 +3672,59 @@ async function processBulkVideoAnalysis(jobId) {
     videosToAnalyze.forEach((video, index) => {
       videoDataContext += `\nVideo ${index + 1}:\n`;
       videoDataContext += `- Brand: ${video.brand || competitorName}\n`;
-      // Limit ad text to 200 characters to reduce tokens
-      const adText = (video.text || 'No text content').substring(0, 200);
-      videoDataContext += `- Ad Text: ${adText}${video.text && video.text.length > 200 ? '...' : ''}\n`;
+      
+      // Prepare ad text for conditional use
+      const adText = (video.text || 'No text content').substring(0, 150);
+      
+      // Include video transcript if available (PRIMARY DATA SOURCE!)
+      if (video.transcript && video.transcript.length > 0) {
+        const transcript = video.transcript.substring(0, 400); // Increased transcript length for better analysis
+        videoDataContext += `- **PRIMARY VIDEO CONTENT (Transcribed Speech)**: "${transcript}${video.transcript.length > 400 ? '...' : ''}"\n`;
+        if (video.transcript_metadata) {
+          videoDataContext += `- Transcript Confidence: ${Math.round((video.transcript_metadata.confidence || 0) * 100)}%\n`;
+          videoDataContext += `- Video Duration: ${video.transcript_metadata.duration || 'Unknown'} seconds\n`;
+        }
+        // De-emphasize ad text when transcript is available
+        videoDataContext += `- Ad Text (Supporting): ${adText}${video.text && video.text.length > 150 ? '...' : ''}\n`;
+      } else if (video.transcript_error) {
+        videoDataContext += `- Video Content: [Transcription failed - ${video.transcript_error}]\n`;
+        videoDataContext += `- Ad Text (Fallback): ${adText}${video.text && video.text.length > 150 ? '...' : ''}\n`;
+      } else if (enableTranscription) {
+        videoDataContext += `- Video Content: [No video URLs available for transcription]\n`;
+        videoDataContext += `- Ad Text (Fallback): ${adText}${video.text && video.text.length > 150 ? '...' : ''}\n`;
+      } else {
+        videoDataContext += `- Ad Text (Primary - No Transcription): ${adText}${video.text && video.text.length > 150 ? '...' : ''}\n`;
+        videoDataContext += `- Video Content: [Transcription disabled - Enable for actual video content analysis]\n`;
+      }
+      
       if (video.date) {
         videoDataContext += `- Date: ${video.date}\n`;
       }
-      // Skip URLs to save tokens
       videoDataContext += `- Facebook Ad ID: ${video.id || 'N/A'}\n`;
     });
     
+    // Add transcription summary to context
+    const transcriptionSummary = enableTranscription ? 
+      `\n\n**TRANSCRIPTION SUMMARY:**\n- Videos processed: ${transcriptionStats.attempted}\n- Transcriptions successful: ${transcriptionStats.successful}\n- Transcriptions failed: ${transcriptionStats.failed}\n- Videos skipped: ${transcriptionStats.skipped}\n- Estimated cost: $${transcriptionStats.totalCost.toFixed(3)}\n` :
+      `\n\n**NOTE:** Video transcription was not enabled for this analysis. Analysis is based on ad text and metadata only.\n`;
+    
     // Build the analysis request based on custom prompt or selected template
     let analysisPrompt;
+    const hasTranscripts = transcriptionStats.successful > 0;
+    const analysisInstruction = hasTranscripts ? 
+      "🎯 **CRITICAL INSTRUCTION**: Analyze the **PRIMARY VIDEO CONTENT (Transcribed Speech)** as your main data source. This contains the actual spoken words from the video advertisements, which is far more valuable than the ad text descriptions. Focus 80% of your analysis on what people are actually saying in the videos. The ad text is only supporting context." :
+      "⚠️ **LIMITATION**: This analysis is based on ad text and metadata only because video transcription was not enabled. Results will be limited to repetitive ad descriptions rather than actual video content.";
+    
     if (job.prompt && job.prompt.trim()) {
       // Custom prompt provided
-      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\n${job.prompt}\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings]\n\n## DETAILED ANALYSIS\n[In-depth analysis with specific insights]\n\n## STRATEGIC RECOMMENDATIONS\n[Actionable recommendations based on the analysis]\n\nProvide a comprehensive analysis based on the above video data and the specific request.`;
+      analysisPrompt = `${videoDataContext}${transcriptionSummary}\n**ANALYSIS REQUEST:**\n${job.prompt}\n\n${analysisInstruction}\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings]\n\n## DETAILED ANALYSIS\n[In-depth analysis with specific insights from the data provided]\n\n## STRATEGIC RECOMMENDATIONS\n[Actionable recommendations based on the analysis]\n\nProvide a comprehensive analysis based on the above video data and the specific request.`;
     } else {
-      // Default comprehensive analysis with structured format
-      analysisPrompt = `${videoDataContext}\n\n**ANALYSIS REQUEST:**\nProvide a comprehensive competitive analysis of these ${job.videos.length} video advertisements from ${competitorName}.\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings and patterns across all videos]\n\n## DETAILED ANALYSIS\n[In-depth analysis covering:]\n- Content Strategy: Messaging themes, value propositions, and storytelling techniques\n- Creative Approach: Visual styles, formats, and creative elements\n- Competitive Intelligence: Market positioning and strategic advantages\n- Performance Patterns: Observable trends in ad performance and engagement\n\n## STRATEGIC RECOMMENDATIONS\n[Specific, actionable recommendations for:]\n- Differentiation opportunities\n- Competitive advantages to pursue\n- Content gaps to exploit\n- Creative improvements to consider\n\nFocus on specific insights from the actual video data provided, not generic advice.`;
+      // Default comprehensive analysis with structured format  
+      const contentFocus = hasTranscripts ? 
+        "Focus on analyzing the actual spoken content, messaging patterns, and verbal strategies used in the video advertisements." :
+        "Focus on analyzing the available ad text, metadata, and observable patterns.";
+        
+      analysisPrompt = `${videoDataContext}${transcriptionSummary}\n**ANALYSIS REQUEST:**\nProvide a comprehensive competitive analysis of these ${job.videos.length} video advertisements from ${competitorName}.\n\n${analysisInstruction}\n${contentFocus}\n\nPlease structure your response in the following format:\n\n## EXECUTIVE SUMMARY\n[Brief overview of key findings and patterns across all videos]\n\n## DETAILED ANALYSIS\n[In-depth analysis covering:]\n- Content Strategy: Messaging themes, value propositions, and storytelling techniques${hasTranscripts ? ' (from transcribed video content)' : ''}\n- Creative Approach: Communication styles, formats, and content elements\n- Competitive Intelligence: Market positioning and strategic advantages\n- Performance Patterns: Observable trends and patterns in the advertisements\n\n## STRATEGIC RECOMMENDATIONS\n[Specific, actionable recommendations for:]\n- Differentiation opportunities based on competitor content\n- Competitive advantages to pursue\n- Content gaps to exploit\n- Creative and messaging improvements to consider\n\nFocus on specific insights from the actual ${hasTranscripts ? 'video transcripts and' : ''} data provided, not generic advice.`;
     }
     
     // Update progress after building prompt
@@ -3571,17 +3746,44 @@ async function processBulkVideoAnalysis(jobId) {
     logger.info(`Starting OpenAI analysis for job ${jobId}`, {
       promptLength: analysisPrompt.length,
       videoCount: job.videos.length,
-      hasOpenAIKey: !!process.env.OPENAI_API_KEY
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      competitorName,
+      analysisType,
+      promptPreview: analysisPrompt.substring(0, 300) + '...'
     });
     
     let aiAnalysis;
     try {
       aiAnalysis = await analyzeWithOpenAI(analysisPrompt, { videos: job.videos });
+      
+      // Validate the AI response for suspicious content
+      if (aiAnalysis && (aiAnalysis.toLowerCase().includes('cat') || 
+                        aiAnalysis.toLowerCase().includes('arthritis') || 
+                        aiAnalysis.toLowerCase().includes('if your'))) {
+        logger.error(`CRITICAL: OpenAI returned suspicious mock content for job ${jobId}`, {
+          responsePreview: aiAnalysis.substring(0, 500),
+          videoCount: job.videos.length,
+          competitorName,
+          analysisType
+        });
+        throw new Error('OpenAI returned generic/mock content instead of real analysis');
+      }
+      
       logger.info(`OpenAI analysis completed for job ${jobId}`, {
-        responseLength: aiAnalysis ? aiAnalysis.length : 0
+        responseLength: aiAnalysis ? aiAnalysis.length : 0,
+        responseValid: !!aiAnalysis && aiAnalysis.length > 100,
+        competitorName,
+        analysisType
       });
     } catch (aiError) {
-      logger.error(`OpenAI analysis failed for job ${jobId}:`, aiError);
+      logger.error(`OpenAI analysis failed for job ${jobId}:`, {
+        error: aiError.message,
+        stack: aiError.stack,
+        competitorName,
+        analysisType,
+        promptLength: analysisPrompt.length,
+        videoCount: job.videos.length
+      });
       throw new Error(`AI analysis failed: ${aiError.message}`);
     }
     
@@ -3662,17 +3864,29 @@ async function processBulkVideoAnalysis(jobId) {
       
       // Ensure minimum content length and meaningful defaults
       if (!summary || summary.length < 20) {
-        summary = `Comprehensive analysis of ${job.videos.length} video advertisements from ${competitorName} revealing key competitive insights and market opportunities.`;
+        summary = `Analysis completed for ${job.videos.length} video advertisements from ${competitorName}. Key competitive insights and patterns have been identified for strategic planning.`;
       }
       
       if (!analysis || analysis.length < 50) {
-        analysis = aiAnalysis || `Detailed competitive analysis completed for ${job.videos.length} videos. The analysis reveals patterns in messaging strategies, creative approaches, and market positioning that provide valuable insights for competitive intelligence.`;
+        analysis = aiAnalysis || `Analysis of ${job.videos.length} videos from ${competitorName} completed. The review covers messaging patterns, creative approaches, and competitive positioning strategies observed in their advertising content.`;
       }
       
       if (!recommendations || recommendations.length < 30) {
-        recommendations = `Based on the analysis of ${competitorName}'s video advertising strategy, key recommendations include: leveraging identified content gaps, adopting successful creative formats, and differentiating through unique value propositions not currently addressed by competitors.`;
+        recommendations = `Strategic recommendations based on ${competitorName}'s video advertising analysis: Review competitor content patterns, identify differentiation opportunities, and develop unique positioning strategies to gain competitive advantage.`;
+      }
+      
+      // Log fallback usage for debugging
+      if (!aiAnalysis || aiAnalysis.length < 100) {
+        logger.warn(`Using fallback content for job ${jobId} - AI analysis was insufficient`, {
+          aiAnalysisLength: aiAnalysis ? aiAnalysis.length : 0,
+          competitorName,
+          videoCount: job.videos.length
+        });
       }
     }
+    
+    // Validate analysis quality before returning results
+    const analysisQualityScore = calculateAnalysisQuality(aiAnalysis, competitorName);
     
     // Structure the final results
     const finalResults = {
@@ -3680,18 +3894,39 @@ async function processBulkVideoAnalysis(jobId) {
       analysis: analysis || aiAnalysis || 'Detailed analysis not available.',
       recommendations: recommendations || 'Strategic recommendations not available.',
       raw_analysis: aiAnalysis, // Include full AI response for debugging
+      transcription_stats: transcriptionStats, // Include transcription statistics
       metadata: {
-        ai_provider: 'openai_gpt4',
+        ai_provider: 'openai_gpt35',
         total_videos: job.videos.length,
+        videos_analyzed: videosToAnalyze.length,
         analysis_type: analysisType,
         competitor_name: competitorName,
-        include_transcripts: job.options.includeTranscripts,
-        include_visual_analysis: job.options.includeVisualAnalysis,
+        include_transcripts: enableTranscription,
+        transcripts_successful: transcriptionStats.successful,
+        transcripts_failed: transcriptionStats.failed,
+        estimated_transcription_cost: transcriptionStats.totalCost,
+        include_visual_analysis: job.options.includeVisualAnalysis || false,
         prompt_used: job.prompt,
         generated_at: new Date().toISOString(),
-        note: 'Real AI analysis based on actual scraped video data from Facebook Ad Library.'
+        analysis_quality_score: analysisQualityScore,
+        note: transcriptionStats.successful > 0 ? 
+          'AI analysis based on transcribed video content and advertisement data from Facebook Ad Library.' :
+          enableTranscription ? 
+            'AI analysis attempted with video transcription but transcription failed or was unavailable.' :
+            'AI analysis based on advertisement text and metadata only (video transcription not enabled).'
       }
     };
+    
+    // Log analysis quality for monitoring
+    logger.info(`Analysis quality assessment for job ${jobId}`, {
+      qualityScore: analysisQualityScore,
+      aiAnalysisLength: aiAnalysis ? aiAnalysis.length : 0,
+      containsSuspiciousContent: aiAnalysis ? 
+        (aiAnalysis.toLowerCase().includes('cat') || aiAnalysis.toLowerCase().includes('arthritis')) : 
+        false,
+      competitorName,
+      videoCount: job.videos.length
+    });
     
     // Complete the job
     job.status = 'completed';

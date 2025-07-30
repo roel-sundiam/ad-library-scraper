@@ -20,13 +20,22 @@ if (process.env.OPENAI_API_KEY) {
  */
 async function analyzeWithOpenAI(analysisPrompt, processedData) {
   if (!openai) {
+    logger.error('OpenAI not configured - API key missing');
     throw new Error('OpenAI not configured - API key missing');
   }
 
   try {
     logger.info('Starting OpenAI competitive analysis', {
       promptLength: analysisPrompt.length,
-      hasProcessedData: !!processedData
+      hasProcessedData: !!processedData,
+      promptPreview: analysisPrompt.substring(0, 200) + '...',
+      apiKeyConfigured: !!process.env.OPENAI_API_KEY,
+      timestamp: new Date().toISOString()
+    });
+
+    // Log the first 500 characters of the prompt for debugging
+    logger.debug('Analysis prompt preview:', {
+      prompt: analysisPrompt.substring(0, 500) + (analysisPrompt.length > 500 ? '... (truncated)' : '')
     });
 
     const completion = await openai.chat.completions.create({
@@ -34,7 +43,7 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
       messages: [
         {
           role: "system",
-          content: "You are an expert marketing analyst specializing in Facebook advertising competitive analysis. Provide detailed, actionable insights based on the provided data. Format your response as clear, structured analysis with specific recommendations."
+          content: "You are an expert marketing analyst specializing in Facebook advertising competitive analysis. Provide detailed, actionable insights based on the provided data. Format your response as clear, structured analysis with specific recommendations. IMPORTANT: Do not use any generic examples or placeholder content - analyze only the actual data provided."
         },
         {
           role: "user",
@@ -48,15 +57,39 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
     const response = completion.choices[0];
     const analysisText = response.message.content;
 
+    // Enhanced logging to detect mock/generic responses
     logger.info('OpenAI analysis completed', {
       tokensUsed: completion.usage?.total_tokens,
-      responseLength: analysisText.length
+      responseLength: analysisText.length,
+      responsePreview: analysisText.substring(0, 300) + '...',
+      finishReason: response.finish_reason,
+      containsGenericContent: analysisText.toLowerCase().includes('cat') || 
+                             analysisText.toLowerCase().includes('arthritis') ||
+                             analysisText.toLowerCase().includes('generic') ||
+                             analysisText.toLowerCase().includes('example'),
+      timestamp: new Date().toISOString()
     });
+
+    // Alert if response contains suspicious generic content
+    if (analysisText.toLowerCase().includes('cat') || 
+        analysisText.toLowerCase().includes('arthritis') ||
+        analysisText.toLowerCase().includes('if your')) {
+      logger.warn('SUSPICIOUS: OpenAI response contains generic/mock content', {
+        responseSnippet: analysisText.substring(0, 500),
+        fullResponse: analysisText
+      });
+    }
 
     return analysisText;
 
   } catch (error) {
-    logger.error('OpenAI competitive analysis failed:', error);
+    logger.error('OpenAI competitive analysis failed:', {
+      error: error.message,
+      stack: error.stack,
+      errorCode: error.code,
+      errorType: error.type,
+      timestamp: new Date().toISOString()
+    });
     throw new Error(`OpenAI analysis failed: ${error.message}`);
   }
 }

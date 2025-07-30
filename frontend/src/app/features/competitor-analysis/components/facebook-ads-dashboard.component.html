@@ -720,6 +720,54 @@
                 </div>
               </div>
               
+              <!-- Analysis Options -->
+              <div class="video-analysis-options">
+                <div class="options-section">
+                  <h4 class="options-title">
+                    <mat-icon>tune</mat-icon>
+                    Analysis Options
+                  </h4>
+                  
+                  <div class="option-toggles">
+                    <div class="toggle-option">
+                      <mat-slide-toggle 
+                        [(ngModel)]="includeTranscripts"
+                        color="primary">
+                        <span class="toggle-label">
+                          <strong>Include Video Transcripts</strong>
+                          <span class="recommended-badge">RECOMMENDED</span>
+                        </span>
+                      </mat-slide-toggle>
+                      <div class="option-description">
+                        <mat-icon class="info-icon">info</mat-icon>
+                        <span><strong>Analyzes actual video content</strong> instead of just ad text for genuine insights</span>
+                        <div class="cost-warning prominent" *ngIf="includeTranscripts">
+                          <mat-icon class="warning-icon">attach_money</mat-icon>
+                          <span><strong>Additional OpenAI cost:</strong> ~$0.006/minute (~$0.15 for {{ totalVideoAds }} videos)</span>
+                        </div>
+                        <div class="fallback-warning" *ngIf="!includeTranscripts">
+                          <mat-icon class="warning-icon">warning</mat-icon>
+                          <span><strong>Warning:</strong> Without transcription, analysis will be based on repetitive ad text only</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="toggle-option">
+                      <mat-slide-toggle 
+                        [(ngModel)]="includeVisualAnalysis"
+                        color="primary"
+                        [disabled]="true">
+                        <span class="toggle-label">Visual Analysis (Coming Soon)</span>
+                      </mat-slide-toggle>
+                      <div class="option-description">
+                        <mat-icon class="info-icon">info</mat-icon>
+                        <span>AI analysis of visual elements, colors, and design patterns</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <!-- Analysis Actions -->
               <div class="video-analysis-actions">
                 <button 
@@ -831,6 +879,40 @@
                   <mat-icon>download</mat-icon>
                   Download Report
                 </button>
+              </div>
+              
+              <!-- Transcription Statistics -->
+              <div *ngIf="bulkAnalysisResult.transcription_stats" class="transcription-stats">
+                <div class="stats-header">
+                  <mat-icon>transcribe</mat-icon>
+                  <span>Video Transcription Results</span>
+                </div>
+                <div class="stats-grid">
+                  <div class="stat-item success" *ngIf="bulkAnalysisResult.transcription_stats.successful > 0">
+                    <div class="stat-number">{{ bulkAnalysisResult.transcription_stats.successful }}</div>
+                    <div class="stat-label">Transcribed</div>
+                  </div>
+                  <div class="stat-item failed" *ngIf="bulkAnalysisResult.transcription_stats.failed > 0">
+                    <div class="stat-number">{{ bulkAnalysisResult.transcription_stats.failed }}</div>
+                    <div class="stat-label">Failed</div>
+                  </div>
+                  <div class="stat-item skipped" *ngIf="bulkAnalysisResult.transcription_stats.skipped > 0">
+                    <div class="stat-number">{{ bulkAnalysisResult.transcription_stats.skipped }}</div>
+                    <div class="stat-label">Skipped</div>
+                  </div>
+                  <div class="stat-item cost" *ngIf="bulkAnalysisResult.transcription_stats.totalCost > 0">
+                    <div class="stat-number">${{ bulkAnalysisResult.transcription_stats.totalCost.toFixed(3) }}</div>
+                    <div class="stat-label">Cost</div>
+                  </div>
+                </div>
+                <div class="transcription-note" *ngIf="bulkAnalysisResult.transcription_stats.successful === 0">
+                  <mat-icon>info</mat-icon>
+                  <span>Analysis based on ad text only - video transcription was not enabled or failed</span>
+                </div>
+                <div class="transcription-note success" *ngIf="bulkAnalysisResult.transcription_stats.successful > 0">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Analysis includes actual video content from {{ bulkAnalysisResult.transcription_stats.successful }} transcribed videos</span>
+                </div>
               </div>
               
               <div class="bulk-analysis-content">

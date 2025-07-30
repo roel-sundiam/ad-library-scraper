@@ -45,7 +45,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
   isBulkAnalyzing = false;
   bulkAnalysisProgress: any = null;
   bulkAnalysisResult: any = null;
-  includeTranscripts = true;
+  includeTranscripts = true; // Default to enabled for better video analysis
   includeVisualAnalysis = false; // Requires additional AI vision capabilities
 
   // Debug properties
