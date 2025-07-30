@@ -95,7 +95,7 @@ class ApifyScraper {
           "scrapePageAds.activeStatus": "all",
           "urls": [
             {
-              "url": `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
+              "url": `https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&is_targeted_country=false&media_type=all&q=${query}&search_type=keyword_unordered`,
               "method": "GET"
             }
           ]
