@@ -33,15 +33,15 @@ interface ExportOptions {
               <mat-form-field>
                 <mat-label>Date From</mat-label>
                 <input matInput type="date" [(ngModel)]="analysisFilters.dateFrom" 
-                       [min]="exportOptions?.dateRange.earliest" 
-                       [max]="exportOptions?.dateRange.latest">
+                       [min]="exportOptions?.dateRange?.earliest" 
+                       [max]="exportOptions?.dateRange?.latest">
               </mat-form-field>
               
               <mat-form-field>
                 <mat-label>Date To</mat-label>
                 <input matInput type="date" [(ngModel)]="analysisFilters.dateTo"
-                       [min]="exportOptions?.dateRange.earliest" 
-                       [max]="exportOptions?.dateRange.latest">
+                       [min]="exportOptions?.dateRange?.earliest" 
+                       [max]="exportOptions?.dateRange?.latest">
               </mat-form-field>
             </div>
             
@@ -97,15 +97,15 @@ interface ExportOptions {
               <mat-form-field>
                 <mat-label>Date From</mat-label>
                 <input matInput type="date" [(ngModel)]="transcriptFilters.dateFrom"
-                       [min]="exportOptions?.dateRange.earliest" 
-                       [max]="exportOptions?.dateRange.latest">
+                       [min]="exportOptions?.dateRange?.earliest" 
+                       [max]="exportOptions?.dateRange?.latest">
               </mat-form-field>
               
               <mat-form-field>
                 <mat-label>Date To</mat-label>
                 <input matInput type="date" [(ngModel)]="transcriptFilters.dateTo"
-                       [min]="exportOptions?.dateRange.earliest" 
-                       [max]="exportOptions?.dateRange.latest">
+                       [min]="exportOptions?.dateRange?.earliest" 
+                       [max]="exportOptions?.dateRange?.latest">
               </mat-form-field>
             </div>
             
@@ -332,8 +332,8 @@ export class ExportComponent implements OnInit {
     this.isLoading = true;
     this.error = null;
     
-    this.apiService.get('/export/options').subscribe({
-      next: (response) => {
+    this.apiService.getExportOptions().subscribe({
+      next: (response: any) => {
         if (response.success) {
           this.exportOptions = response.data;
         } else {
@@ -341,7 +341,7 @@ export class ExportComponent implements OnInit {
         }
         this.isLoading = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         this.error = error.error?.error?.message || 'Failed to load export options';
         this.isLoading = false;
       }
@@ -360,14 +360,14 @@ export class ExportComponent implements OnInit {
       ...(this.analysisFilters.analysisType && { analysisType: this.analysisFilters.analysisType })
     };
     
-    this.apiService.get('/export/analysis-results', { params }).subscribe({
-      next: (response) => {
+    this.apiService.exportAnalysisResults(params).subscribe({
+      next: (response: any) => {
         if (response.success) {
           this.downloadFile(response.data, 'analysis-results');
         }
         this.isExporting = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Export failed:', error);
         this.error = error.error?.error?.message || 'Export failed';
         this.isExporting = false;
@@ -385,14 +385,14 @@ export class ExportComponent implements OnInit {
       ...(this.transcriptFilters.brand && { brand: this.transcriptFilters.brand })
     };
     
-    this.apiService.get('/export/transcripts', { params }).subscribe({
-      next: (response) => {
+    this.apiService.exportTranscripts(params).subscribe({
+      next: (response: any) => {
         if (response.success) {
           this.downloadFile(response.data, 'transcripts');
         }
         this.isExporting = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Export failed:', error);
         this.error = error.error?.error?.message || 'Export failed';
         this.isExporting = false;

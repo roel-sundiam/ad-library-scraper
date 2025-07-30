@@ -63,9 +63,21 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/scrape/${jobId}/videos`);
   }
 
-  // Export endpoints (placeholder for future implementation)
+  // Export endpoints
   exportData(params: any): Observable<any> {
     return this.http.get(`${this.baseUrl}/export`, { params });
+  }
+
+  exportAnalysisResults(params: any): Observable<any> {
+    return this.http.get(`${this.baseUrl}/export/analysis-results`, { params });
+  }
+
+  exportTranscripts(params: any): Observable<any> {
+    return this.http.get(`${this.baseUrl}/export/transcripts`, { params });
+  }
+
+  getExportOptions(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/export/options`);
   }
 
   // Facebook Ads Analysis endpoints (NEW - Live System)
