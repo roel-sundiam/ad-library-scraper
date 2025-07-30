@@ -33,7 +33,37 @@ const jobs = new Map();
 const workflows = new Map();
 
 app.use(helmet());
-app.use(cors());
+
+// Configure CORS to allow localhost:4200 and production origins
+const corsOptions = {
+  origin: [
+    'http://localhost:4200',
+    'http://localhost:3000',
+    'https://ad-library-scraper.onrender.com',
+    'https://ad-library-scraper-frontend.netlify.app',
+    /^https:\/\/.*\.netlify\.app$/,
+    /^https:\/\/.*\.vercel\.app$/
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma'
+  ],
+  exposedHeaders: ['Authorization'],
+  maxAge: 86400 // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
 // Increase request size limit for bulk video analysis
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));

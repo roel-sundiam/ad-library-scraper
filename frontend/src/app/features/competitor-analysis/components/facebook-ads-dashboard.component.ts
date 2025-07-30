@@ -48,6 +48,11 @@ export class FacebookAdsDashboardComponent implements OnInit {
   includeTranscripts = true;
   includeVisualAnalysis = false; // Requires additional AI vision capabilities
   
+  // Content expansion properties
+  isAnalysisExpanded = false;
+  isSummaryExpanded = false;
+  isRecommendationsExpanded = false;
+  
   // Modern Video Modal properties
   showVideoModal = false;
   modalTitle = '';
@@ -737,7 +742,7 @@ Focus on actionable optimization recommendations for video campaigns.`
         ai_provider: 'real_data_analysis',
         // Include real ad data for AI context
         real_ads_data: realAdData.slice(0, 20), // Limit to first 20 ads to avoid token limits
-        brands_analyzed: [...new Set(realAdData.map(ad => ad.advertiser_name))],
+        brands_analyzed: Array.from(new Set(realAdData.map(ad => ad.advertiser_name))),
         total_real_ads: realAdData.length
       },
       credits_used: 0
@@ -1061,5 +1066,44 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
       default:
         return 'radio_button_unchecked';
     }
+  }
+
+  // Content expansion methods
+  toggleAnalysisExpansion(): void {
+    this.isAnalysisExpanded = !this.isAnalysisExpanded;
+  }
+
+  toggleSummaryExpansion(): void {
+    this.isSummaryExpanded = !this.isSummaryExpanded;
+  }
+
+  toggleRecommendationsExpansion(): void {
+    this.isRecommendationsExpanded = !this.isRecommendationsExpanded;
+  }
+
+  // Enhanced formatAnalysisResult with expand/collapse support
+  getDisplayContent(content: string, isExpanded: boolean, maxLength: number = 1000): string {
+    if (!content) return '';
+    
+    const formattedContent = this.formatAnalysisResult(content);
+    
+    if (isExpanded || formattedContent.length <= maxLength) {
+      return formattedContent;
+    }
+    
+    // Truncate at last complete sentence or paragraph break before maxLength
+    const truncated = formattedContent.substring(0, maxLength);
+    const lastBreak = Math.max(truncated.lastIndexOf('<br>'), truncated.lastIndexOf('.'));
+    
+    if (lastBreak > maxLength * 0.8) { // If break is reasonably close to maxLength
+      return truncated.substring(0, lastBreak + 1) + '...';
+    }
+    
+    return truncated + '...';
+  }
+
+  shouldShowExpandButton(content: string, maxLength: number = 1000): boolean {
+    if (!content) return false;
+    return this.formatAnalysisResult(content).length > maxLength;
   }
 }

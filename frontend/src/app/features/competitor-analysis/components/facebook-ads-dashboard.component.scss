@@ -3025,7 +3025,7 @@
 
           .results-content {
             padding: 28px 24px;
-            max-height: 600px !important; // Set maximum height for scrolling
+            max-height: 1200px !important; // Increased height to display more content
             overflow-y: auto !important; // Enable vertical scrolling
             overflow-x: hidden !important; // Hide horizontal scrolling
             
@@ -3797,7 +3797,7 @@
       
       .modern-analysis-results {
         .results-content {
-          max-height: 400px; // Smaller height on mobile
+          max-height: 800px; // Increased height on mobile for better readability
           padding: 20px 16px;
           
           &::-webkit-scrollbar {
@@ -3940,7 +3940,7 @@
     .ai-analysis-container {
       .modern-analysis-results {
         .results-content {
-          max-height: 300px; // Even smaller height on small mobile
+          max-height: 600px; // Increased height on small mobile for better readability
           padding: 16px 12px;
           
           &::-webkit-scrollbar {
@@ -4654,6 +4654,64 @@
           h3 {
             font-size: 18px;
           }
+        }
+      }
+    }
+    
+    // Enhanced expand/collapse styles for bulk analysis
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      
+      h6 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a202c;
+      }
+      
+      .expand-button {
+        opacity: 0.7;
+        transition: all 0.3s ease;
+        color: #667eea;
+        
+        &:hover {
+          opacity: 1;
+          background-color: rgba(102, 126, 234, 0.1);
+          transform: scale(1.1);
+        }
+      }
+    }
+    
+    .content-section {
+      line-height: 1.6;
+      color: #2d3748;
+      transition: all 0.3s ease;
+    }
+    
+    .show-more-hint {
+      margin-top: 16px;
+      text-align: center;
+      padding: 12px;
+      background: linear-gradient(to bottom, transparent, rgba(102, 126, 234, 0.05));
+      border-radius: 8px;
+      
+      .show-more-btn {
+        color: #667eea;
+        border-color: #667eea;
+        transition: all 0.3s ease;
+        
+        &:hover {
+          background-color: #667eea;
+          color: white;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        mat-icon {
+          margin-right: 4px;
         }
       }
     }
