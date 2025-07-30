@@ -915,6 +915,37 @@
                 </div>
               </div>
               
+              <!-- Export Actions -->
+              <div class="export-actions-section" *ngIf="bulkAnalysisResult">
+                <div class="export-header">
+                  <mat-icon>file_download</mat-icon>
+                  <span>Export Results</span>
+                </div>
+                <div class="export-buttons">
+                  <button mat-stroked-button 
+                          color="primary"
+                          (click)="exportTranscriptResults()"
+                          [disabled]="isExporting"
+                          class="export-btn transcripts">
+                    <mat-icon>subtitles</mat-icon>
+                    {{ isExporting ? 'Exporting...' : 'Export Transcripts' }}
+                  </button>
+                  
+                  <button mat-flat-button 
+                          color="primary"
+                          (click)="exportAnalysisResults()"
+                          [disabled]="isExporting"
+                          class="export-btn analysis">
+                    <mat-icon>analytics</mat-icon>
+                    {{ isExporting ? 'Exporting...' : 'Export Full Analysis' }}
+                  </button>
+                </div>
+                <div class="export-info">
+                  <mat-icon>info</mat-icon>
+                  <span>Download JSON files containing transcript data and AI analysis for comparison with OpenAI output</span>
+                </div>
+              </div>
+              
               <div class="bulk-analysis-content">
                 <div class="analysis-summary" *ngIf="bulkAnalysisResult.summary">
                   <div class="section-header">
@@ -1020,10 +1051,20 @@
               <div *ngIf="debugTab === 'transcriptions'" class="debug-content">
                 <div class="debug-section-header">
                   <h4>All Video Transcriptions</h4>
-                  <button mat-stroked-button (click)="loadTranscriptions()">
-                    <mat-icon>refresh</mat-icon>
-                    Refresh
-                  </button>
+                  <div class="debug-actions">
+                    <button mat-stroked-button (click)="loadTranscriptions()">
+                      <mat-icon>refresh</mat-icon>
+                      Refresh
+                    </button>
+                    <button mat-flat-button 
+                            color="primary"
+                            (click)="exportDebugTranscriptions()"
+                            [disabled]="isExporting || !transcriptionsData?.transcriptions?.length"
+                            class="export-debug-btn">
+                      <mat-icon>file_download</mat-icon>
+                      {{ isExporting ? 'Exporting...' : 'Export All' }}
+                    </button>
+                  </div>
                 </div>
                 
                 <div *ngIf="debugLoading" class="debug-loading">

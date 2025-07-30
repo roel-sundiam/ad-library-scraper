@@ -57,6 +57,9 @@ export class FacebookAdsDashboardComponent implements OnInit {
   testingVideo = false;
   testResult: any = null;
   testError: string = '';
+
+  // Export properties
+  isExporting = false;
   
   // Content expansion properties
   isAnalysisExpanded = false;
@@ -1210,5 +1213,145 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     // You could implement a modal to show all video URLs
     const urls = videoAd.video_urls?.join('\n') || 'No URLs available';
     alert(`Video URLs:\n\n${urls}`);
+  }
+
+  // Export Methods
+  exportTranscriptResults(): void {
+    this.isExporting = true;
+    
+    try {
+      // Create export data from bulk analysis results
+      const exportData = {
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          exportType: 'transcript_results',
+          datasetId: this.datasetId,
+          source: 'facebook_ads_dashboard'
+        },
+        transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {},
+        transcripts: this.extractTranscriptData(),
+        summary: {
+          totalVideos: this.bulkAnalysisResult?.transcription_stats?.total || 0,
+          successfulTranscriptions: this.bulkAnalysisResult?.transcription_stats?.successful || 0,
+          failedTranscriptions: this.bulkAnalysisResult?.transcription_stats?.failed || 0,
+          totalCost: this.bulkAnalysisResult?.transcription_stats?.totalCost || 0
+        }
+      };
+
+      this.downloadFile(exportData, 'transcript-results');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      this.isExporting = false;
+    }
+  }
+
+  exportAnalysisResults(): void {
+    this.isExporting = true;
+    
+    try {
+      // Create export data from complete analysis results
+      const exportData = {
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          exportType: 'full_analysis_results',
+          datasetId: this.datasetId,
+          source: 'facebook_ads_dashboard'
+        },
+        transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {},
+        transcripts: this.extractTranscriptData(),
+        analysis: {
+          summary: this.bulkAnalysisResult?.summary || '',
+          detailedAnalysis: this.bulkAnalysisResult?.analysis || '',
+          processedAt: new Date().toISOString()
+        },
+        videoAnalysisSettings: {
+          includeTranscripts: this.includeTranscripts,
+          includeVisualAnalysis: this.includeVisualAnalysis,
+          template: this.selectedVideoTemplate
+        }
+      };
+
+      this.downloadFile(exportData, 'full-analysis-results');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      this.isExporting = false;
+    }
+  }
+
+  exportDebugTranscriptions(): void {
+    if (!this.transcriptionsData?.transcriptions?.length) {
+      alert('No transcription data available to export.');
+      return;
+    }
+
+    this.isExporting = true;
+    
+    try {
+      // Create export data from debug transcriptions
+      const exportData = {
+        metadata: {
+          exportedAt: new Date().toISOString(),
+          exportType: 'debug_transcriptions',
+          datasetId: this.datasetId,
+          source: 'facebook_ads_dashboard_debug'
+        },
+        summary: this.transcriptionsData.summary || {},
+        transcriptions: this.transcriptionsData.transcriptions.map((t: any) => ({
+          advertiser: t.advertiser,
+          transcriptText: t.transcript_text,
+          transcriptLength: t.transcript_length,
+          model: t.model,
+          duration: t.duration,
+          videoUrl: t.video_url,
+          adId: t.ad_id,
+          confidence: t.confidence,
+          language: t.language,
+          segments: t.segments || [],
+          transcribedAt: t.transcribed_at,
+          processingTime: t.processing_time_ms
+        }))
+      };
+
+      this.downloadFile(exportData, 'debug-transcriptions');
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      this.isExporting = false;
+    }
+  }
+
+  private extractTranscriptData(): any[] {
+    // Extract transcript data from bulk analysis results
+    // This would need to be adapted based on how transcript data is stored
+    if (this.bulkAnalysisResult?.transcripts) {
+      return this.bulkAnalysisResult.transcripts;
+    }
+    
+    // If no direct transcript data, create from analysis result
+    return [{
+      note: 'Transcript data structure may vary - this is extracted from available analysis results',
+      analysisIncludedTranscripts: this.includeTranscripts,
+      transcriptionStats: this.bulkAnalysisResult?.transcription_stats || {}
+    }];
+  }
+
+  private downloadFile(data: any, type: string): void {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${type}-${this.datasetId || 'analysis'}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    window.URL.revokeObjectURL(url);
   }
 }

@@ -5474,3 +5474,136 @@
     }
   }
 }
+
+// Export Actions Section
+.export-actions-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  .export-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    color: #495057;
+
+    mat-icon {
+      color: #6c757d;
+    }
+  }
+
+  .export-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 180px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      
+      &.transcripts {
+        border-color: #6f42c1;
+        color: #6f42c1;
+        
+        &:hover {
+          background: rgba(111, 66, 193, 0.1);
+        }
+      }
+      
+      &.analysis {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        
+        &:hover {
+          background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        transform: none !important;
+        box-shadow: none !important;
+      }
+    }
+  }
+
+  .export-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: #6c757d;
+    background: rgba(13, 110, 253, 0.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #0d6efd;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: #0d6efd;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .export-buttons {
+      flex-direction: column;
+      
+      .export-btn {
+        min-width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Debug Actions Enhancement
+.debug-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .export-debug-btn {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    color: white;
+    border: none;
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1ea085 0%, #138496 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(32, 201, 151, 0.3);
+    }
+    
+    &:disabled {
+      opacity: 0.6;
+      background: #6c757d;
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    width: 100%;
+    
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
