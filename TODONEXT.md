@@ -45,28 +45,37 @@
 
 ## 🚨 CRITICAL ISSUE - IMMEDIATE PRIORITY
 
-### **🚨 CRITICAL: Apify Integration Completely Broken - URGENT FIX NEEDED**
-**Status:** Both Apify actors failing to return live Facebook ads data despite successful runs
-**Impact:** Core functionality blocked - cannot retrieve real competitor ads through premium service
-**User Investment:** $5/month premium Apify subscription not working
+### **🚨 CRITICAL: Export with Video Transcription Failing - URGENT FIX NEEDED**
+**Status:** Export functionality falling back to client-side method instead of generating video transcripts
+**Impact:** Core export feature not working - users cannot get video transcripts in export data
+**Current Issue:** Backend API endpoint `/export/facebook-analysis/:datasetId` is failing
 
-#### Technical Summary
-✅ **API monitoring fixed** - runs complete successfully and are tracked properly  
-✅ **URL formats tested** - using exact format from working browser screenshot  
-✅ **Input validation fixed** - providing required fields per error messages  
-❌ **STILL GETTING 0 RESULTS** - both actors accept inputs but return empty arrays  
+#### What We Built (Completed)
+✅ **Backend API endpoint** - `/export/facebook-analysis/:datasetId` with video transcription  
+✅ **Frontend integration** - Calls backend API to generate transcripts during export  
+✅ **Automatic transcription** - Processes up to 15 videos with OpenAI Whisper during export  
+✅ **Error handling** - Fallback to client-side export if backend fails  
+✅ **API service method** - `exportFacebookAnalysis()` in Angular service  
 
-#### Current Actor Status
-1. **XtaWFhbtfxyzqrFmd** - "URLs are not valid" errors for basic `https://www.facebook.com/ads/library/`
-2. **jj5sAMeSoXotatkss** (Premium) - Accepts all formats but returns 0 results every time
+#### Current Problem
+❌ **API endpoint failing** - Export falls back to client-side method with message: "Export completed using fallback method. Video transcripts may not be generated."  
+❌ **No transcript generation** - Users not getting `transcript_text` fields in export JSON  
+❌ **Debug needed** - Need to identify if it's 404, authentication, or server restart issue  
 
 #### Next Meeting Action Plan
-1. **Test directly in Apify Console** - Verify what inputs actually work in web interface
-2. **Contact Apify Support** - Premium actor may have undocumented requirements  
-3. **Debug URL validation** - Why basic Facebook URLs are considered "invalid"
-4. **Find alternative actors** - Search Apify store for working Facebook scrapers
+1. **Check browser Network tab** - Identify exact error (404, 500, auth failure)
+2. **Restart backend server** - Ensure new API endpoint is loaded (`npm run dev`)
+3. **Verify authentication** - Make sure user is logged in for `authenticateToken` middleware
+4. **Test API endpoint directly** - Use Postman/curl to test `/export/facebook-analysis/[datasetId]`
+5. **Check backend logs** - Look for errors during export processing
 
-**🎯 MUST FIX:** User specifically wants Apify working first before Facebook API fallback
+**🎯 SUCCESS CRITERIA:** Export generates and includes video transcripts in JSON with `transcript_text` fields populated
+
+#### Why This Is Critical
+- **User specifically requested** video transcripts in export data
+- **Core functionality** - Export is primary way to get analysis results
+- **Competitive advantage** - Video transcript analysis is key differentiator
+- **User experience** - Currently shows confusing fallback message
 
 ---
 
@@ -208,19 +217,44 @@
 
 ---
 
-**🚨 Current Status: APIFY INTEGRATION CRITICAL FAILURE - IMMEDIATE ATTENTION REQUIRED**
+**🚨 Current Status: EXPORT WITH VIDEO TRANSCRIPTION CRITICAL FAILURE - IMMEDIATE ATTENTION REQUIRED**
 
-**⚠️ CRITICAL NEXT TASK: Fix Apify Actor Integration**
+**⚠️ CRITICAL NEXT TASK: Fix Export Video Transcription**
 
 **🎯 IMMEDIATE ACTION REQUIRED NEXT MEETING:**
-1. **Test actors in Apify Console directly** - Verify what inputs actually work in web interface
-2. **Contact Apify Support** - Premium subscription not working despite valid inputs
-3. **Debug URL validation logic** - Basic Facebook URLs being rejected as "invalid"  
-4. **Research alternative actors** - Find working Facebook Ad Library scrapers on Apify
-5. **Document exact working input format** - Get definitive answer on parameter requirements
+1. **Debug export API failure** - Check browser Network tab for exact error details
+2. **Restart backend server** - Ensure new `/export/facebook-analysis/:datasetId` endpoint is loaded
+3. **Test authentication** - Verify user session and JWT token for `authenticateToken` middleware  
+4. **Check backend console** - Look for errors when export API is called
+5. **Test API directly** - Use curl/Postman to test endpoint independently
 
-**🚨 BLOCKING ISSUE**: User's $5/month premium Apify subscription unusable - both actors fail
+**🚨 BLOCKING ISSUE**: Video transcript export functionality completely broken - falling back to client-side
 
-**📈 EXPECTED OUTCOME**: Get live Facebook ads data from Apify actors (user's preferred method)
+**📈 EXPECTED OUTCOME**: Export includes populated `transcript_text` fields for all video ads (up to 15)
 
-**Next Session Goal: RESOLVE APIFY INTEGRATION OR IMPLEMENT FACEBOOK API FALLBACK** 🚨
+**Next Session Goal: GET VIDEO TRANSCRIPTS WORKING IN EXPORT** 🚨
+
+---
+
+### 🔧 **DEBUGGING CHECKLIST FOR VIDEO TRANSCRIPT EXPORT**
+
+#### Backend Debugging Steps:
+- [ ] Verify backend server is running latest code with new export endpoint
+- [ ] Check if `/export/facebook-analysis/:datasetId` route is registered properly
+- [ ] Confirm `workflows.get(datasetId)` finds the dataset
+- [ ] Test video transcript service dependency (`video-transcript-service`)
+- [ ] Verify OpenAI API key is configured for Whisper transcription
+
+#### Frontend Debugging Steps:  
+- [ ] Check browser console for detailed error logs (status, URL, datasetId)
+- [ ] Verify API service method `exportFacebookAnalysis()` is calling correct endpoint
+- [ ] Confirm authentication token is included in request headers
+- [ ] Test with valid datasetId that exists in backend workflows Map
+
+#### API Testing Steps:
+- [ ] Test endpoint directly: `GET /api/export/facebook-analysis/dataset_1753883710839_tft125ce9`
+- [ ] Verify response includes `video_transcripts.transcripts` array with `transcript_text` fields
+- [ ] Check that up to 15 videos are processed for transcription
+- [ ] Confirm proper error handling for missing datasets or video URLs
+
+**🎯 SUCCESS CRITERIA**: Export shows "Export completed with X video transcripts included!" message
