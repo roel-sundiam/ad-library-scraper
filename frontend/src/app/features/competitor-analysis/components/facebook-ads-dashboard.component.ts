@@ -400,10 +400,13 @@ Focus on actionable optimization recommendations for video campaigns.`
       recent_ads: this.topPerformingAds,
       video_transcripts: {
         total_videos_found: this.totalVideoAds,
-        videos_processed: Math.min(this.totalVideoAds, 15),
+        videos_processed: videoTranscripts.length,
         processing_limit: 15,
         transcription_enabled: this.includeTranscripts,
-        transcripts: videoTranscripts
+        transcripts: videoTranscripts,
+        note: videoTranscripts.length === 0 ? 
+          "No video transcripts found. Run 'Bulk Video Analysis' with transcription enabled to generate transcripts." : 
+          `${videoTranscripts.length} video transcripts included in export.`
       },
       raw_data: this.analysisResults.data
     };
