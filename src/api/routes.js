@@ -4049,6 +4049,10 @@ async function processBulkVideoAnalysis(jobId) {
     jobs.set(jobId, job);
     
     // Create detailed video data context (limit to avoid token limits)
+    // TODO: PRODUCTION SCALING
+    // Current limit: 15 videos for testing/cost control
+    // To remove limit: change Math.min(job.videos.length, 15) to job.videos.length
+    // Export will include all transcripts in video_transcripts.transcripts array
     const maxVideos = Math.min(job.videos.length, 15); // Limit to 15 videos max
     const videosToAnalyze = job.videos.slice(0, maxVideos);
     

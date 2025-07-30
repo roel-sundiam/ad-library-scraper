@@ -386,6 +386,8 @@ Focus on actionable optimization recommendations for video campaigns.`
   exportData(): void {
     if (!this.analysisResults) return;
 
+    const videoTranscripts = this.extractAllVideoTranscripts();
+    
     const dataToExport = {
       analysis_summary: {
         total_ads: this.totalAds,
@@ -396,6 +398,13 @@ Focus on actionable optimization recommendations for video campaigns.`
       },
       brand_comparisons: this.brandComparisons,
       recent_ads: this.topPerformingAds,
+      video_transcripts: {
+        total_videos_found: this.totalVideoAds,
+        videos_processed: Math.min(this.totalVideoAds, 15),
+        processing_limit: 15,
+        transcription_enabled: this.includeTranscripts,
+        transcripts: videoTranscripts
+      },
       raw_data: this.analysisResults.data
     };
 
@@ -406,7 +415,7 @@ Focus on actionable optimization recommendations for video campaigns.`
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `facebook-ads-analysis-${this.datasetId}.json`;
+    link.download = `facebook-ads-analysis-dataset_${this.datasetId}_with-transcripts.json`;
     link.click();
     
     window.URL.revokeObjectURL(url);
@@ -1341,5 +1350,37 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     document.body.removeChild(link);
     
     window.URL.revokeObjectURL(url);
+  }
+
+  // Extract all video transcripts from analysis results
+  private extractAllVideoTranscripts(): any[] {
+    const allTranscripts: any[] = [];
+    if (!this.analysisResults?.data) return allTranscripts;
+    
+    Object.values(this.analysisResults.data).forEach((brandData: any) => {
+      if (brandData.ads_data) {
+        brandData.ads_data.forEach((ad: any) => {
+          if (ad.creative?.video_transcripts?.length > 0) {
+            ad.creative.video_transcripts.forEach((transcript: any) => {
+              allTranscripts.push({
+                ad_id: ad.id,
+                advertiser: brandData.page_name,
+                video_url: transcript.video_url || null,
+                transcript_text: transcript.transcript_text || transcript.transcript || '',
+                duration: transcript.duration || 0,
+                model: transcript.model || 'whisper-1',
+                success: transcript.success !== false,
+                confidence: transcript.confidence || null,
+                language: transcript.language || 'en',
+                processing_time_ms: transcript.processing_time_ms || null,
+                error: transcript.error || null
+              });
+            });
+          }
+        });
+      }
+    });
+    
+    return allTranscripts;
   }
 }

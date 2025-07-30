@@ -61,6 +61,74 @@ Angular 17 SPA with feature modules:
 
 **Important**: NO MOCK DATA - System returns real data only or fails gracefully. Sample/mock data generation has been removed per user requirements.
 
+## Video Transcription Export
+
+### Video Transcript Fields
+Video transcription data is stored in `ad.creative.video_transcripts` and exported in the `video_transcripts` section:
+
+**Key Fields:**
+- `transcript_text`: The actual spoken content from the video
+- `video_url`: Direct URL to the video file
+- `duration`: Video length in seconds
+- `model`: AI model used (typically "whisper-1")
+- `success`: Whether transcription was successful
+- `confidence`: Transcription confidence score (0-1)
+- `language`: Detected language code
+- `processing_time_ms`: Time taken to process transcription
+
+### Export JSON Structure
+```json
+{
+  "analysis_summary": {...},
+  "brand_comparisons": [...],
+  "recent_ads": [...],
+  "video_transcripts": {
+    "total_videos_found": 25,
+    "videos_processed": 15,
+    "processing_limit": 15,
+    "transcription_enabled": true,
+    "transcripts": [
+      {
+        "ad_id": "123456789",
+        "advertiser": "Nike",
+        "video_url": "https://example.com/video.mp4",
+        "transcript_text": "Just do it. Our new running shoes...",
+        "duration": 30,
+        "model": "whisper-1",
+        "success": true,
+        "confidence": 0.95,
+        "language": "en",
+        "processing_time_ms": 1500
+      }
+    ]
+  },
+  "raw_data": {...}
+}
+```
+
+### Current Testing Configuration
+- Video transcription limited to 15 videos per analysis
+- Location: `src/api/routes.js:4052`
+- Export filename: `facebook-ads-analysis-dataset_{id}_with-transcripts.json`
+
+### Production Scaling Instructions
+To remove 15-video limit for production:
+
+1. **Single Line Change Required:**
+   File: `src/api/routes.js:4052`
+   ```javascript
+   // CHANGE FROM:
+   const maxVideos = Math.min(job.videos.length, 15);
+   
+   // CHANGE TO:
+   const maxVideos = job.videos.length;
+   ```
+
+2. **Update Cost Warnings:**
+   File: `facebook-ads-dashboard.component.ts:744-747`
+   - Update cost calculation from fixed to dynamic
+   - Change UI message from "~$0.15 for 15 videos" to actual count
+
 **Environment Variables**:
 - `FACEBOOK_ACCESS_TOKEN`, `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` - Facebook API
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` - AI analysis models
