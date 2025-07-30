@@ -503,6 +503,21 @@
                   <mat-icon>check_circle</mat-icon>
                 </div>
               </div>
+              
+              <div class="mode-card" 
+                   [class.active]="analysisMode === 'debug'"
+                   (click)="switchAnalysisMode('debug')">
+                <div class="card-icon debug">
+                  <mat-icon>bug_report</mat-icon>
+                </div>
+                <div class="card-content">
+                  <h4>Transcription Debug</h4>
+                  <p>Test and verify video transcriptions</p>
+                </div>
+                <div class="card-indicator" *ngIf="analysisMode === 'debug'">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -877,6 +892,289 @@
                       Show More Content
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Video Transcription Debug Section -->
+          <div *ngIf="analysisMode === 'debug'" class="modern-debug-section">
+            <div class="debug-card">
+              <div class="debug-header">
+                <div class="debug-icon-badge">
+                  <mat-icon>bug_report</mat-icon>
+                </div>
+                <div class="debug-title">
+                  <h3>Video Transcription Debug Tools</h3>
+                  <p>Test and verify video transcriptions are working correctly</p>
+                </div>
+              </div>
+
+              <div class="debug-tabs">
+                <button mat-flat-button 
+                        [color]="debugTab === 'transcriptions' ? 'primary' : ''"
+                        (click)="debugTab = 'transcriptions'; loadTranscriptions()"
+                        class="debug-tab-btn">
+                  <mat-icon>text_fields</mat-icon>
+                  View Transcriptions
+                </button>
+                <button mat-flat-button 
+                        [color]="debugTab === 'test' ? 'primary' : ''"
+                        (click)="debugTab = 'test'"
+                        class="debug-tab-btn">
+                  <mat-icon>play_arrow</mat-icon>
+                  Test Transcription
+                </button>
+                <button mat-flat-button 
+                        [color]="debugTab === 'videos' ? 'primary' : ''"
+                        (click)="debugTab = 'videos'; loadVideoAds()"
+                        class="debug-tab-btn">
+                  <mat-icon>video_library</mat-icon>
+                  Video URLs
+                </button>
+              </div>
+
+              <!-- Transcriptions Tab -->
+              <div *ngIf="debugTab === 'transcriptions'" class="debug-content">
+                <div class="debug-section-header">
+                  <h4>All Video Transcriptions</h4>
+                  <button mat-stroked-button (click)="loadTranscriptions()">
+                    <mat-icon>refresh</mat-icon>
+                    Refresh
+                  </button>
+                </div>
+                
+                <div *ngIf="debugLoading" class="debug-loading">
+                  <mat-spinner diameter="30"></mat-spinner>
+                  <span>Loading transcriptions...</span>
+                </div>
+
+                <div *ngIf="!debugLoading && transcriptionsData" class="transcriptions-summary">
+                  <div class="summary-stats">
+                    <div class="stat-item">
+                      <span class="stat-number">{{ transcriptionsData.summary?.total_transcriptions || 0 }}</span>
+                      <span class="stat-label">Total</span>
+                    </div>
+                    <div class="stat-item success">
+                      <span class="stat-number">{{ transcriptionsData.summary?.successful || 0 }}</span>
+                      <span class="stat-label">Successful</span>
+                    </div>
+                    <div class="stat-item warning">
+                      <span class="stat-number">{{ transcriptionsData.summary?.mock_transcriptions || 0 }}</span>
+                      <span class="stat-label">Mock</span>
+                    </div>
+                    <div class="stat-item primary">
+                      <span class="stat-number">{{ transcriptionsData.summary?.real_transcriptions || 0 }}</span>
+                      <span class="stat-label">Real</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="transcriptionsData?.transcriptions?.length" class="transcriptions-table">
+                  <mat-table [dataSource]="transcriptionsData.transcriptions" class="debug-table">
+                    <ng-container matColumnDef="advertiser">
+                      <mat-header-cell *matHeaderCellDef>Advertiser</mat-header-cell>
+                      <mat-cell *matCellDef="let element">{{ element.advertiser }}</mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="transcript_preview">
+                      <mat-header-cell *matHeaderCellDef>Transcript Preview</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <span class="transcript-preview">{{ element.transcript_text | slice:0:100 }}...</span>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="length">
+                      <mat-header-cell *matHeaderCellDef>Length</mat-header-cell>
+                      <mat-cell *matCellDef="let element">{{ element.transcript_length }} chars</mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="model">
+                      <mat-header-cell *matHeaderCellDef>Model</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <span [class]="element.model === 'mock-whisper-1' ? 'mock-badge' : 'real-badge'">
+                          {{ element.model }}
+                        </span>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="duration">
+                      <mat-header-cell *matHeaderCellDef>Duration</mat-header-cell>
+                      <mat-cell *matCellDef="let element">{{ element.duration }}s</mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="actions">
+                      <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <button mat-icon-button (click)="viewFullTranscript(element)">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <mat-header-row *matHeaderRowDef="['advertiser', 'transcript_preview', 'length', 'model', 'duration', 'actions']"></mat-header-row>
+                    <mat-row *matRowDef="let row; columns: ['advertiser', 'transcript_preview', 'length', 'model', 'duration', 'actions']"></mat-row>
+                  </mat-table>
+                </div>
+
+                <div *ngIf="!debugLoading && !transcriptionsData?.transcriptions?.length" class="debug-empty">
+                  <mat-icon>text_fields</mat-icon>
+                  <h4>No Transcriptions Found</h4>
+                  <p>No video transcriptions are available in the current workflow data.</p>
+                </div>
+              </div>
+
+              <!-- Test Transcription Tab -->
+              <div *ngIf="debugTab === 'test'" class="debug-content">
+                <div class="debug-section-header">
+                  <h4>Test Video Transcription</h4>
+                  <p>Enter a video URL to test the transcription service</p>
+                </div>
+
+                <div class="test-form">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Video URL</mat-label>
+                    <input matInput [(ngModel)]="testVideoUrl" placeholder="https://example.com/video.mp4">
+                    <mat-icon matSuffix>link</mat-icon>
+                  </mat-form-field>
+                  
+                  <button mat-flat-button color="primary" 
+                          (click)="testVideoTranscription()" 
+                          [disabled]="!testVideoUrl || testingVideo"
+                          class="test-btn">
+                    <mat-icon *ngIf="!testingVideo">play_arrow</mat-icon>
+                    <mat-spinner *ngIf="testingVideo" diameter="20"></mat-spinner>
+                    {{ testingVideo ? 'Testing...' : 'Test Transcription' }}
+                  </button>
+                </div>
+
+                <div *ngIf="testResult" class="test-result">
+                  <div class="result-header">
+                    <h5>Transcription Result</h5>
+                    <span [class]="testResult.debug_info?.service_mode === 'mock' ? 'mock-badge' : 'real-badge'">
+                      {{ testResult.debug_info?.service_mode }} mode
+                    </span>
+                  </div>
+                  
+                  <div class="result-content">
+                    <div class="result-item">
+                      <strong>Transcript:</strong>
+                      <div class="transcript-text">{{ testResult.transcript_result?.transcript }}</div>
+                    </div>
+                    
+                    <div class="result-meta">
+                      <div class="meta-item">
+                        <span>Duration:</span> {{ testResult.transcript_result?.duration }}s
+                      </div>
+                      <div class="meta-item">
+                        <span>Language:</span> {{ testResult.transcript_result?.language }}
+                      </div>
+                      <div class="meta-item">
+                        <span>Model:</span> {{ testResult.transcript_result?.model }}
+                      </div>
+                      <div class="meta-item">
+                        <span>Processing Time:</span> {{ testResult.debug_info?.processing_time_ms }}ms
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="testError" class="test-error">
+                  <mat-icon>error_outline</mat-icon>
+                  <div>
+                    <h5>Test Failed</h5>
+                    <p>{{ testError }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Video URLs Tab -->
+              <div *ngIf="debugTab === 'videos'" class="debug-content">
+                <div class="debug-section-header">
+                  <h4>Video URLs from Scraped Ads</h4>
+                  <button mat-stroked-button (click)="loadVideoAds()">
+                    <mat-icon>refresh</mat-icon>
+                    Refresh
+                  </button>
+                </div>
+
+                <div *ngIf="debugLoading" class="debug-loading">
+                  <mat-spinner diameter="30"></mat-spinner>
+                  <span>Loading video ads...</span>
+                </div>
+
+                <div *ngIf="!debugLoading && videoAdsData" class="video-ads-summary">
+                  <div class="summary-stats">
+                    <div class="stat-item">
+                      <span class="stat-number">{{ videoAdsData.summary?.total_video_ads || 0 }}</span>
+                      <span class="stat-label">Video Ads</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-number">{{ videoAdsData.summary?.total_video_urls || 0 }}</span>
+                      <span class="stat-label">Video URLs</span>
+                    </div>
+                    <div class="stat-item success">
+                      <span class="stat-number">{{ videoAdsData.summary?.ads_with_transcripts || 0 }}</span>
+                      <span class="stat-label">With Transcripts</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-number">{{ videoAdsData.summary?.unique_advertisers || 0 }}</span>
+                      <span class="stat-label">Advertisers</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="videoAdsData?.video_ads?.length" class="video-ads-table">
+                  <mat-table [dataSource]="videoAdsData.video_ads" class="debug-table">
+                    <ng-container matColumnDef="advertiser">
+                      <mat-header-cell *matHeaderCellDef>Advertiser</mat-header-cell>
+                      <mat-cell *matCellDef="let element">{{ element.advertiser }}</mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="ad_text">
+                      <mat-header-cell *matHeaderCellDef>Ad Text</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <span class="ad-text-preview">{{ element.ad_text }}...</span>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="video_count">
+                      <mat-header-cell *matHeaderCellDef>Videos</mat-header-cell>
+                      <mat-cell *matCellDef="let element">{{ element.video_count }}</mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="has_transcripts">
+                      <mat-header-cell *matHeaderCellDef>Transcribed</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <mat-icon [class]="element.has_transcripts ? 'success-icon' : 'error-icon'">
+                          {{ element.has_transcripts ? 'check_circle' : 'cancel' }}
+                        </mat-icon>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <ng-container matColumnDef="actions">
+                      <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+                      <mat-cell *matCellDef="let element">
+                        <button mat-icon-button (click)="viewVideoUrls(element)">
+                          <mat-icon>link</mat-icon>
+                        </button>
+                        <button mat-icon-button 
+                                *ngIf="element.video_urls?.length > 0" 
+                                (click)="testVideoUrl = element.video_urls[0]; debugTab = 'test'">
+                          <mat-icon>play_arrow</mat-icon>
+                        </button>
+                      </mat-cell>
+                    </ng-container>
+                    
+                    <mat-header-row *matHeaderRowDef="['advertiser', 'ad_text', 'video_count', 'has_transcripts', 'actions']"></mat-header-row>
+                    <mat-row *matRowDef="let row; columns: ['advertiser', 'ad_text', 'video_count', 'has_transcripts', 'actions']"></mat-row>
+                  </mat-table>
+                </div>
+
+                <div *ngIf="!debugLoading && !videoAdsData?.video_ads?.length" class="debug-empty">
+                  <mat-icon>video_library</mat-icon>
+                  <h4>No Video Ads Found</h4>
+                  <p>No video advertisements are available in the current workflow data.</p>
                 </div>
               </div>
             </div>

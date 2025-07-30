@@ -39,7 +39,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
   showQuickPrompts = false;
   
   // Bulk Video Analysis properties
-  analysisMode: 'general' | 'video' = 'general';
+  analysisMode: 'general' | 'video' | 'debug' = 'general';
   selectedVideoTemplate: string = '';
   showVideoTemplates = false;
   isBulkAnalyzing = false;
@@ -47,6 +47,16 @@ export class FacebookAdsDashboardComponent implements OnInit {
   bulkAnalysisResult: any = null;
   includeTranscripts = true;
   includeVisualAnalysis = false; // Requires additional AI vision capabilities
+
+  // Debug properties
+  debugTab: 'transcriptions' | 'test' | 'videos' = 'transcriptions';
+  debugLoading = false;
+  transcriptionsData: any = null;
+  videoAdsData: any = null;
+  testVideoUrl = '';
+  testingVideo = false;
+  testResult: any = null;
+  testError: string = '';
   
   // Content expansion properties
   isAnalysisExpanded = false;
@@ -521,12 +531,18 @@ Focus on actionable optimization recommendations for video campaigns.`
   }
 
   // Video Analysis Methods
-  switchAnalysisMode(mode: 'general' | 'video'): void {
+  switchAnalysisMode(mode: 'general' | 'video' | 'debug'): void {
     this.analysisMode = mode;
     this.customPrompt = '';
     this.selectedVideoTemplate = '';
     this.customAnalysisResult = null;
     this.bulkAnalysisResult = null;
+    
+    // Initialize debug mode
+    if (mode === 'debug') {
+      this.debugTab = 'transcriptions';
+      this.loadTranscriptions();
+    }
   }
 
   useVideoTemplate(templateId: string): void {
@@ -1167,5 +1183,71 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     }
     
     return content || '';
+  }
+
+  // Debug Methods
+  loadTranscriptions(): void {
+    this.debugLoading = true;
+    this.transcriptionsData = null;
+    
+    this.apiService.getDebugTranscriptions().subscribe({
+      next: (response) => {
+        this.transcriptionsData = response.data;
+        this.debugLoading = false;
+      },
+      error: (error) => {
+        console.error('Failed to load transcriptions:', error);
+        this.transcriptionsData = null;
+        this.debugLoading = false;
+      }
+    });
+  }
+
+  loadVideoAds(): void {
+    this.debugLoading = true;
+    this.videoAdsData = null;
+    
+    this.apiService.getDebugVideoAds().subscribe({
+      next: (response) => {
+        this.videoAdsData = response.data;
+        this.debugLoading = false;
+      },
+      error: (error) => {
+        console.error('Failed to load video ads:', error);
+        this.videoAdsData = null;
+        this.debugLoading = false;
+      }
+    });
+  }
+
+  testVideoTranscription(): void {
+    if (!this.testVideoUrl) return;
+    
+    this.testingVideo = true;
+    this.testResult = null;
+    this.testError = '';
+    
+    this.apiService.testVideoTranscription(this.testVideoUrl).subscribe({
+      next: (response) => {
+        this.testResult = response.data;
+        this.testingVideo = false;
+      },
+      error: (error) => {
+        console.error('Video transcription test failed:', error);
+        this.testError = error.error?.message || error.message || 'Test failed';
+        this.testingVideo = false;
+      }
+    });
+  }
+
+  viewFullTranscript(transcript: any): void {
+    // You could implement a modal or dialog here to show the full transcript
+    alert(`Full Transcript:\n\n${transcript.transcript_text}`);
+  }
+
+  viewVideoUrls(videoAd: any): void {
+    // You could implement a modal to show all video URLs
+    const urls = videoAd.video_urls?.join('\n') || 'No URLs available';
+    alert(`Video URLs:\n\n${urls}`);
   }
 }

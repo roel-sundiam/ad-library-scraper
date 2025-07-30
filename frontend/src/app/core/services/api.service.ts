@@ -126,4 +126,29 @@ export class ApiService {
   getBulkAnalysisResults(jobId: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/videos/bulk-analysis/${jobId}/results`);
   }
+
+  // Debug endpoints for video transcription
+  getDebugTranscriptions(workflowId?: string, limit?: number): Observable<any> {
+    let params = new HttpParams();
+    if (workflowId) params = params.set('workflowId', workflowId);
+    if (limit) params = params.set('limit', limit.toString());
+    
+    return this.http.get(`${this.baseUrl}/debug/videos/transcriptions`, { params });
+  }
+
+  testVideoTranscription(videoUrl: string, options?: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/debug/videos/test-transcribe`, { 
+      videoUrl, 
+      options: options || {} 
+    });
+  }
+
+  getDebugVideoAds(workflowId?: string, advertiser?: string, limit?: number): Observable<any> {
+    let params = new HttpParams();
+    if (workflowId) params = params.set('workflowId', workflowId);
+    if (advertiser) params = params.set('advertiser', advertiser);
+    if (limit) params = params.set('limit', limit.toString());
+    
+    return this.http.get(`${this.baseUrl}/debug/ads/videos`, { params });
+  }
 }

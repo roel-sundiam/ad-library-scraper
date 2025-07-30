@@ -3781,4 +3781,253 @@ router.post('/analytics/user-action', authenticateToken, async (req, res) => {
   }
 });
 
+// =====================================
+// VIDEO TRANSCRIPTION DEBUG ENDPOINTS
+// =====================================
+
+// Get all video transcriptions from workflows
+router.get('/debug/videos/transcriptions', authenticateToken, async (req, res) => {
+  try {
+    const { workflowId, limit = 50 } = req.query;
+    const transcribedVideos = [];
+
+    // Search through all workflows
+    for (const [wfId, workflow] of workflows.entries()) {
+      // Skip if specific workflow requested and this isn't it
+      if (workflowId && workflowId !== wfId) continue;
+
+      // Extract ads from all pages in workflow
+      Object.values(workflow.pages || {}).forEach(page => {
+        if (page.data && page.data.ads) {
+          page.data.ads.forEach(ad => {
+            if (ad.creative?.video_transcripts?.length > 0) {
+              ad.creative.video_transcripts.forEach(transcript => {
+                transcribedVideos.push({
+                  workflow_id: wfId,
+                  ad_id: ad.id,
+                  advertiser: ad.advertiser_name,
+                  video_url: transcript.video_url,
+                  transcript_text: transcript.transcript,
+                  transcript_length: transcript.transcript?.length || 0,
+                  language: transcript.language,
+                  duration: transcript.duration,
+                  confidence: transcript.confidence,
+                  processing_time_ms: transcript.processing_time_ms,
+                  model: transcript.model,
+                  transcribed_at: transcript.transcribed_at,
+                  success: transcript.success !== false,
+                  error: transcript.error || null,
+                  note: transcript.note || null
+                });
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // Sort by transcribed_at (newest first) and limit results
+    transcribedVideos.sort((a, b) => new Date(b.transcribed_at || 0) - new Date(a.transcribed_at || 0));
+    const limitedResults = transcribedVideos.slice(0, parseInt(limit));
+
+    logger.info('Video transcriptions debug request', {
+      workflowId: workflowId || 'all',
+      totalFound: transcribedVideos.length,
+      returned: limitedResults.length
+    });
+
+    res.json({
+      success: true,
+      data: {
+        transcriptions: limitedResults,
+        summary: {
+          total_transcriptions: transcribedVideos.length,
+          returned: limitedResults.length,
+          successful: transcribedVideos.filter(t => t.success).length,
+          failed: transcribedVideos.filter(t => !t.success).length,
+          mock_transcriptions: transcribedVideos.filter(t => t.note?.includes('Mock')).length,
+          real_transcriptions: transcribedVideos.filter(t => !t.note?.includes('Mock')).length
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Debug video transcriptions failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'DEBUG_ERROR',
+        message: 'Failed to retrieve video transcriptions',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Test transcribing a specific video URL
+router.post('/debug/videos/test-transcribe', authenticateToken, async (req, res) => {
+  try {
+    const { videoUrl, options = {} } = req.body;
+
+    if (!videoUrl) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Video URL is required'
+        }
+      });
+    }
+
+    const videoService = getVideoTranscriptService();
+    if (!videoService) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Video transcription service not available'
+        }
+      });
+    }
+
+    logger.info('Testing video transcription', { videoUrl: videoUrl.substring(0, 100) + '...' });
+
+    const startTime = Date.now();
+    const transcriptResult = await videoService.transcribeVideo(videoUrl, options);
+    const processingTime = Date.now() - startTime;
+
+    logger.info('Video transcription test completed', {
+      videoUrl: videoUrl.substring(0, 100) + '...',
+      transcriptLength: transcriptResult.transcript?.length || 0,
+      processingTime,
+      success: true
+    });
+
+    res.json({
+      success: true,
+      data: {
+        video_url: videoUrl,
+        transcript_result: transcriptResult,
+        debug_info: {
+          processing_time_ms: processingTime,
+          service_mode: transcriptResult.note?.includes('Mock') ? 'mock' : 'real',
+          tested_at: new Date().toISOString()
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Video transcription test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'TRANSCRIPTION_ERROR',
+        message: 'Video transcription test failed',
+        details: error.message
+      }
+    });
+  }
+});
+
+// Get video URLs from scraped ads
+router.get('/debug/ads/videos', authenticateToken, async (req, res) => {
+  try {
+    const { workflowId, advertiser, limit = 100 } = req.query;
+    const videoAds = [];
+
+    // Search through all workflows
+    for (const [wfId, workflow] of workflows.entries()) {
+      // Skip if specific workflow requested and this isn't it
+      if (workflowId && workflowId !== wfId) continue;
+
+      // Extract ads from all pages in workflow
+      Object.values(workflow.pages || {}).forEach(page => {
+        if (page.data && page.data.ads) {
+          page.data.ads.forEach(ad => {
+            // Filter by advertiser if specified
+            if (advertiser && ad.advertiser_name !== advertiser) return;
+
+            // Check if ad has video content
+            const hasVideo = ad.creative?.has_video || 
+                            ad.creative?.video_urls?.length > 0 ||
+                            ad.ad_creative_video_url;
+
+            if (hasVideo) {
+              const videoUrls = [];
+              
+              // Collect video URLs from various possible locations
+              if (ad.creative?.video_urls?.length > 0) {
+                videoUrls.push(...ad.creative.video_urls);
+              }
+              if (ad.ad_creative_video_url) {
+                videoUrls.push(ad.ad_creative_video_url);
+              }
+              if (ad.creative?.video_url) {
+                videoUrls.push(ad.creative.video_url);
+              }
+
+              videoAds.push({
+                workflow_id: wfId,
+                ad_id: ad.id,
+                advertiser: ad.advertiser_name,
+                ad_text: (ad.ad_creative_body || ad.ad_text || '').substring(0, 200),
+                video_urls: Array.from(new Set(videoUrls)), // Remove duplicates
+                video_count: videoUrls.length,
+                has_transcripts: ad.creative?.video_transcripts?.length > 0,
+                transcript_count: ad.creative?.video_transcripts?.length || 0,
+                ad_delivery_start_time: ad.ad_delivery_start_time,
+                ad_creation_time: ad.ad_creation_time
+              });
+            }
+          });
+        }
+      });
+    }
+
+    // Sort by creation time (newest first) and limit results
+    videoAds.sort((a, b) => new Date(b.ad_creation_time || 0) - new Date(a.ad_creation_time || 0));
+    const limitedResults = videoAds.slice(0, parseInt(limit));
+
+    // Calculate summary statistics
+    const totalVideoUrls = videoAds.reduce((sum, ad) => sum + ad.video_count, 0);
+    const adsWithTranscripts = videoAds.filter(ad => ad.has_transcripts);
+    const totalTranscripts = videoAds.reduce((sum, ad) => sum + ad.transcript_count, 0);
+    const uniqueAdvertisers = [...new Set(videoAds.map(ad => ad.advertiser))];
+
+    logger.info('Debug video ads request', {
+      workflowId: workflowId || 'all',
+      advertiser: advertiser || 'all',
+      totalFound: videoAds.length,
+      returned: limitedResults.length
+    });
+
+    res.json({
+      success: true,
+      data: {
+        video_ads: limitedResults,
+        summary: {
+          total_video_ads: videoAds.length,
+          returned: limitedResults.length,
+          total_video_urls: totalVideoUrls,
+          ads_with_transcripts: adsWithTranscripts.length,
+          total_transcripts: totalTranscripts,
+          unique_advertisers: uniqueAdvertisers.length,
+          advertiser_list: uniqueAdvertisers.slice(0, 10) // First 10 advertisers
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Debug video ads failed:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'DEBUG_ERROR',
+        message: 'Failed to retrieve video ads',
+        details: error.message
+      }
+    });
+  }
+});
+
 module.exports = router;
