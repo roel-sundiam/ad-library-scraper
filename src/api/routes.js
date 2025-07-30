@@ -3766,7 +3766,31 @@ async function processBulkVideoAnalysis(jobId) {
           competitorName,
           analysisType
         });
-        throw new Error('OpenAI returned generic/mock content instead of real analysis');
+        
+        // Instead of failing, replace with a clear error message
+        aiAnalysis = `## ANALYSIS ERROR
+
+The AI service returned generic placeholder content instead of analyzing your actual video data. This appears to be an API configuration issue.
+
+## ISSUE DETECTED
+- OpenAI returned mock content about cats/arthritis instead of video analysis
+- This suggests either API quota limits, content filtering, or service degradation
+
+## RECOMMENDED ACTIONS
+1. **Check OpenAI API Status**: Verify your API key has sufficient credits
+2. **Retry Analysis**: Try running the analysis again in a few minutes
+3. **Contact Support**: If this persists, there may be an API configuration issue
+4. **Alternative**: Try disabling video transcription and using ad text analysis as a fallback
+
+## TECHNICAL DETAILS
+- Analysis Type: ${analysisType}
+- Videos Processed: ${job.videos.length}
+- Transcription Success: ${transcriptionStats.successful}/${transcriptionStats.attempted}
+- Competitor: ${competitorName}
+
+This error has been logged for technical review.`;
+        
+        logger.warn(`Replaced suspicious AI content with error message for job ${jobId}`);
       }
       
       logger.info(`OpenAI analysis completed for job ${jobId}`, {

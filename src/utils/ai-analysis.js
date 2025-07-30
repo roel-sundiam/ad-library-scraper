@@ -38,6 +38,13 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
       prompt: analysisPrompt.substring(0, 500) + (analysisPrompt.length > 500 ? '... (truncated)' : '')
     });
 
+    // TEMPORARY: Full prompt logging for debugging mock content issue
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('FULL PROMPT DEBUG (remove in production):', {
+        fullPrompt: analysisPrompt
+      });
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo", // Use GPT-3.5 for higher token limits and lower cost
       messages: [
@@ -74,9 +81,15 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
     if (analysisText.toLowerCase().includes('cat') || 
         analysisText.toLowerCase().includes('arthritis') ||
         analysisText.toLowerCase().includes('if your')) {
-      logger.warn('SUSPICIOUS: OpenAI response contains generic/mock content', {
+      logger.error('SUSPICIOUS: OpenAI response contains generic/mock content', {
         responseSnippet: analysisText.substring(0, 500),
-        fullResponse: analysisText
+        fullResponse: analysisText,
+        model: 'gpt-3.5-turbo',
+        promptLength: analysisPrompt.length,
+        tokensUsed: completion.usage?.total_tokens,
+        finishReason: response.finish_reason,
+        apiKeyConfigured: !!process.env.OPENAI_API_KEY,
+        apiKeyPrefix: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY.substring(0, 7) + '...' : 'not set'
       });
     }
 
