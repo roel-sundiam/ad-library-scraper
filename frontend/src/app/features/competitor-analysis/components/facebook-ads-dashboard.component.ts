@@ -418,7 +418,14 @@ Focus on actionable optimization recommendations for video campaigns.`
         this.isExporting = false;
       },
       error: (error: any) => {
-        console.error('Export failed:', error);
+        console.error('Export API failed:', error);
+        console.error('Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          url: error.url,
+          datasetId: this.datasetId
+        });
         this.isExporting = false;
         
         // Fallback to client-side export if API fails
