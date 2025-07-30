@@ -77,10 +77,20 @@ async function analyzeWithOpenAI(analysisPrompt, processedData) {
       timestamp: new Date().toISOString()
     });
 
-    // Alert if response contains suspicious generic content
-    if (analysisText.toLowerCase().includes('cat') || 
-        analysisText.toLowerCase().includes('arthritis') ||
-        analysisText.toLowerCase().includes('if your')) {
+    // Alert if response contains suspicious generic content (more specific patterns)
+    const suspiciousPatterns = [
+      'if your cat is over',
+      'knead therapeutic', 
+      'arthritis.*60.*percent',
+      'cat.*arthritis',
+      'if your cat'
+    ];
+    
+    const hasSuspiciousContent = suspiciousPatterns.some(pattern => 
+      new RegExp(pattern, 'i').test(analysisText)
+    );
+    
+    if (hasSuspiciousContent) {
       logger.error('SUSPICIOUS: OpenAI response contains generic/mock content', {
         responseSnippet: analysisText.substring(0, 500),
         fullResponse: analysisText,

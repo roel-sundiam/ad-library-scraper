@@ -3756,10 +3756,20 @@ async function processBulkVideoAnalysis(jobId) {
     try {
       aiAnalysis = await analyzeWithOpenAI(analysisPrompt, { videos: job.videos });
       
-      // Validate the AI response for suspicious content
-      if (aiAnalysis && (aiAnalysis.toLowerCase().includes('cat') || 
-                        aiAnalysis.toLowerCase().includes('arthritis') || 
-                        aiAnalysis.toLowerCase().includes('if your'))) {
+      // Validate the AI response for suspicious content (more specific patterns)
+      const suspiciousPatterns = [
+        'if your cat is over',
+        'knead therapeutic', 
+        'arthritis.*60.*percent',
+        'cat.*arthritis',
+        'if your cat'
+      ];
+      
+      const hasSuspiciousContent = suspiciousPatterns.some(pattern => 
+        new RegExp(pattern, 'i').test(aiAnalysis)
+      );
+      
+      if (aiAnalysis && hasSuspiciousContent) {
         logger.error(`CRITICAL: OpenAI returned suspicious mock content for job ${jobId}`, {
           responsePreview: aiAnalysis.substring(0, 500),
           videoCount: job.videos.length,
