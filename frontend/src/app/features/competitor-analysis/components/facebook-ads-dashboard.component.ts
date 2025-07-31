@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { 
   FacebookAnalysisResults, 
   FacebookAd, 
@@ -234,7 +235,8 @@ Focus on actionable optimization recommendations for video campaigns.`
 
   constructor(
     private route: ActivatedRoute,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -382,6 +384,10 @@ Focus on actionable optimization recommendations for video campaigns.`
   getBrandColor(index: number): string {
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
     return colors[index % colors.length];
+  }
+
+  isSuperAdmin(): boolean {
+    return this.authService.isSuperAdmin();
   }
 
   onMetricChange(metric: 'impressions' | 'spend' | 'cpm' | 'ctr'): void {

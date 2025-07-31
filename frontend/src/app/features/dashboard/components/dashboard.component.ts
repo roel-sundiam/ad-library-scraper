@@ -21,6 +21,12 @@ export class DashboardComponent implements OnInit {
   
   // Competitor Analysis Status
   hasExistingAnalysis = false;
+  
+  // Test Video Transcription properties
+  testVideoUrl = '';
+  testingVideo = false;
+  testResult: any = null;
+  testError: string = '';
 
   constructor(
     private apiService: ApiService,
@@ -164,6 +170,26 @@ export class DashboardComponent implements OnInit {
 
   openFacebookConsole(): void {
     window.open('https://developers.facebook.com/tools/explorer/', '_blank');
+  }
+
+  testVideoTranscription(): void {
+    if (!this.testVideoUrl) return;
+    
+    this.testingVideo = true;
+    this.testResult = null;
+    this.testError = '';
+    
+    this.apiService.testVideoTranscription(this.testVideoUrl).subscribe({
+      next: (response) => {
+        this.testResult = response.data;
+        this.testingVideo = false;
+      },
+      error: (error) => {
+        console.error('Video transcription test failed:', error);
+        this.testError = error.error?.message || error.message || 'Test failed';
+        this.testingVideo = false;
+      }
+    });
   }
 
   get isSuperAdmin(): boolean {

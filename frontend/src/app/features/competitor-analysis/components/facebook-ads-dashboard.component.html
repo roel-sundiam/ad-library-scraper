@@ -79,7 +79,7 @@
           </div>
         </div>
         <div class="header-actions">
-          <button mat-stroked-button (click)="exportData()" [disabled]="isExporting" class="action-btn">
+          <button *ngIf="isSuperAdmin()" mat-stroked-button (click)="exportData()" [disabled]="isExporting" class="action-btn">
             <mat-icon *ngIf="!isExporting">download</mat-icon>
             <mat-spinner *ngIf="isExporting" diameter="20" strokeWidth="3"></mat-spinner>
             <span>{{ isExporting ? 'Processing Videos...' : 'Export' }}</span>
@@ -460,7 +460,7 @@
     </section>
 
     <!-- AI Analysis & Chat Section -->
-    <section class="ai-analysis-section">
+    <section *ngIf="isSuperAdmin()" class="ai-analysis-section">
       <div class="ai-analysis-container">
         <!-- Modern Header -->
         <div class="ai-header">

@@ -324,5 +324,78 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Test Video Transcription - Super Admin Only -->
+    <mat-card class="test-transcription-card" *ngIf="isSuperAdmin">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>play_arrow</mat-icon>
+          Test Video Transcription
+        </mat-card-title>
+        <mat-card-subtitle>Test the video transcription service with any video URL</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="test-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Video URL</mat-label>
+            <input matInput [(ngModel)]="testVideoUrl" placeholder="https://example.com/video.mp4">
+            <mat-icon matSuffix>link</mat-icon>
+          </mat-form-field>
+          
+          <div class="form-actions">
+            <button mat-raised-button color="primary" 
+                    (click)="testVideoTranscription()" 
+                    [disabled]="!testVideoUrl || testingVideo"
+                    class="test-btn">
+              <mat-icon *ngIf="!testingVideo">play_arrow</mat-icon>
+              <mat-spinner *ngIf="testingVideo" diameter="20"></mat-spinner>
+              {{ testingVideo ? 'Testing...' : 'Test Transcription' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Test Result -->
+        <div *ngIf="testResult" class="test-result">
+          <div class="result-header">
+            <h4>Transcription Result</h4>
+            <span [class]="testResult.debug_info?.service_mode === 'mock' ? 'mock-badge' : 'real-badge'">
+              {{ testResult.debug_info?.service_mode || 'real' }} mode
+            </span>
+          </div>
+          
+          <div class="result-content">
+            <div class="result-item">
+              <strong>Transcript:</strong>
+              <p class="transcript-text">{{ testResult.transcript_text || 'No transcript available' }}</p>
+            </div>
+            
+            <div class="result-details">
+              <div class="detail-item" *ngIf="testResult.duration">
+                <mat-icon>schedule</mat-icon>
+                <span>Duration: {{ testResult.duration }}s</span>
+              </div>
+              <div class="detail-item" *ngIf="testResult.model">
+                <mat-icon>smart_toy</mat-icon>
+                <span>Model: {{ testResult.model }}</span>
+              </div>
+              <div class="detail-item" *ngIf="testResult.language">
+                <mat-icon>language</mat-icon>
+                <span>Language: {{ testResult.language }}</span>
+              </div>
+              <div class="detail-item" *ngIf="testResult.confidence">
+                <mat-icon>verified</mat-icon>
+                <span>Confidence: {{ (testResult.confidence * 100).toFixed(1) }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Display -->
+        <div *ngIf="testError" class="error-message">
+          <mat-icon>error</mat-icon>
+          <span>{{ testError }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </div>
 </div>
