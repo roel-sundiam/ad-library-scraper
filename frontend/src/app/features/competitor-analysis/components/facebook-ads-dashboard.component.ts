@@ -440,7 +440,7 @@ Focus on actionable optimization recommendations for video campaigns.`
           video_transcripts: {
             total_videos_found: this.totalVideoAds,
             videos_processed: videoTranscripts.length,
-            processing_limit: 15,
+            processing_limit: this.totalVideoAds, // No artificial limit - process all videos
             transcription_enabled: this.includeTranscripts,
             transcripts: videoTranscripts,
             note: "Fallback export - no new transcripts generated. Server-side transcription failed."

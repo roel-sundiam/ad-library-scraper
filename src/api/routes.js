@@ -1498,8 +1498,8 @@ router.get('/export/facebook-analysis-test/:datasetId', async (req, res) => {
       };
     });
 
-    // Limit video processing to 15 videos for cost control
-    const videosToProcess = allVideoAds.slice(0, 15);
+    // Process all video ads (limit removed for production)
+    const videosToProcess = allVideoAds;
     let processedTranscripts = [];
     
     if (includeTranscripts === 'true' && videosToProcess.length > 0) {
@@ -1568,7 +1568,7 @@ router.get('/export/facebook-analysis-test/:datasetId', async (req, res) => {
       video_transcripts: {
         total_videos_found: totalVideoAds,
         videos_processed: processedTranscripts.length,
-        processing_limit: 15,
+        processing_limit: allVideoAds.length, // No artificial limit
         transcription_enabled: includeTranscripts === 'true',
         transcripts: processedTranscripts,
         note: processedTranscripts.length === 0 ? 
@@ -1702,8 +1702,8 @@ router.get('/export/facebook-analysis/:datasetId', async (req, res) => {
       };
     });
 
-    // Limit video processing to 15 videos for cost control
-    const videosToProcess = allVideoAds.slice(0, 15);
+    // Process all video ads (limit removed for production)
+    const videosToProcess = allVideoAds;
     let processedTranscripts = [];
     
     if (includeTranscripts === 'true' && videosToProcess.length > 0) {
@@ -1771,7 +1771,7 @@ router.get('/export/facebook-analysis/:datasetId', async (req, res) => {
       video_transcripts: {
         total_videos_found: totalVideoAds,
         videos_processed: processedTranscripts.length,
-        processing_limit: 15,
+        processing_limit: allVideoAds.length, // No artificial limit
         transcription_enabled: includeTranscripts === 'true',
         transcripts: processedTranscripts,
         note: processedTranscripts.length === 0 ? 
@@ -4426,7 +4426,7 @@ async function processBulkVideoAnalysis(jobId) {
     // Current limit: 15 videos for testing/cost control
     // To remove limit: change Math.min(job.videos.length, 15) to job.videos.length
     // Export will include all transcripts in video_transcripts.transcripts array
-    const maxVideos = Math.min(job.videos.length, 15); // Limit to 15 videos max
+    const maxVideos = job.videos.length; // Process all videos (limit removed)
     const videosToAnalyze = job.videos.slice(0, maxVideos);
     
     let videoDataContext = `Analyze ${videosToAnalyze.length} video advertisements from ${competitorName} (showing first ${maxVideos} of ${job.videos.length} total videos).\n\n**VIDEO DATA:**\n`;
