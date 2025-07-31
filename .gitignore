@@ -19,3 +19,6 @@ frontend/node_modules/
 !.env.production
 # Local Netlify folder
 .netlify
+mongodb/bin/install_compass
+mongodb/bin/mongod
+mongodb/bin/mongos

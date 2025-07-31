@@ -5607,3 +5607,62 @@
     }
   }
 }
+// Export Progress Section
+.export-progress-section {
+  margin: 16px 0;
+  animation: fadeIn 0.3s ease-in;
+  
+  .progress-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    
+    .progress-content {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 8px 0;
+      
+      mat-spinner {
+        flex-shrink: 0;
+        
+        ::ng-deep circle {
+          stroke: white !important;
+        }
+      }
+      
+      .progress-text {
+        flex: 1;
+        
+        h3 {
+          margin: 0 0 8px 0;
+          font-size: 18px;
+          font-weight: 600;
+        }
+        
+        p {
+          margin: 0 0 4px 0;
+          opacity: 0.9;
+          font-size: 14px;
+        }
+        
+        small {
+          opacity: 0.8;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -405,15 +405,11 @@ Focus on actionable optimization recommendations for video campaigns.`
           
           window.URL.revokeObjectURL(url);
           
-          // Show success message if transcripts were processed
+          // Show success message if transcripts were processed (removed popup)
           const transcriptCount = response.data.video_transcripts?.transcripts?.length || 0;
-          if (transcriptCount > 0) {
-            alert(`Export completed with ${transcriptCount} video transcripts included!`);
-          } else {
-            alert('Export completed. Note: No video transcripts were generated. Check video URLs or try again.');
-          }
+          console.log(`Export completed with ${transcriptCount} video transcripts included!`);
         } else {
-          alert('Export failed: ' + (response.error?.message || 'Unknown error'));
+          console.error('Export failed: ' + (response.error?.message || 'Unknown error'));
         }
         this.isExporting = false;
       },
@@ -463,7 +459,7 @@ Focus on actionable optimization recommendations for video campaigns.`
         link.click();
         
         window.URL.revokeObjectURL(url);
-        alert('Export completed using fallback method. Video transcripts may not be generated.');
+        console.log('Export completed using fallback method. Video transcripts may not be generated.');
       }
     });
   }
