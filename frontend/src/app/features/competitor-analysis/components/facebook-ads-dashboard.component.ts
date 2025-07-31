@@ -47,6 +47,7 @@ export class FacebookAdsDashboardComponent implements OnInit {
   bulkAnalysisResult: any = null;
   includeTranscripts = true; // Default to enabled for better video analysis
   includeVisualAnalysis = false; // Requires additional AI vision capabilities
+  autoDownloadResults = true; // Auto-download analysis results as JSON
 
   // Debug properties
   debugTab: 'transcriptions' | 'test' | 'videos' = 'transcriptions';
@@ -318,6 +319,14 @@ Focus on actionable optimization recommendations for video campaigns.`
       return dateB.getTime() - dateA.getTime();
     });
     this.topPerformingAds = this.topPerformingAds.slice(0, 5);
+    
+    // Auto-download analysis results if enabled
+    if (this.autoDownloadResults) {
+      // Small delay to ensure all data is fully processed
+      setTimeout(() => {
+        this.downloadAnalysisResults();
+      }, 1000);
+    }
   }
 
   calculateBrandMetrics(ads: FacebookAd[]): AdMetricsSummary {
@@ -1395,15 +1404,113 @@ Context: This is part of my competitor analysis dataset with ${this.totalVideoAd
     window.URL.revokeObjectURL(url);
   }
 
+  private downloadAnalysisResults(): void {
+    try {
+      console.log('Using backend export endpoint for video transcripts...');
+      
+      // Use the backend export endpoint with video transcription logic
+      this.apiService.exportFacebookAnalysis(this.datasetId, { includeTranscripts: true })
+        .subscribe({
+          next: (response) => {
+            if (response.success && response.data) {
+              console.log('Backend export successful, processing download...');
+              const jsonString = JSON.stringify(response.data, null, 2);
+              const blob = new Blob([jsonString], { type: 'application/json' });
+              const url = window.URL.createObjectURL(blob);
+              
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `facebook-ads-analysis-dataset_${this.datasetId}_with-transcripts.json`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+              
+              const videoTranscriptsCount = response.data.video_transcripts?.transcripts?.length || 0;
+              console.log(`Downloaded Facebook ads analysis with ${videoTranscriptsCount} video transcripts`);
+            } else {
+              console.error('Backend export response was not successful:', response);
+              this.fallbackDownload();
+            }
+          },
+          error: (error) => {
+            console.error('Backend export failed, using fallback:', error);
+            this.fallbackDownload();
+          }
+        });
+        
+    } catch (error) {
+      console.error('Failed to initiate backend export:', error);
+      this.fallbackDownload();
+    }
+  }
+
+  private fallbackDownload(): void {
+    try {
+      console.log('Using fallback frontend export...');
+      
+      const videoTranscripts = this.extractAllVideoTranscripts();
+      const analysisData = {
+        analysis_summary: {
+          dataset_id: this.datasetId,
+          generated_at: new Date().toISOString(),
+          total_ads: this.totalAds,
+          total_video_ads: this.totalVideoAds,
+          total_advertisers: this.totalAdvertisers,
+          video_content_rate: this.videoContentRate,
+          brands_analyzed: this.brandComparisons.length
+        },
+        brand_comparisons: this.brandComparisons,
+        top_performing_ads: this.topPerformingAds,
+        video_transcripts: {
+          total_videos_found: this.totalVideoAds,
+          videos_processed: videoTranscripts.length,
+          processing_limit: this.totalVideoAds,
+          transcription_enabled: this.includeTranscripts,
+          transcripts: videoTranscripts
+        },
+        raw_analysis_data: this.analysisResults?.data || {}
+      };
+
+      const jsonString = JSON.stringify(analysisData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `competitor-analysis-results-${this.datasetId}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`Fallback download completed for dataset ${this.datasetId}`);
+    } catch (error) {
+      console.error('Fallback download also failed:', error);
+    }
+  }
+
   // Extract all video transcripts from analysis results
   private extractAllVideoTranscripts(): any[] {
     const allTranscripts: any[] = [];
-    if (!this.analysisResults?.data) return allTranscripts;
+    if (!this.analysisResults?.data) {
+      console.log('DEBUG: No analysis results data found');
+      return allTranscripts;
+    }
     
-    Object.values(this.analysisResults.data).forEach((brandData: any) => {
+    console.log('DEBUG: Starting video transcript extraction from brands:', Object.keys(this.analysisResults.data));
+    
+    Object.values(this.analysisResults.data).forEach((brandData: any, brandIndex: number) => {
+      console.log(`DEBUG: Brand ${brandIndex} data:`, brandData);
+      
       if (brandData.ads_data) {
-        brandData.ads_data.forEach((ad: any) => {
+        console.log(`DEBUG: Brand ${brandIndex} has ${brandData.ads_data.length} ads`);
+        
+        brandData.ads_data.forEach((ad: any, adIndex: number) => {
+          console.log(`DEBUG: Ad ${adIndex} creative:`, ad.creative);
+          
           if (ad.creative?.video_transcripts?.length > 0) {
+            console.log(`DEBUG: Found ${ad.creative.video_transcripts.length} video transcripts for ad ${adIndex}`);
             ad.creative.video_transcripts.forEach((transcript: any) => {
               allTranscripts.push({
                 ad_id: ad.id,

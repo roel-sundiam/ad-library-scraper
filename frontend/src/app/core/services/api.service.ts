@@ -90,7 +90,7 @@ export class ApiService {
   }
 
   // Facebook Ads Analysis endpoints (NEW - Live System)
-  startFacebookAnalysis(request: { pageUrls: string[] }): Observable<any> {
+  startFacebookAnalysis(request: { pageUrls: string[]; includeTranscripts?: boolean }): Observable<any> {
     return this.http.post(`${this.baseUrl}/start-analysis`, request);
   }
 

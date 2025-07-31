@@ -88,6 +88,26 @@
               </div>
             </div>
 
+            <!-- Analysis Options -->
+            <div class="analysis-options">
+              <h4>Analysis Options</h4>
+              <div class="option-toggle">
+                <mat-checkbox 
+                  [(ngModel)]="includeTranscripts" 
+                  [ngModelOptions]="{standalone: true}"
+                  color="primary">
+                  <span class="toggle-label">
+                    <strong>Include Video Transcripts</strong>
+                    <span class="recommended-badge">RECOMMENDED</span>
+                  </span>
+                </mat-checkbox>
+                <div class="option-description">
+                  <mat-icon class="info-icon">info</mat-icon>
+                  <span>Enables AI analysis of actual video content using OpenAI Whisper (~$0.006/minute)</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Action Button -->
             <div class="action-section">
               <button 

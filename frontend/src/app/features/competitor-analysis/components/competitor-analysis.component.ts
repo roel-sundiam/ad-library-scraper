@@ -14,6 +14,7 @@ export class CompetitorAnalysisComponent implements OnInit {
   isSubmitting = false;
   errorMessage = '';
   scraperStatuses: any = {};
+  includeTranscripts = true; // Default to enabled for video transcription
 
   constructor(
     private fb: FormBuilder,
@@ -63,8 +64,10 @@ export class CompetitorAnalysisComponent implements OnInit {
       const formData = this.analysisForm.value;
       
       // Use new single competitor API
+      console.log('DEBUG: Starting analysis with includeTranscripts:', this.includeTranscripts);
       this.apiService.startFacebookAnalysis({
-        pageUrls: [formData.competitorUrl]
+        pageUrls: [formData.competitorUrl],
+        includeTranscripts: this.includeTranscripts
       }).subscribe({
         next: (response: FacebookAnalysisResponse) => {
           if (response.success && response.data.runId) {

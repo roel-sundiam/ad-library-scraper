@@ -1633,6 +1633,8 @@ router.get('/export/facebook-analysis/:datasetId', async (req, res) => {
       workflowKeys: Array.from(workflows.keys())
     });
     
+    console.log('DEBUG: Export called for datasetId:', datasetId);
+    
     // First check the new jobs Map (single-brand analysis)
     if (datasetId.startsWith('dataset_')) {
       // Find job by datasetId
@@ -1641,6 +1643,17 @@ router.get('/export/facebook-analysis/:datasetId', async (req, res) => {
         if (job.dataset_id === datasetId) {
           workflow = job;
           analysisData = job.results;
+          
+          console.log('DEBUG: Found matching job for export:', {
+            runId,
+            status: job.status,
+            resultsLength: job.results?.length,
+            hasVideos: !!job.videos,
+            videosLength: job.videos?.length,
+            videosWithTranscripts: job.videos ? job.videos.filter(v => v.transcript).length : 0,
+            progress: job.progress
+          });
+          
           logger.info('Found matching job!', { runId, resultsLength: job.results?.length });
           break;
         }
@@ -1702,54 +1715,122 @@ router.get('/export/facebook-analysis/:datasetId', async (req, res) => {
       };
     });
 
-    // Process all video ads (limit removed for production)
-    const videosToProcess = allVideoAds;
+    // Use existing transcripts from job.videos instead of re-transcribing
     let processedTranscripts = [];
     
-    if (includeTranscripts === 'true' && videosToProcess.length > 0) {
+    if (includeTranscripts === 'true') {
       logger.info('Processing video transcripts for export', { 
         totalVideos: allVideoAds.length, 
-        processing: videosToProcess.length 
+        hasJobVideos: !!workflow.videos,
+        jobVideosCount: workflow.videos?.length || 0
       });
       
-      // Process video transcripts
-      for (const videoAd of videosToProcess) {
-        if (videoAd.creative?.video_urls?.length > 0) {
-          const videoUrl = videoAd.creative.video_urls[0]; // Process first video URL
-          
-          try {
-            const VideoTranscriptService = require('../services/video-transcript-service');
-            const videoTranscriptService = new VideoTranscriptService();
-            const transcript = await videoTranscriptService.transcribeVideo(videoUrl);
+      // Use transcripts from job.videos if available (preferred - already transcribed during analysis)
+      if (workflow.videos && workflow.videos.length > 0) {
+        console.log('DEBUG: Export found job.videos, checking for transcripts...');
+        console.log('DEBUG: First 3 videos structure:', workflow.videos.slice(0, 3).map(v => ({
+          id: v.id,
+          hasTranscript: !!v.transcript,
+          transcriptLength: v.transcript?.length || 0,
+          hasError: !!v.transcript_error,
+          keys: Object.keys(v)
+        })));
+        
+        logger.info('Using existing transcripts from job.videos', {
+          totalJobVideos: workflow.videos.length,
+          videosWithTranscripts: workflow.videos.filter(v => v.transcript).length,
+          videosWithErrors: workflow.videos.filter(v => v.transcript_error).length
+        });
+        
+        for (const [index, video] of workflow.videos.entries()) {
+          if (video.transcript) {
+            console.log(`DEBUG: Export processing video ${index + 1} with transcript:`, {
+              ad_id: video.id,
+              transcript_length: video.transcript.length,
+              transcript_preview: video.transcript.substring(0, 80) + '...',
+              has_metadata: !!video.transcript_metadata
+            });
             
             processedTranscripts.push({
-              ad_id: videoAd.id,
-              advertiser: videoAd.brand,
-              video_url: videoUrl,
-              transcript_text: transcript.transcript || transcript.text || '',
-              duration: transcript.duration || 0,
-              model: transcript.model || 'whisper-1',
+              ad_id: video.id,
+              advertiser: video.brand,
+              video_url: video.url || (video.video_urls && video.video_urls[0]) || '',
+              transcript_text: video.transcript,
+              duration: video.transcript_metadata?.duration || 0,
+              model: video.transcript_metadata?.model || 'whisper-1',
               success: true,
-              confidence: transcript.confidence || null,
-              language: transcript.language || 'en',
-              processing_time_ms: transcript.processing_time_ms || null
+              confidence: video.transcript_metadata?.confidence || null,
+              language: video.transcript_metadata?.language || 'en',
+              processing_time_ms: video.transcript_metadata?.processing_time_ms || null
             });
-            
-          } catch (error) {
-            logger.warn('Video transcription failed during export', { 
-              videoUrl, 
-              adId: videoAd.id, 
-              error: error.message 
+          } else if (video.transcript_error) {
+            console.log(`DEBUG: Export processing video ${index + 1} with error:`, {
+              ad_id: video.id,
+              error: video.transcript_error
             });
             
             processedTranscripts.push({
-              ad_id: videoAd.id,
-              advertiser: videoAd.brand,
-              video_url: videoUrl,
+              ad_id: video.id,
+              advertiser: video.brand,
+              video_url: video.url || (video.video_urls && video.video_urls[0]) || '',
               transcript_text: '',
+              duration: 0,
               success: false,
-              error: error.message
+              error: video.transcript_error
             });
+          } else {
+            console.log(`DEBUG: Export video ${index + 1} has no transcript or error:`, {
+              ad_id: video.id,
+              hasTranscript: !!video.transcript,
+              hasError: !!video.transcript_error,
+              videoKeys: Object.keys(video)
+            });
+          }
+        }
+      } 
+      // Fallback: Re-transcribe during export (less efficient but ensures we get transcripts)
+      else if (allVideoAds.length > 0) {
+        logger.info('No existing transcripts found, transcribing during export');
+        
+        const videosToProcess = allVideoAds.slice(0, 15); // Limit to prevent timeout
+        for (const videoAd of videosToProcess) {
+          if (videoAd.creative?.video_urls?.length > 0) {
+            const videoUrl = videoAd.creative.video_urls[0];
+            
+            try {
+              const VideoTranscriptService = require('../services/video-transcript-service');
+              const videoTranscriptService = new VideoTranscriptService();
+              const transcript = await videoTranscriptService.transcribeVideo(videoUrl);
+              
+              processedTranscripts.push({
+                ad_id: videoAd.id,
+                advertiser: videoAd.brand,
+                video_url: videoUrl,
+                transcript_text: transcript.transcript || transcript.text || '',
+                duration: transcript.duration || 0,
+                model: transcript.model || 'whisper-1',
+                success: true,
+                confidence: transcript.confidence || null,
+                language: transcript.language || 'en',
+                processing_time_ms: transcript.processing_time_ms || null
+              });
+              
+            } catch (error) {
+              logger.warn('Video transcription failed during export', { 
+                videoUrl, 
+                adId: videoAd.id, 
+                error: error.message 
+              });
+              
+              processedTranscripts.push({
+                ad_id: videoAd.id,
+                advertiser: videoAd.brand,
+                video_url: videoUrl,
+                transcript_text: '',
+                success: false,
+                error: error.message
+              });
+            }
           }
         }
       }
@@ -1849,7 +1930,7 @@ router.get('/export/options', authenticateToken, async (req, res) => {
 // Start Analysis endpoint - triggers Apify actor for competitor analysis
 router.post('/start-analysis', async (req, res) => {
   try {
-    const { pageUrls } = req.body;
+    const { pageUrls, includeTranscripts = true } = req.body;
     
     // Validate required fields
     if (!pageUrls || !Array.isArray(pageUrls) || pageUrls.length !== 1) {
@@ -1892,7 +1973,10 @@ router.post('/start-analysis', async (req, res) => {
       page_urls: pageUrls,
       results: [],
       error: null,
-      progress: { current: 0, total: 1, percentage: 0, message: 'Initializing single competitor analysis...' }
+      progress: { current: 0, total: 1, percentage: 0, message: 'Initializing single competitor analysis...' },
+      options: {
+        includeTranscripts: includeTranscripts
+      }
     };
     
     jobs.set(runId, analysisJob);
@@ -1900,7 +1984,8 @@ router.post('/start-analysis', async (req, res) => {
     logger.info('Starting single competitor analysis', {
       runId,
       datasetId,
-      competitorUrl: pageUrls[0]
+      competitorUrl: pageUrls[0],
+      includeTranscripts: includeTranscripts
     });
     
     // Start Apify analysis asynchronously
@@ -2036,20 +2121,53 @@ router.get('/results/:datasetId', async (req, res) => {
     
     // Transform results array to object with brand names as keys for frontend
     const resultsObject = {};
+    
+    // Safety check - ensure job.results is an array
+    if (!Array.isArray(job.results)) {
+      logger.error('job.results is not an array:', {
+        resultsType: typeof job.results,
+        resultsValue: job.results,
+        jobStatus: job.status,
+        jobKeys: Object.keys(job)
+      });
+      
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INVALID_RESULTS_FORMAT',
+          message: 'Job results are not in expected array format',
+          details: {
+            type: typeof job.results,
+            status: job.status
+          }
+        }
+      });
+    }
+    
     job.results.forEach(result => {
       const brandKey = result.page_name.toLowerCase();
       resultsObject[brandKey] = result;
     });
 
+    // Include analysis data if available
+    const responseData = {
+      ...resultsObject,
+      // Add analysis data if it exists
+      ...(job.analysis && { analysis: job.analysis })
+    };
+
     res.json({
       success: true,
-      data: resultsObject,
+      data: responseData,
       metadata: {
         datasetId,
         runId: job.run_id,
         pageUrls: job.page_urls,
         completed_at: job.completed_at,
-        totalAdsFound: job.results.reduce((sum, page) => sum + (page.ads_found || 0), 0)
+        totalAdsFound: job.results.reduce((sum, page) => sum + (page.ads_found || 0), 0),
+        videos_extracted: job.videos?.length || 0,
+        transcripts_successful: job.analysis?.transcription_stats?.successful || 0,
+        has_analysis: !!job.analysis
       }
     });
     
@@ -2508,21 +2626,122 @@ async function processApifyAnalysis(runId) {
       }
     }
     
-    // Complete job
-    job.status = 'completed';
-    job.completed_at = new Date().toISOString();
+    // Extract video ads from scraped results for transcription
+    const allVideoAds = [];
+    let totalAdsChecked = 0;
+    let videoAdsFound = 0;
+    
+    results.forEach(result => {
+      if (result.ads_data && result.ads_data.length > 0) {
+        totalAdsChecked += result.ads_data.length;
+        console.log(`DEBUG: Checking ${result.ads_data.length} ads from ${result.page_name} for videos`);
+        
+        result.ads_data.forEach((ad, index) => {
+          const hasVideo = ad.creative?.has_video;
+          const hasVideoUrls = ad.creative?.video_urls?.length > 0;
+          const hasVideosArray = ad.videos && ad.videos.length > 0;
+          
+          // Check alternative video field locations
+          const hasVideoSD = ad.video_sd_url;
+          const hasVideoHD = ad.video_hd_url;
+          const hasVideoPreview = ad.video_preview_image_url;
+          const hasCreativeVideo = ad.creative?.video;
+          const hasSnapshotVideo = ad.snapshot?.videos?.length > 0;
+          
+          // Enhanced debug logging for first few ads
+          if (index < 5) {
+            console.log(`DEBUG: Ad ${index + 1} comprehensive video check:`, {
+              has_video: hasVideo,
+              video_urls_count: ad.creative?.video_urls?.length || 0,
+              videos_array_count: ad.videos?.length || 0,
+              video_sd_url: !!hasVideoSD,
+              video_hd_url: !!hasVideoHD,
+              video_preview_image: !!hasVideoPreview,
+              creative_video: !!hasCreativeVideo,
+              snapshot_videos: !!hasSnapshotVideo,
+              ad_id: ad.id,
+              source: result.source,
+              // Show actual structure for debugging
+              creative_keys: ad.creative ? Object.keys(ad.creative) : [],
+              ad_keys: Object.keys(ad).filter(k => k.toLowerCase().includes('video'))
+            });
+          }
+          
+          // Check for videos in multiple possible formats
+          const isVideoAd = hasVideo || hasVideoUrls || hasVideosArray || hasVideoSD || hasVideoHD || hasCreativeVideo || hasSnapshotVideo;
+          
+          if (isVideoAd) {
+            videoAdsFound++;
+            
+            // Extract video URL from various possible locations
+            let videoUrl = null;
+            let videoUrls = [];
+            
+            if (ad.creative?.video_urls?.length > 0) {
+              videoUrls = ad.creative.video_urls;
+              videoUrl = videoUrls[0];
+            } else if (ad.videos && ad.videos.length > 0) {
+              const firstVideo = ad.videos[0];
+              videoUrl = firstVideo.video_sd_url || firstVideo.video_hd_url;
+              if (videoUrl) videoUrls = [videoUrl];
+            } else if (hasVideoSD) {
+              videoUrl = ad.video_sd_url;
+              videoUrls = [videoUrl];
+            } else if (hasVideoHD) {
+              videoUrl = ad.video_hd_url;
+              videoUrls = [videoUrl];
+            } else if (ad.snapshot?.videos?.length > 0) {
+              const snapshotVideo = ad.snapshot.videos[0];
+              videoUrl = snapshotVideo.video_url || snapshotVideo.url;
+              if (videoUrl) videoUrls = [videoUrl];
+            }
+            
+            if (index < 2) {
+              console.log(`DEBUG: Extracted video URL for ad ${ad.id}:`, {
+                videoUrl: videoUrl?.substring(0, 50) + '...',
+                videoUrlsCount: videoUrls.length,
+                source: result.source
+              });
+            }
+            
+            allVideoAds.push({
+              id: ad.id,
+              brand: result.page_name,
+              text: ad.creative?.body || ad.creative?.title || '',
+              video_urls: videoUrls,
+              url: videoUrl
+            });
+          }
+        });
+      }
+    });
+    
+    // Store video ads for transcription processing
+    job.videos = allVideoAds;
+    console.log(`DEBUG: Video extraction summary:`, {
+      totalAdsChecked,
+      videoAdsFound,
+      extractedForTranscription: allVideoAds.length,
+      resultsPagesProcessed: results.length
+    });
+
+    // Don't mark as completed yet - continue to video transcription and analysis phase
     job.results = results;
     job.progress.current = job.page_urls.length;
-    job.progress.percentage = 100;
-    job.progress.message = 'Apify analysis completed!';
+    job.progress.percentage = 50; // Halfway through - scraping done, analysis next
+    job.progress.message = 'Scraping completed! Starting video analysis...';
     
     jobs.set(runId, job);
     
     const totalAdsFound = results.reduce((sum, page) => sum + page.ads_found, 0);
-    logger.info(`Apify analysis ${runId} completed successfully`, {
+    logger.info(`Apify scraping ${runId} completed, starting video analysis phase`, {
       totalAdsFound,
+      videosExtracted: allVideoAds.length,
       duration: new Date() - new Date(job.started_at)
     });
+    
+    // Continue to video transcription and analysis phase
+    setImmediate(() => processBulkVideoAnalysis(runId));
     
   } catch (error) {
     logger.error(`Apify analysis ${runId} failed:`, error);
@@ -4317,7 +4536,24 @@ async function processBulkVideoAnalysis(jobId) {
     job.progress.percentage = 20;
     jobs.set(jobId, job);
     
-    const enableTranscription = job.options.includeTranscripts === true;
+    console.log(`DEBUG: Job options inspection:`, {
+      includeTranscripts_raw: job.options.includeTranscripts,
+      includeTranscripts_type: typeof job.options.includeTranscripts,
+      includeTranscripts_value: job.options.includeTranscripts,
+      options_keys: Object.keys(job.options || {}),
+      full_options: job.options
+    });
+    
+    const enableTranscription = job.options.includeTranscripts === true || job.options.includeTranscripts === 'true';
+    console.log(`DEBUG: Video transcription enabled: ${enableTranscription} for job ${jobId} (checking both boolean and string)`);
+    console.log(`DEBUG: Job structure:`, {
+      hasVideos: !!job.videos,
+      videosLength: job.videos ? job.videos.length : 0,
+      hasAds: !!job.ads,
+      adsLength: job.ads ? job.ads.length : 0,
+      jobKeys: Object.keys(job)
+    });
+    
     let transcriptionStats = {
       attempted: 0,
       successful: 0,
@@ -4328,6 +4564,7 @@ async function processBulkVideoAnalysis(jobId) {
     
     if (enableTranscription) {
       const videoService = getVideoTranscriptService();
+      console.log(`DEBUG: VideoTranscriptService available: ${!!videoService}`);
       if (videoService) {
         logger.info(`Starting video transcription for job ${jobId}`, {
           videoCount: job.videos.length,
@@ -4354,7 +4591,18 @@ async function processBulkVideoAnalysis(jobId) {
             try {
               // Transcribe first video URL only
               const videoUrl = videoUrls[0];
+              console.log(`DEBUG: About to transcribe video ${i + 1}:`, videoUrl.substring(0, 60) + '...');
+              
               const transcriptResult = await videoService.transcribeVideo(videoUrl);
+              
+              console.log(`DEBUG: Transcription result for video ${i + 1}:`, {
+                hasTranscript: !!transcriptResult.transcript,
+                transcriptLength: transcriptResult.transcript?.length || 0,
+                transcript_preview: transcriptResult.transcript?.substring(0, 100) + '...',
+                success: !!transcriptResult.transcript,
+                model: transcriptResult.model,
+                duration: transcriptResult.duration
+              });
               
               // Add transcript to video object
               video.transcript = transcriptResult.transcript;
@@ -4716,10 +4964,19 @@ This error has been logged for technical review.`;
       videoCount: job.videos.length
     });
     
-    // Complete the job
+    // Complete the job - preserve original scraping results and add analysis
     job.status = 'completed';
     job.completed_at = new Date().toISOString();
-    job.results = finalResults;
+    
+    // Keep original scraping results array and add analysis data
+    job.analysis = finalResults; // Store analysis separately
+    
+    // Ensure job.results remains as array for frontend compatibility
+    if (!Array.isArray(job.results)) {
+      logger.warn('job.results was not an array, initializing as empty array');
+      job.results = [];
+    }
+    
     job.progress.stage = 'completed';
     job.progress.message = 'Video analysis completed successfully!';
     job.progress.percentage = 100;

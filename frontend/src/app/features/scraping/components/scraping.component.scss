@@ -583,3 +583,34 @@
     }
   }
 }
+
+// Auto-save section styling
+.auto-save-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8f9ff;
+  border-radius: 8px;
+  border: 1px solid #e1e5f2;
+  
+  .checkbox-label {
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .checkbox-hint {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+  }
+  
+  ::ng-deep .mat-checkbox {
+    .mat-checkbox-frame {
+      border-color: #667eea;
+    }
+    
+    .mat-checkbox-checked .mat-checkbox-background {
+      background-color: #667eea;
+    }
+  }
+}

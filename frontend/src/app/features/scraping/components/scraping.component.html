@@ -109,6 +109,14 @@
                   <mat-hint>Filter ads with minimum impression count</mat-hint>
                 </mat-form-field>
               </div>
+              
+              <!-- Auto-save Results Toggle -->
+              <div class="auto-save-section">
+                <mat-checkbox [(ngModel)]="autoSaveResults" [ngModelOptions]="{standalone: true}">
+                  <span class="checkbox-label">Auto-save results as JSON file</span>
+                </mat-checkbox>
+                <p class="checkbox-hint">Automatically download scraping results to your Downloads folder</p>
+              </div>
             </div>
 
             <!-- Action Buttons -->

@@ -1225,3 +1225,66 @@
     }
   }
 }
+
+// Analysis Options styling
+.analysis-options {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f8f9ff;
+  border-radius: 8px;
+  border: 1px solid #e1e5f2;
+  
+  h4 {
+    margin: 0 0 1rem 0;
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .option-toggle {
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      .recommended-badge {
+        padding: 2px 6px;
+        background: #10b981;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 600;
+        border-radius: 4px;
+      }
+    }
+    
+    .option-description {
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: #666;
+      
+      .info-icon {
+        font-size: 1rem;
+        width: 1rem;
+        height: 1rem;
+        color: #667eea;
+      }
+    }
+  }
+  
+  ::ng-deep .mat-checkbox {
+    .mat-checkbox-frame {
+      border-color: #667eea;
+    }
+    
+    .mat-checkbox-checked .mat-checkbox-background {
+      background-color: #667eea;
+    }
+    
+    .mat-checkbox-checkmark-path {
+      stroke: white !important;
+    }
+  }
+}

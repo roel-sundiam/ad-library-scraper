@@ -29,6 +29,7 @@ export class ScrapingComponent implements OnInit {
   scrapedAds: any[] = [];
   showResults = false;
   isLoadingResults = false;
+  autoSaveResults = true; // Default to auto-save enabled
   
   constructor(
     private fb: FormBuilder,
@@ -92,6 +93,12 @@ export class ScrapingComponent implements OnInit {
       if (response.success && response.data.ads) {
         this.scrapedAds = response.data.ads;
         this.showResults = true;
+        
+        // Auto-download JSON file if enabled
+        if (this.autoSaveResults) {
+          this.downloadScrapingResults(response.data, jobId);
+          console.log(`Auto-saved scraping results for job ${jobId}`);
+        }
       } else {
         console.error('No ads data in response:', response);
         this.jobError = response.data?.message || 'No ads data available';
@@ -126,5 +133,25 @@ export class ScrapingComponent implements OnInit {
   closeResults() {
     this.showResults = false;
     this.scrapedAds = [];
+  }
+
+  private downloadScrapingResults(data: any, jobId: string): void {
+    try {
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `scraping-results-${jobId}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Scraping results downloaded successfully');
+    } catch (error) {
+      console.error('Failed to download scraping results:', error);
+    }
   }
 }

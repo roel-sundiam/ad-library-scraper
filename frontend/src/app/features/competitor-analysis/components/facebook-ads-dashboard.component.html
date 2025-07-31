@@ -781,6 +781,21 @@
                         <span>AI analysis of visual elements, colors, and design patterns</span>
                       </div>
                     </div>
+                    
+                    <div class="toggle-option">
+                      <mat-slide-toggle 
+                        [(ngModel)]="autoDownloadResults"
+                        color="primary">
+                        <span class="toggle-label">
+                          <strong>Auto-Save Analysis Results</strong>
+                          <span class="enabled-badge">ENABLED</span>
+                        </span>
+                      </mat-slide-toggle>
+                      <div class="option-description">
+                        <mat-icon class="info-icon">save_alt</mat-icon>
+                        <span>Automatically download comprehensive JSON file with all analysis data when results load</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
